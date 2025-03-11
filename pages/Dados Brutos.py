@@ -1,9 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import numpy as np
-import plotly.graph_objects as go
-import geopandas as gpd
 
 #---------------------------------- CARREGAMENTO DE DADOS ----------------------------------#
 st.set_page_config(
