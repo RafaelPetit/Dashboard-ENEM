@@ -1,12 +1,11 @@
 import streamlit as st
-import pandas as pd
-
 # Importar módulos do projeto
 from utils.data_loader import load_data, filter_data_by_states
 from utils.mappings import get_mappings
 from tabs.geral import render_geral
 from tabs.aspectos_sociais import render_aspectos_sociais
 from tabs.desempenho import render_desempenho
+
 
 # Configuração inicial da página
 st.set_page_config(page_title="Dashboard ENEM", page_icon="📚", layout="wide")
