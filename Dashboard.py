@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import numpy as np
-import plotly.graph_objects as go
-import geopandas as gpd
 
 # ---------------------------- CONFIGURAÇÃO INICIAL ----------------------------
 st.set_page_config(
@@ -11,7 +9,7 @@ st.set_page_config(
     page_icon="📚",
     layout="wide"
 )
-st.title("📊 Dashboard de Análise do ENEM")
+st.title("📊 Dashboard de Análise do ENEM - 2023")
 st.markdown("### Análise das notas por estado e área de conhecimento")
 
 # ---------------------------- DEFINIÇÃO DE CONSTANTES E MAPEAMENTOS ----------------------------
@@ -319,7 +317,7 @@ with abas[0]:
             )
             st.plotly_chart(fig_hist, use_container_width=True)
         
-        with col2_hist:
+        with col1_hist:
             # Gráfico de Linha
             if len(df_grafico) > 0:
                 fig_linha = px.line(
@@ -423,7 +421,7 @@ with abas[2]:
     st.plotly_chart(fig_raca, use_container_width=True)
 
     # GRAFICO 2: Análise Comparativa por Variáveis Demográficas
-    st.markdown("### Análise Comparativa por Variáveis Demográficas")
+    st.markdown("### Análise Comparativa do Desempenho por  Variáveis Demográficas")
     
     # Seleção da variável
     variavel_selecionada = st.selectbox(
