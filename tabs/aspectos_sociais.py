@@ -16,8 +16,7 @@ def render_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_
         Dicionário com as variáveis sociais disponíveis e seus mapeamentos
     """
     
-    # GRÁFICO: Correlação entre Aspectos Sociais
-    st.markdown("### Correlação entre Aspectos Sociais")
+    
     
     # Verificar se há estados selecionados
     if not estados_selecionados:
@@ -25,10 +24,13 @@ def render_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_
         return
     
     # Informar ao usuário quais estados estão sendo considerados
-    if len(estados_selecionados) <= 5:
-        st.info(f"Dados filtrados para: {', '.join(estados_selecionados)}")
+    if len(estados_selecionados) == 27:
+        st.info(f"Analisando Aspectos Sociais para todo o Brasil") 
     else:
-        st.info(f"Filtro aplicado: {len(estados_selecionados)} estados selecionados")
+        st.info(f"Dados filtrados para: {', '.join(estados_selecionados)}")
+    
+    # GRÁFICO: Correlação entre Aspectos Sociais
+    st.header("Correlação entre Aspectos Sociais")
     
     # Seleção do tipo de visualização
     tipo_grafico = st.radio(
@@ -103,7 +105,7 @@ def render_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_
                 x=normalized_pivot.columns,
                 y=normalized_pivot.index,
                 color_continuous_scale='YlGnBu',
-                title=f"Relação entre {variaveis_sociais[var_x]['nome']} e {variaveis_sociais[var_y]['nome']} ({estados_texto})",
+                title=f"Relação entre {variaveis_sociais[var_x]['nome']} e {variaveis_sociais[var_y]['nome']}",
                 text_auto='.1f'  # Mostrar valores com 1 casa decimal
             )
             
@@ -148,14 +150,28 @@ def render_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_
                 color_discrete_sequence=px.colors.qualitative.Bold
             )
             
-            # Ajustar layout
+            # Ajustar layout para barras empilhadas com legenda interativa
             fig.update_layout(
                 height=500,
                 xaxis={'tickangle': -45},
                 plot_bgcolor='white',
                 barmode='stack',
                 hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
-                legend=dict(title=variaveis_sociais[var_y]['nome'], orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                # Configuração de legenda otimizada para muitas categorias
+                legend=dict(
+                    title=dict(text=f"{variaveis_sociais[var_y]['nome']}<br><sup style='color:#7F7F7F'>Clique para filtrar</sup>"),
+                    orientation="v",  # Muda para vertical (lado direito)
+                    yanchor="top",    # Ancora no topo
+                    y=1.0,           # Posição Y no topo
+                    xanchor="left",   # Ancora à esquerda da posição
+                    x=1.02,          # Posição X ligeiramente fora do gráfico
+                    itemsizing="constant",  # Mantém tamanho constante dos itens
+                    itemclick="toggleothers",
+                    # Definir número máximo de itens por coluna
+                    entrywidth=70,
+                    entrywidthmode="fraction",
+                    traceorder="normal",
+                )
             )
             
             # Texto explicativo
@@ -224,14 +240,14 @@ def render_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_
         st.plotly_chart(fig, use_container_width=True)
         st.info(explicacao)
         
-        # Mostrar dados brutos em um expander
-        with st.expander("Ver dados da correlação"):
-            # Tabela de contagem
-            st.write("#### Contagem de registros")
-            st.dataframe(contagem_pivot)
+    #     # Mostrar dados brutos em um expander
+    #     with st.expander("Ver dados da correlação"):
+    #         # Tabela de contagem
+    #         st.write("#### Contagem de registros")
+    #         st.dataframe(contagem_pivot)
             
-            # Tabela de percentuais
-            st.write("#### Percentuais por linha")
-            st.dataframe(normalized_pivot.round(2))
-    else:
-        st.warning(f"Uma ou ambas as variáveis selecionadas não estão disponíveis no conjunto de dados.")
+    #         # Tabela de percentuais
+    #         st.write("#### Percentuais por linha")
+    #         st.dataframe(normalized_pivot.round(2))
+    # else:
+    #     st.warning(f"Uma ou ambas as variáveis selecionadas não estão disponíveis no conjunto de dados.")
