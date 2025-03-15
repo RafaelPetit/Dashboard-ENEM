@@ -16,7 +16,8 @@ def get_mappings():
         1: 'Federal',
         2: 'Estadual',
         3: 'Municipal',
-        4: 'Privada'
+        4: 'Privada',
+        -1: 'Não Respondeu'
     }
     
     sexo_mapping = {
