@@ -16,7 +16,8 @@ def get_mappings():
         1: 'Federal',
         2: 'Estadual',
         3: 'Municipal',
-        4: 'Privada'
+        4: 'Privada',
+        -1: 'Não Respondeu'
     }
     
     sexo_mapping = {
@@ -79,6 +80,11 @@ def get_mappings():
         'G': 'Pós-graduação Completo',
         'H': 'Não sei'
     }
+
+    acesso_internet_mapping = {
+        'A': 'Não',
+        'B': 'Sim'
+    }
     
     variaveis_categoricas = {
         "TP_COR_RACA": {
@@ -110,6 +116,11 @@ def get_mappings():
             "nome": "Faixa Etária", 
             "mapeamento": faixa_etaria_mapping,
             "ordem": list(faixa_etaria_mapping.values())
+        },
+        "Q025" : {
+            "nome": "Acesso à Internet",
+            "mapeamento": acesso_internet_mapping,
+            "ordem": list(acesso_internet_mapping.values())
         }
     }
     
@@ -141,12 +152,7 @@ def get_mappings():
             "Q": "Acima de R$ 26.400,00"
         }},
         "Q005": {"nome": "Pessoas na Residência", "mapeamento": {
-            str(i): str(i) for i in range(1, 21)
-        }},
-        "TP_ESCOLA": {"nome": "Instituição", "mapeamento": {
-            1: "Não Respondeu",
-            2: "Pública",
-            3: "Privada"
+            i: str(i) for i in range(1, 22)
         }},
         "TP_ST_CONCLUSAO": {"nome": "Situação do Ensino Médio", "mapeamento": {
             1: "Já concluí o Ensino Médio",
@@ -154,7 +160,8 @@ def get_mappings():
             3: "Concluirei após 2023",
             4: "Não concluí/não estou cursando"
         }},
-        "NU_INFRAESTRUTURA": {"nome": "Nível de Infraestrutura", "mapeamento": infraestrutura_mapping}
+        "NU_INFRAESTRUTURA": {"nome": "Nível de Infraestrutura", "mapeamento": infraestrutura_mapping},
+        "Q025": {"nome": "Acesso à Internet", "mapeamento": acesso_internet_mapping}
     }
     
     return (
