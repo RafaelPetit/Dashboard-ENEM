@@ -2,6 +2,18 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+import numpy as np
+from utils.prepara_dados.prepara_dados_aspectos_sociais import (
+    preparar_dados_correlacao, 
+    preparar_dados_distribuicao,
+    contar_candidatos_por_categoria,
+    ordenar_categorias,
+    preparar_dados_heatmap,
+    preparar_dados_barras_empilhadas,
+    preparar_dados_sankey,
+    preparar_dados_grafico_aspectos_por_estado
+)
+from utils.tooltip import titulo_com_tooltip
 
 def render_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_sociais):
     """
@@ -24,9 +36,10 @@ def render_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_
     mensagem = f"Analisando Aspectos Sociais para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(estados_selecionados)}"
     st.info(mensagem)
     
-    # Renderizar as duas seções principais
+    # Renderizar as seções principais
     exibir_correlacao_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_sociais)
     exibir_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais)
+    exibir_grafico_aspectos_por_estado(microdados_estados, estados_selecionados, variaveis_sociais)  # Nova seção
 
 
 def exibir_correlacao_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_sociais):
@@ -42,7 +55,19 @@ def exibir_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,
     variaveis_sociais : dict
         Dicionário com mapeamentos e configurações das variáveis sociais
     """
-    st.header("Correlação entre Aspectos Sociais")
+    explicacao_tooltip = """
+    Esta seção permite analisar correlações entre diferentes aspectos sociais dos candidatos.
+    
+    Você pode:
+    - Escolher dois aspectos sociais diferentes para comparar
+    - Selecionar entre três tipos de visualizações (Heatmap, Barras Empilhadas, Sankey)
+    - Identificar padrões e relações entre características sociais
+    
+    As análises consideram apenas os candidatos dos estados selecionados no filtro lateral.
+    """
+    
+    # Usar título com tooltip em vez de header simples
+    titulo_com_tooltip("Correlação entre Aspectos Sociais", explicacao_tooltip, "correlacao_aspectos_tooltip")
     
     # Seleção do tipo de visualização
     tipo_grafico = st.radio(
@@ -55,7 +80,7 @@ def exibir_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,
     col1, col2 = st.columns(2)
     with col1:
         var_x = st.selectbox(
-            "Variável X (Linhas/Origem):", 
+            "Variável X:", 
             options=list(variaveis_sociais.keys()),
             format_func=lambda x: variaveis_sociais[x]["nome"],
             key="var_x_social"
@@ -64,7 +89,7 @@ def exibir_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,
         # Filtrar para não repetir a mesma variável
         opcoes_y = [k for k in variaveis_sociais.keys() if k != var_x]
         var_y = st.selectbox(
-            "Variável Y (Colunas/Destino):", 
+            "Variável Y:", 
             options=opcoes_y,
             format_func=lambda x: variaveis_sociais[x]["nome"],
             key="var_y_social"
@@ -104,43 +129,6 @@ def exibir_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,
     st.info(explicacao)
 
 
-def preparar_dados_correlacao(microdados, var_x, var_y, variaveis_sociais):
-    """
-    Prepara os dados para análise de correlação entre duas variáveis.
-    
-    Parâmetros:
-    -----------
-    microdados : DataFrame
-        DataFrame com os dados a serem analisados
-    var_x, var_y : str
-        Nomes das variáveis a serem correlacionadas
-    variaveis_sociais : dict
-        Dicionário com mapeamentos e configurações das variáveis
-        
-    Retorna:
-    --------
-    tuple
-        (DataFrame com dados preparados, nome da coluna X para plotar, nome da coluna Y para plotar)
-    """
-    df_correlacao = microdados.copy()
-    
-    # Aplicar mapeamentos para variável X
-    if var_x in variaveis_sociais and df_correlacao[var_x].dtype != 'object':
-        df_correlacao[f'{var_x}_NOME'] = df_correlacao[var_x].map(variaveis_sociais[var_x]["mapeamento"])
-        var_x_plot = f'{var_x}_NOME'
-    else:
-        var_x_plot = var_x
-        
-    # Aplicar mapeamentos para variável Y
-    if var_y in variaveis_sociais and df_correlacao[var_y].dtype != 'object':
-        df_correlacao[f'{var_y}_NOME'] = df_correlacao[var_y].map(variaveis_sociais[var_y]["mapeamento"])
-        var_y_plot = f'{var_y}_NOME'
-    else:
-        var_y_plot = var_y
-    
-    return df_correlacao, var_x_plot, var_y_plot
-
-
 def criar_grafico_heatmap(df_correlacao, var_x, var_y, var_x_plot, var_y_plot, 
                         variaveis_sociais, estados_texto):
     """
@@ -151,17 +139,8 @@ def criar_grafico_heatmap(df_correlacao, var_x, var_y, var_x_plot, var_y_plot,
     tuple
         (figura do gráfico, texto explicativo)
     """
-    # Contar ocorrências para cada combinação
-    contagem = df_correlacao.groupby([var_x_plot, var_y_plot]).size().reset_index(name='Contagem')
-    
-    # Calcular percentuais (normalização)
-    contagem_pivot = contagem.pivot(index=var_x_plot, columns=var_y_plot, values='Contagem')
-    
-    # Substituir NaN por 0
-    contagem_pivot = contagem_pivot.fillna(0)
-    
-    # Normalizar por linha (para mostrar distribuição percentual)
-    normalized_pivot = contagem_pivot.div(contagem_pivot.sum(axis=1), axis=0) * 100
+    # Usar a função de preparação de dados
+    normalized_pivot = preparar_dados_heatmap(df_correlacao, var_x_plot, var_y_plot)
     
     # Criar heatmap
     fig = px.imshow(
@@ -206,17 +185,8 @@ def criar_grafico_barras_empilhadas(df_correlacao, var_x, var_y, var_x_plot, var
     tuple
         (figura do gráfico, texto explicativo)
     """
-    # Contar ocorrências para cada combinação
-    contagem = df_correlacao.groupby([var_x_plot, var_y_plot]).size().reset_index(name='Contagem')
-    
-    # Preparar dados para barras empilhadas
-    df_barras = contagem.copy()
-    df_barras['Percentual'] = 0.0
-    
-    # Calcular percentual por categoria X
-    for idx, row in df_barras.iterrows():
-        total = df_barras[df_barras[var_x_plot] == row[var_x_plot]]['Contagem'].sum()
-        df_barras.at[idx, 'Percentual'] = (row['Contagem'] / total * 100) if total > 0 else 0
+    # Usar a função de preparação de dados
+    df_barras = preparar_dados_barras_empilhadas(df_correlacao, var_x_plot, var_y_plot)
     
     # Criar gráfico de barras empilhadas
     fig = px.bar(
@@ -277,26 +247,13 @@ def criar_grafico_sankey(df_correlacao, var_x, var_y, var_x_plot, var_y_plot,
     tuple
         (figura do gráfico, texto explicativo)
     """
-    # Contar ocorrências para cada combinação
-    contagem = df_correlacao.groupby([var_x_plot, var_y_plot]).size().reset_index(name='Contagem')
-    
-    # Criar listas para o diagrama Sankey
-    labels = list(contagem[var_x_plot].unique()) + list(contagem[var_y_plot].unique())
-    
-    # Mapear valores para índices
-    source_indices = {val: i for i, val in enumerate(contagem[var_x_plot].unique())}
-    target_offset = len(source_indices)
-    target_indices = {val: i + target_offset for i, val in enumerate(contagem[var_y_plot].unique())}
-    
-    # Criar listas de source, target e value
-    source = [source_indices[s] for s in contagem[var_x_plot]]
-    target = [target_indices[t] for t in contagem[var_y_plot]]
-    value = contagem['Contagem'].tolist()
+    # Usar a função de preparação de dados
+    labels, source, target, value = preparar_dados_sankey(df_correlacao, var_x_plot, var_y_plot)
     
     # Criar cores para nós
     node_colors = (
-        px.colors.qualitative.Pastel[:len(source_indices)] + 
-        px.colors.qualitative.Bold[:len(target_indices)]
+        px.colors.qualitative.Pastel[:len(set(source))] + 
+        px.colors.qualitative.Bold[:len(set(target))]
     )
     
     # Criar diagrama Sankey
@@ -345,7 +302,20 @@ def exibir_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais):
     variaveis_sociais : dict
         Dicionário com mapeamentos e configurações das variáveis sociais
     """
-    st.header("Distribuição de Aspectos Sociais")
+    explicacao_tooltip = """
+    Esta seção apresenta a distribuição dos candidatos por diferentes categorias de um aspecto social.
+    
+    Você pode:
+    - Selecionar qualquer aspecto social disponível para análise
+    - Escolher entre três tipos de visualização (Barras, Linha ou Pizza)
+    - Ver estatísticas detalhadas sobre a distribuição
+    
+    Os dados mostram a quantidade e percentual de candidatos em cada categoria, 
+    permitindo identificar perfis predominantes e minorias.
+    """
+    
+    # Usar título com tooltip em vez de header simples
+    titulo_com_tooltip("Distribuição de Aspectos Sociais", explicacao_tooltip, "distribuicao_aspectos_tooltip")
     
     # Permitir ao usuário selecionar qual aspecto social visualizar
     aspecto_social = st.selectbox(
@@ -397,85 +367,6 @@ def exibir_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais):
     # Adicionar explicação sobre o gráfico
     exibir_explicacao_distribuicao(aspecto_social, variaveis_sociais, total, 
                                  contagem_aspecto, categoria_mais_frequente)
-
-
-def preparar_dados_distribuicao(microdados, aspecto_social, variaveis_sociais):
-    """
-    Prepara os dados para análise de distribuição de um aspecto social.
-    
-    Retorna:
-    --------
-    tuple
-        (DataFrame preparado, nome da coluna para plotar)
-    """
-    df_dist = microdados.copy()
-    
-    if df_dist[aspecto_social].dtype != 'object':
-        df_dist[f'{aspecto_social}_NOME'] = df_dist[aspecto_social].map(
-            variaveis_sociais[aspecto_social]["mapeamento"]
-        )
-        coluna_plot = f'{aspecto_social}_NOME'
-    else:
-        coluna_plot = aspecto_social
-        
-    return df_dist, coluna_plot
-
-
-def contar_candidatos_por_categoria(df, coluna_plot):
-    """
-    Conta o número de candidatos em cada categoria de um aspecto social.
-    
-    Retorna:
-    --------
-    DataFrame
-        DataFrame com contagem de candidatos por categoria
-    """
-    contagem = df[coluna_plot].value_counts().reset_index()
-    contagem.columns = ['Categoria', 'Quantidade']
-    return contagem
-
-
-def ordenar_categorias(contagem_aspecto, aspecto_social, variaveis_sociais):
-    """
-    Ordena as categorias de acordo com a configuração do aspecto social.
-    
-    Retorna:
-    --------
-    DataFrame
-        DataFrame ordenado
-    """
-    if "ordem" in variaveis_sociais[aspecto_social]:
-        # Usar ordem explicitamente definida
-        ordem_categorias = variaveis_sociais[aspecto_social]["ordem"]
-        contagem_aspecto['Categoria'] = pd.Categorical(
-            contagem_aspecto['Categoria'], 
-            categories=ordem_categorias, 
-            ordered=True
-        )
-        return contagem_aspecto.sort_values('Categoria')
-    
-    elif "mapeamento" in variaveis_sociais[aspecto_social]:
-        # Usar a ordem do mapeamento original
-        mapeamento = variaveis_sociais[aspecto_social]["mapeamento"]
-        
-        # Obter valores do mapeamento na ordem original das chaves
-        valores_ordenados = list(mapeamento.values())
-        
-        # Filtrar para incluir apenas categorias presentes nos dados
-        categorias_presentes = set(contagem_aspecto['Categoria'])
-        categorias_ordenadas = [categoria for categoria in valores_ordenados if categoria in categorias_presentes]
-        
-        # Aplicar ordenação categórica
-        contagem_aspecto['Categoria'] = pd.Categorical(
-            contagem_aspecto['Categoria'],
-            categories=categorias_ordenadas,
-            ordered=True
-        )
-        return contagem_aspecto.sort_values('Categoria')
-    
-    else:
-        # Se não houver ordem nem mapeamento, ordenar por quantidade
-        return contagem_aspecto.sort_values('Quantidade', ascending=False)
 
 
 def criar_grafico_distribuicao(contagem_aspecto, opcao_viz, aspecto_social, variaveis_sociais):
@@ -633,3 +524,136 @@ def exibir_explicacao_distribuicao(aspecto_social, variaveis_sociais,
         A categoria mais comum é "{categoria_mais_frequente['Categoria']}", que representa {categoria_mais_frequente['Percentual']:.1f}% do total.
     """
     st.info(explicacao_dist)
+
+def exibir_grafico_aspectos_por_estado(microdados_estados, estados_selecionados, variaveis_sociais):
+    """
+    Exibe gráfico de linha mostrando distribuição de aspectos sociais por estado.
+    
+    Parâmetros:
+    -----------
+    microdados_estados : DataFrame
+        DataFrame filtrado com dados dos estados selecionados
+    estados_selecionados : list
+        Lista de estados selecionados para análise
+    variaveis_sociais : dict
+        Dicionário com mapeamentos e configurações das variáveis sociais
+    """
+    explicacao_tooltip = """
+    Esta visualização mostra como as características sociais dos candidatos variam entre os estados.
+    
+    Você pode:
+    - Selecionar qualquer aspecto social para analisar sua distribuição geográfica
+    - Ordenar os estados por percentual de uma categoria específica
+    - Filtrar para mostrar apenas uma categoria de interesse
+    
+    Esta análise permite identificar disparidades regionais em características sociais,
+    mostrando onde certos grupos são mais ou menos representados.
+    """
+    
+    # Usar título com tooltip em vez de header simples
+    titulo_com_tooltip("Distribuição de Aspectos Sociais por Estado", explicacao_tooltip, "aspectos_por_estado_tooltip")
+    
+    # Permitir ao usuário selecionar qual aspecto social visualizar
+    aspecto_social = st.selectbox(
+        "Selecione o aspecto social para análise por estado:",
+        options=list(variaveis_sociais.keys()),
+        format_func=lambda x: variaveis_sociais[x]["nome"],
+        key="aspecto_por_estado"
+    )
+    
+    # Verificar se a coluna existe nos dados
+    if aspecto_social not in microdados_estados.columns:
+        st.warning(f"A variável {variaveis_sociais[aspecto_social]['nome']} não está disponível no conjunto de dados.")
+        return
+    
+    # Preparar dados para visualização
+    df_por_estado = preparar_dados_grafico_aspectos_por_estado(
+        microdados_estados, 
+        aspecto_social, 
+        estados_selecionados, 
+        variaveis_sociais
+    )
+    
+    if df_por_estado.empty:
+        st.warning(f"Não há dados suficientes para mostrar a distribuição de {variaveis_sociais[aspecto_social]['nome']} por estado.")
+        return
+    
+    # Interface para ordenação
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        ordenar_por_percentual = st.checkbox("Ordenar estados por percentual", value=False, key="ordenar_estados_percentual")
+    
+    # Mostrar seletor de categoria apenas se o usuário escolheu ordenar
+    categoria_selecionada = None
+    if ordenar_por_percentual:
+        with col2:
+            categorias_disponiveis = sorted(df_por_estado['Categoria'].unique().tolist())
+            categoria_selecionada = st.selectbox(
+                "Ordenar por categoria:",
+                options=categorias_disponiveis,
+                key="categoria_ordenacao"
+            )
+    
+    # Criar uma cópia do DataFrame para não modificar o original
+    df_plot = df_por_estado.copy()
+    
+    # Se o usuário escolheu ordenar, reorganizamos os dados
+    if ordenar_por_percentual and categoria_selecionada:
+        # Filtrar apenas os dados da categoria selecionada para ordenação
+        percentual_por_estado = df_plot[df_plot['Categoria'] == categoria_selecionada].copy()
+        
+        # Criar um mapeamento da ordem dos estados com base na categoria selecionada
+        ordem_estados = percentual_por_estado.sort_values('Percentual', ascending=False)['Estado'].tolist()
+        
+        # Reordenar o DataFrame usando o mapeamento
+        df_plot['Estado'] = pd.Categorical(df_plot['Estado'], categories=ordem_estados, ordered=True)
+        df_plot = df_plot.sort_values('Estado')
+        
+        # Opcional: Filtrar para mostrar apenas a categoria selecionada
+        if st.checkbox("Mostrar apenas a categoria selecionada", value=False, key="mostrar_apenas_categoria_estado"):
+            df_plot = df_plot[df_plot['Categoria'] == categoria_selecionada]
+    
+    # Criar o gráfico
+    fig = px.line(
+        df_plot,
+        x='Estado',
+        y='Percentual',
+        color='Categoria',
+        markers=True,
+        title=f'Distribuição de {variaveis_sociais[aspecto_social]["nome"]} por Estado',
+        labels={
+            'Estado': 'Estado',
+            'Percentual': 'Percentual (%)',
+            'Categoria': variaveis_sociais[aspecto_social]["nome"]
+        },
+        color_discrete_sequence=px.colors.qualitative.Bold
+    )
+    
+    # Configurar layout do gráfico
+    fig.update_layout(
+        height=500,
+        xaxis_title="Estado",
+        yaxis_title="Percentual (%)",
+        yaxis=dict(ticksuffix="%"),
+        legend_title=variaveis_sociais[aspecto_social]["nome"],
+        xaxis=dict(tickangle=-45),
+        plot_bgcolor='white',
+        hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
+        legend=dict(
+            title=dict(text=f"{variaveis_sociais[aspecto_social]['nome']}<br><sup>Clique para filtrar</sup>"),
+        )
+    )
+    
+    # Exibir o gráfico
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Texto explicativo
+    explicacao = f"""
+        Este gráfico mostra a distribuição percentual de {variaveis_sociais[aspecto_social]['nome'].lower()} por estado.
+        Cada linha colorida representa uma categoria diferente de {variaveis_sociais[aspecto_social]['nome'].lower()},
+        e os pontos mostram o percentual em cada estado.
+        
+        A visualização permite identificar variações regionais na distribuição de {variaveis_sociais[aspecto_social]['nome'].lower()},
+        ajudando a entender padrões demográficos e sociais por estado.
+    """
+    st.info(explicacao)

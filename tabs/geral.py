@@ -3,9 +3,9 @@ import plotly.express as px
 import numpy as np
 import pandas as pd
 from utils.tooltip import custom_metric_with_tooltip, titulo_com_tooltip
+from utils.prepara_dados.prepara_dados_geral import prepara_dados_histograma, prepara_dados_grafico_linha, prepara_dados_grafico_faltas, criar_histograma
 from utils.explicacaoes import criar_explicacao_grafico_faltas, criar_explicacao_grafico_linha, criar_explicacao_histograma
-from utils.mappings import get_mappings
-from utils.data_loader import calcular_seguro, criar_histograma, prepare_data_for_histogram,prepare_data_for_line_chart, prepare_data_for_absence_chart
+from utils.data_loader import calcular_seguro
 
 def render_geral(microdados_estados, estados_selecionados, colunas_notas, competencia_mapping):
     """Renderiza a aba Geral do dashboard com métricas e visualizações."""
@@ -21,11 +21,11 @@ def render_geral(microdados_estados, estados_selecionados, colunas_notas, compet
     medias_estados = exibir_metricas_principais(microdados_estados, estados_selecionados, colunas_notas)
     
     # Exibir histograma de distribuição de notas
-    df_histograma = prepare_data_for_histogram(microdados_estados, colunas_notas[0], competencia_mapping)
+    df_histograma = prepara_dados_histograma(microdados_estados, colunas_notas[0], competencia_mapping)
     exibir_histograma_notas(df_histograma, microdados_estados, colunas_notas, competencia_mapping)
     
     # Exibir gráfico de linha de médias por estado e área
-    df_grafico = prepare_data_for_line_chart(
+    df_grafico = prepara_dados_grafico_linha(
         microdados_estados, estados_selecionados, colunas_notas, competencia_mapping
     )
     if len(df_grafico) > 0:
@@ -41,7 +41,7 @@ def render_geral(microdados_estados, estados_selecionados, colunas_notas, compet
     }
 
     # Exibir gráfico de faltas
-    df_faltas = prepare_data_for_absence_chart(
+    df_faltas = prepara_dados_grafico_faltas(
         microdados_estados, estados_selecionados, colunas_presenca
     )
     if len(df_faltas) > 0:
@@ -100,7 +100,9 @@ def exibir_metricas_principais(microdados_estados, estados_selecionados, colunas
     explicacao_total = """
     Número total de candidatos nos estados selecionados que realizaram a prova do ENEM 2023.
     
-    Este valor considera apenas os registros válidos após aplicação dos filtros e exclusão de dados inconsistentes.
+    - Foi coletada uma amostra de 600.000 candidatos para este dashboard.
+    - O total de candidato original é de aproximadamente 3.000.000.
+    - Este valor considera apenas os registros válidos após aplicação dos filtros e exclusão de dados inconsistentes.
     """
     
     explicacao_maior_media = """
@@ -163,7 +165,7 @@ def exibir_histograma_notas(df_histograma, microdados_estados, colunas_notas, co
     if df_histograma and df_histograma['coluna'] == area_conhecimento:
         dados_histograma = df_histograma
     else:
-        dados_histograma = prepare_data_for_histogram(microdados_estados, area_conhecimento, competencia_mapping)
+        dados_histograma = prepara_dados_histograma(microdados_estados, area_conhecimento, competencia_mapping)
     # Criar e exibir o histograma
     fig_hist = criar_histograma(dados_histograma)
     st.plotly_chart(fig_hist, use_container_width=True)
