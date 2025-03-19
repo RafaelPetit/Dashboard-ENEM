@@ -209,7 +209,6 @@ def criar_grafico_comparativo(df_resultados, variavel_selecionada, variaveis_cat
             xanchor="right", 
             x=1, 
             title=dict(text="Área de Conhecimento <br><sup>Clique para filtrar</sup>"),
-            itemclick="toggleothers"
         )
     )
     
@@ -333,7 +332,6 @@ def criar_grafico_scatter(dados_filtrados, eixo_x, eixo_y, competencia_mapping):
         legend_title_text="COR/RAÇA",
         legend=dict(
             title=dict(text="COR/RAÇA<br><sup>Clique para filtrar</sup>"),
-            itemclick="toggleothers"
         )
     )
     

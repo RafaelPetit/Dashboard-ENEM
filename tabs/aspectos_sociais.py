@@ -250,7 +250,6 @@ def criar_grafico_barras_empilhadas(df_correlacao, var_x, var_y, var_x_plot, var
             xanchor="left",   # Ancora à esquerda da posição
             x=1.02,          # Posição X ligeiramente fora do gráfico
             itemsizing="constant",  # Mantém tamanho constante dos itens
-            itemclick="toggleothers",
             # Definir número máximo de itens por coluna
             entrywidth=70,
             entrywidthmode="fraction",
@@ -568,7 +567,6 @@ def configurar_layout_grafico(fig, opcao_viz, contagem_aspecto, aspecto_social, 
             hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
             legend=dict(
                 title=dict(text=f"{variaveis_sociais[aspecto_social]['nome']} <br><sup>Clique para filtrar</sup>"),
-                itemclick="toggle",
                 traceorder="normal"
             )
         )
