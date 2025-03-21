@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from scipy import stats
 
 @st.cache_data
 def load_data():
     """Carrega os dados do ENEM e faz pré-processamento inicial."""
     microdados = pd.DataFrame(pd.read_csv('sample.csv', sep=';', encoding='ISO-8859-1'))
-    dtypes = pd.read_json("dtypes.json", typ='series')
+    dtypes = pd.read_json("dtypes - Copia.json", typ='series')
     dados = microdados.astype(dtypes)
     
     # Converter colunas de notas para float64
@@ -40,6 +41,12 @@ def calcular_seguro(serie_dados, operacao='media'):
             resultado = np.min(array_limpa)
         elif operacao == 'max':
             resultado = np.max(array_limpa)
+        elif operacao == 'std':
+            resultado = np.std(array_limpa)
+        elif operacao == 'curtose':
+            resultado = stats.kurtosis(array_limpa)
+        elif operacao == 'assimetria':
+            resultado = stats.skew(array_limpa)
         else:
             return 0.0
         return float(resultado) if np.isfinite(resultado) else 0.0
@@ -47,26 +54,3 @@ def calcular_seguro(serie_dados, operacao='media'):
         print(f"Erro no cálculo: {e}")
         return 0.0
 
-def prepare_data_for_line_chart(microdados_estados, estados_selecionados, colunas_notas, competencia_mapping):
-    """Prepara dados para o gráfico de linhas na aba Geral."""
-    dados_grafico = []
-    for estado in estados_selecionados:
-        dados_estado = microdados_estados[microdados_estados['SG_UF_PROVA'] == estado]
-        for area in colunas_notas:
-            media_area = round(calcular_seguro(dados_estado[area]), 2)
-            dados_grafico.append({
-                'Estado': estado,
-                'Área': competencia_mapping[area],
-                'Média': media_area
-            })
-    return pd.DataFrame(dados_grafico)
-
-def prepare_infrastructure_data(microdados, race_mapping, infraestrutura_mapping):
-    """Prepara dados para análise de infraestrutura por raça."""
-    infra_desempenho = microdados.groupby(['TP_COR_RACA', 'NU_INFRAESTRUTURA']).size().reset_index(name='count')
-    raca_total = microdados.groupby('TP_COR_RACA').size().reset_index(name='total')
-    infra_desempenho = infra_desempenho.merge(raca_total, on='TP_COR_RACA')
-    infra_desempenho['percentual'] = (infra_desempenho['count'] / infra_desempenho['total']) * 100
-    infra_desempenho['Raça'] = infra_desempenho['TP_COR_RACA'].map(race_mapping)
-    infra_desempenho['infraestrutura'] = infra_desempenho['NU_INFRAESTRUTURA'].map(infraestrutura_mapping)
-    return infra_desempenho
