@@ -9,3 +9,9 @@ from .analise_aspectos_sociais import (
     analisar_correlacao_categorias,
     analisar_distribuicao_regional
 )
+
+from .analise_geral import (
+    analisar_metricas_principais,
+    analisar_distribuicao_notas,
+    analisar_faltas
+)

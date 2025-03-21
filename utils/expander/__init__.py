@@ -12,3 +12,9 @@ from utils.expander.expander_aspectos_sociais import (
     criar_expander_analise_regional,
     criar_expander_dados_completos_estado
 )
+
+# Expanders para aba geral
+from utils.expander.expander_geral import (
+    criar_expander_analise_histograma,
+    criar_expander_analise_faltas
+)

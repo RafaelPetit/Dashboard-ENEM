@@ -1,7 +1,6 @@
 import pandas as pd
-from utils.data_loader import calcular_seguro
-import plotly.express as px
 import numpy as np
+from utils.data_loader import calcular_seguro
 
 def prepara_dados_histograma(df, coluna, competencia_mapping):
     """
@@ -18,174 +17,19 @@ def prepara_dados_histograma(df, coluna, competencia_mapping):
         
     Retorna:
     --------
-    dict: Dicionário com os dados necessários para criar o histograma
+    tuple: (DataFrame filtrado, nome da coluna, nome da área)
     """
     # Filtrar valores inválidos (notas -1 e 0) para análises mais precisas
-    df_valido = df[df[coluna] > 0]
+    df_valido = df[df[coluna] > 0].copy()
     
     # Obter nome amigável da área de conhecimento
     nome_area = competencia_mapping[coluna]
     
-    # Calcular estatísticas
-    media = calcular_seguro(df_valido[coluna])
-    mediana = calcular_seguro(df_valido[coluna], 'mediana')
-    min_valor = calcular_seguro(df_valido[coluna], 'min')
-    max_valor = calcular_seguro(df_valido[coluna], 'max')
-    desvio_padrao = calcular_seguro(df_valido[coluna], 'std')
-    curtose = calcular_seguro(df_valido[coluna], 'curtose')
-    skillness = calcular_seguro(df_valido[coluna], 'assimetria')
-    
-    # Retornar dicionário com todos os dados necessários
-    return {
-        'df': df_valido,
-        'coluna': coluna,
-        'nome_area': nome_area,
-        'estatisticas': {
-            'media': media,
-            'mediana': mediana,
-            'min_valor': min_valor,
-            'max_valor': max_valor,
-            'desvio_padrao': desvio_padrao,
-            'curtose': curtose,
-            'skillness': skillness
-        }
-    }
-
-
-def criar_histograma(dados_histograma):
-    """
-    Cria um histograma formatado com informações estatísticas.
-    
-    Parâmetros:
-    -----------
-    dados_histograma : dict
-        Dicionário com os dados para criar o histograma
-        
-    Retorna:
-    --------
-    Figure: Objeto de figura Plotly com o histograma formatado
-    """
-    # Extrair dados do dicionário
-    df = dados_histograma['df']
-    coluna = dados_histograma['coluna']
-    nome_area = dados_histograma['nome_area']
-    stats = dados_histograma['estatisticas']
-    
-    media = stats['media']
-    mediana = stats['mediana']
-    min_valor = stats['min_valor']
-    max_valor = stats['max_valor']
-    desvio_padrao = stats['desvio_padrao']
-    curtose = stats['curtose']
-    skillness = stats['skillness']
-
-    # Criar histograma
-    fig = px.histogram(
-        df,
-        x=coluna,
-        nbins=30,
-        histnorm='percent',
-        title=f"Histograma das notas - {nome_area}",
-        labels={coluna: f"Nota ({nome_area})"},
-        opacity=0.7,
-        color_discrete_sequence=['#3366CC']
-    )
-    
-    # Adicionar linhas de média e mediana
-    fig.add_vline(x=media, line_dash="dash", line_color="red")
-    fig.add_vline(x=mediana, line_dash="dash", line_color="green")
-    
-    # Formatação do layout
-    fig.update_layout(
-        height=400,
-        bargap=0.1,
-        xaxis_title=f"Nota ({nome_area})",
-        yaxis_title="Porcentagem (%)",
-        xaxis=dict(tickmode='auto', nticks=15, showgrid=True, gridwidth=1, gridcolor='rgba(0,0,0,0.1)'),
-        yaxis=dict(showgrid=True, gridwidth=1, gridcolor='rgba(0,0,0,0.1)'),
-        plot_bgcolor='white',
-        hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
-        showlegend=False
-    )
-    
-    # Adicionar caixa de estatísticas
-    stats_text = f"""
-    <b>Estatísticas:</b><br>
-    Média: {media:.2f}<br>
-    Mediana: {mediana:.2f}<br>
-    Mínimo: {min_valor:.2f}<br>
-    Máximo: {max_valor:.2f}<br>
-    desvio Padrão: {desvio_padrao:.2f}<br>
-    Curtose: {curtose:.2f}<br>
-    Assimetria: {skillness:.2f}
-    """
-
-    fig.add_annotation(
-        x=0.02, y=0.98,
-        xref="paper", yref="paper",
-        text=stats_text,
-        showarrow=False,
-        font=dict(size=12),
-        align="left",
-        bgcolor="rgba(255,255,255,0.8)",
-        bordercolor="gray",
-        borderwidth=1,
-        borderpad=4
-    )
-    
-    return fig
-
-def prepara_dados_grafico_linha(microdados_estados, estados_selecionados, colunas_notas, competencia_mapping):
-    """
-    Prepara dados para o gráfico de linhas na aba Geral.
-    Inclui uma linha adicional com a média geral de todas as competências.
-    """
-    dados_grafico = []
-    dados_medias_gerais = []  # Lista separada para médias gerais
-    
-    # Primeiro, calculamos a média para cada área e estado
-    for estado in estados_selecionados:
-        dados_estado = microdados_estados[microdados_estados['SG_UF_PROVA'] == estado]
-        medias_estado_atual = []  # Lista para armazenar médias deste estado
-        
-        for area in colunas_notas:
-            dados_filtrados = dados_estado[dados_estado[area] > 0][area]
-            media_area = round(calcular_seguro(dados_filtrados), 2)
-            
-            # Adicionar ao DataFrame de resultados
-            dados_grafico.append({
-                'Estado': estado,
-                'Área': competencia_mapping[area],
-                'Média': media_area
-            })
-            
-            # Armazenar para cálculo da média geral
-            medias_estado_atual.append(media_area)
-        
-        # Calcular e armazenar a média geral para este estado
-        if medias_estado_atual:
-            media_geral_estado = round(np.mean(medias_estado_atual), 2)
-            
-            # Armazenar em lista separada
-            dados_medias_gerais.append({
-                'Estado': estado,
-                'Área': 'Média Geral',
-                'Média': media_geral_estado,
-            })
-    
-    # Combinar os DataFrames com médias gerais primeiro
-    df_medias_gerais = pd.DataFrame(dados_medias_gerais)
-    df_outras_areas = pd.DataFrame(dados_grafico)
-    df_final = pd.concat([df_medias_gerais, df_outras_areas], ignore_index=True)
-    
-    return df_final
-
-
+    return df_valido, coluna, nome_area
 
 def prepara_dados_grafico_faltas(microdados_estados, estados_selecionados, colunas_presenca):
     """
     Prepara os dados para o gráfico de faltas por estado e área de conhecimento.
-    Inclui faltas na Redação mesmo sem a coluna TP_PRESENCA_REDACAO.
     
     Parâmetros:
     -----------
@@ -211,7 +55,19 @@ def prepara_dados_grafico_faltas(microdados_estados, estados_selecionados, colun
             continue  # Pular estados sem candidatos
         
         # Contar faltas gerais (quem faltou em pelo menos uma prova)
-        faltas_gerais = len(dados_estado[dados_estado['TP_PRESENCA_GERAL'] == 0])
+        # Calcular faltas gerais como proxy caso a coluna não exista
+        if 'TP_PRESENCA_GERAL' in dados_estado.columns:
+            faltas_gerais = len(dados_estado[dados_estado['TP_PRESENCA_GERAL'] == 0])
+        else:
+            # Considerar ausente se faltou em qualquer uma das provas principais
+            faltas_cn = len(dados_estado[dados_estado['TP_PRESENCA_CN'] == 0]) if 'TP_PRESENCA_CN' in dados_estado.columns else 0
+            faltas_ch = len(dados_estado[dados_estado['TP_PRESENCA_CH'] == 0]) if 'TP_PRESENCA_CH' in dados_estado.columns else 0
+            faltas_lc = len(dados_estado[dados_estado['TP_PRESENCA_LC'] == 0]) if 'TP_PRESENCA_LC' in dados_estado.columns else 0
+            faltas_mt = len(dados_estado[dados_estado['TP_PRESENCA_MT'] == 0]) if 'TP_PRESENCA_MT' in dados_estado.columns else 0
+            
+            # União (não soma) das faltas
+            faltas_gerais = max(faltas_cn, faltas_ch, faltas_lc, faltas_mt)
+        
         percentual_faltas_gerais = (faltas_gerais / total_candidatos * 100) if total_candidatos > 0 else 0
         
         # Armazenar dados gerais em lista separada
