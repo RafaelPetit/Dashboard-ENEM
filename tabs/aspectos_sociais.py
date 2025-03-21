@@ -75,9 +75,15 @@ def exibir_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,
         ["Heatmap", "Barras Empilhadas", "Sankey"],
         horizontal=True
     )
+
     
     # Seleção das variáveis para correlação
     col1, col2 = st.columns(2)
+
+    # Inicializar session_state para var_y_previous se não existir
+    if 'var_y_previous' not in st.session_state:
+        st.session_state.var_y_previous = None
+
     with col1:
         var_x = st.selectbox(
             "Variável X:", 
@@ -85,15 +91,26 @@ def exibir_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,
             format_func=lambda x: variaveis_sociais[x]["nome"],
             key="var_x_social"
         )
+
     with col2:
         # Filtrar para não repetir a mesma variável
         opcoes_y = [k for k in variaveis_sociais.keys() if k != var_x]
+
+        # Determinar o índice inicial baseado na seleção anterior
+        index = 0
+        if st.session_state.var_y_previous in opcoes_y:
+            index = opcoes_y.index(st.session_state.var_y_previous)
+
         var_y = st.selectbox(
             "Variável Y:", 
             options=opcoes_y,
             format_func=lambda x: variaveis_sociais[x]["nome"],
+            index=index,
             key="var_y_social"
         )
+
+        # Armazenar a seleção atual como a anterior para o próximo ciclo
+        st.session_state.var_y_previous = var_y
     
     # Verificar se as variáveis selecionadas existem nos dados
     if var_x not in microdados_estados.columns or var_y not in microdados_estados.columns:

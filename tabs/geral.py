@@ -3,8 +3,8 @@ import plotly.express as px
 import numpy as np
 import pandas as pd
 from utils.tooltip import custom_metric_with_tooltip, titulo_com_tooltip
-from utils.prepara_dados.prepara_dados_geral import prepara_dados_histograma, prepara_dados_grafico_linha, prepara_dados_grafico_faltas, criar_histograma
-from utils.explicacaoes import criar_explicacao_grafico_faltas, criar_explicacao_grafico_linha, criar_explicacao_histograma
+from utils.prepara_dados.prepara_dados_geral import prepara_dados_histograma, prepara_dados_grafico_faltas, criar_histograma
+from utils.explicacaoes import criar_explicacao_grafico_faltas, criar_explicacao_histograma
 from utils.data_loader import calcular_seguro
 
 def render_geral(microdados_estados, estados_selecionados, colunas_notas, competencia_mapping):
@@ -24,13 +24,13 @@ def render_geral(microdados_estados, estados_selecionados, colunas_notas, compet
     df_histograma = prepara_dados_histograma(microdados_estados, colunas_notas[0], competencia_mapping)
     exibir_histograma_notas(df_histograma, microdados_estados, colunas_notas, competencia_mapping)
     
-    # Exibir gráfico de linha de médias por estado e área
-    df_grafico = prepara_dados_grafico_linha(
-        microdados_estados, estados_selecionados, colunas_notas, competencia_mapping
-    )
-    if len(df_grafico) > 0:
-        exibir_grafico_linha(df_grafico, estados_selecionados, medias_estados, 
-                           microdados_estados, colunas_notas, competencia_mapping)
+    # # Exibir gráfico de linha de médias por estado e área
+    # df_grafico = prepara_dados_grafico_linha(
+    #     microdados_estados, estados_selecionados, colunas_notas, competencia_mapping
+    # )
+    # if len(df_grafico) > 0:
+    #     exibir_grafico_linha(df_grafico, estados_selecionados, medias_estados, 
+    #                        microdados_estados, colunas_notas, competencia_mapping)
         
     colunas_presenca = {
         'TP_PRESENCA_CN': 'Ciências da Natureza',
@@ -184,104 +184,104 @@ def exibir_histograma_notas(df_histograma, microdados_estados, colunas_notas, co
     st.info(explicacao_hist)
 
 
-def exibir_grafico_linha(df_grafico, estados_selecionados, medias_estados, 
-                       microdados_estados, colunas_notas, competencia_mapping):
-    """Exibe gráfico de linha das médias por estado e área de conhecimento."""
-    # Texto explicativo para o tooltip do título
-    explicacao_tooltip = """
-    Este gráfico compara as médias de desempenho dos candidatos por estado e área de conhecimento.
+# def exibir_grafico_linha(df_grafico, estados_selecionados, medias_estados, 
+#                        microdados_estados, colunas_notas, competencia_mapping):
+#     """Exibe gráfico de linha das médias por estado e área de conhecimento."""
+#     # Texto explicativo para o tooltip do título
+#     explicacao_tooltip = """
+#     Este gráfico compara as médias de desempenho dos candidatos por estado e área de conhecimento.
     
-    - Cada linha colorida representa uma área de conhecimento diferente
-    - Cada ponto mostra a média para um estado específico naquela área
-    - Os estados são exibidos no eixo X, e as médias no eixo Y
-    - É possível filtrar áreas específicas clicando nas legendas
+#     - Cada linha colorida representa uma área de conhecimento diferente
+#     - Cada ponto mostra a média para um estado específico naquela área
+#     - Os estados são exibidos no eixo X, e as médias no eixo Y
+#     - É possível filtrar áreas específicas clicando nas legendas
     
-    Utilize este gráfico para identificar:
-    • Quais estados têm melhor desempenho em cada área
-    • Quais áreas de conhecimento apresentam maiores variações entre estados
-    • Padrões regionais de desempenho acadêmico
-    """
+#     Utilize este gráfico para identificar:
+#     • Quais estados têm melhor desempenho em cada área
+#     • Quais áreas de conhecimento apresentam maiores variações entre estados
+#     • Padrões regionais de desempenho acadêmico
+#     """
     
-    # Usar título com tooltip em vez de subheader
-    titulo_com_tooltip("Médias por Estado e Área de Conhecimento", explicacao_tooltip, "grafico_linha_tooltip")
+#     # Usar título com tooltip em vez de subheader
+#     titulo_com_tooltip("Médias por Estado e Área de Conhecimento", explicacao_tooltip, "grafico_linha_tooltip")
     
-    # Obter todas as áreas disponíveis no DataFrame
-    areas_disponiveis = df_grafico['Área'].unique().tolist()
+#     # Obter todas as áreas disponíveis no DataFrame
+#     areas_disponiveis = df_grafico['Área'].unique().tolist()
     
-    # Interface para ordenação
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        ordenar_por_nota = st.checkbox("Ordenar estados por nota", value=False, key="ordenar_estados_notas")
+#     # Interface para ordenação
+#     col1, col2 = st.columns([1, 2])
+#     with col1:
+#         ordenar_por_nota = st.checkbox("Ordenar estados por nota", value=False, key="ordenar_estados_notas")
     
-    # Mostrar seletor de área apenas se o usuário escolheu ordenar
-    area_selecionada = None
-    if ordenar_por_nota:
-        with col2:
-            area_selecionada = st.selectbox(
-                "Ordenar por área:",
-                options=["Média Geral"] + areas_disponiveis,
-                key="area_ordenacao"
-            )
+#     # Mostrar seletor de área apenas se o usuário escolheu ordenar
+#     area_selecionada = None
+#     if ordenar_por_nota:
+#         with col2:
+#             area_selecionada = st.selectbox(
+#                 "Ordenar por área:",
+#                 options=["Média Geral"] + areas_disponiveis,
+#                 key="area_ordenacao"
+#             )
     
-    # Criar uma cópia do DataFrame para não modificar o original
-    df_plot = df_grafico.copy()
+#     # Criar uma cópia do DataFrame para não modificar o original
+#     df_plot = df_grafico.copy()
     
-    # Se o usuário escolheu ordenar, reorganizamos os dados
-    if ordenar_por_nota:
-        if area_selecionada == "Média Geral":
-            # Verificar se temos a coluna "Média Geral" no DataFrame
-            if "Média Geral" in areas_disponiveis:
-                # Usar a média geral para ordenação
-                media_por_estado = df_plot[df_plot['Área'] == 'Média Geral'].copy()
-            else:
-                # Calcular a média geral para cada estado
-                media_por_estado = df_plot.groupby('Estado')['Média'].mean().reset_index()
-        else:
-            # Usar a área selecionada para ordenação
-            media_por_estado = df_plot[df_plot['Área'] == area_selecionada].copy()
+#     # Se o usuário escolheu ordenar, reorganizamos os dados
+#     if ordenar_por_nota:
+#         if area_selecionada == "Média Geral":
+#             # Verificar se temos a coluna "Média Geral" no DataFrame
+#             if "Média Geral" in areas_disponiveis:
+#                 # Usar a média geral para ordenação
+#                 media_por_estado = df_plot[df_plot['Área'] == 'Média Geral'].copy()
+#             else:
+#                 # Calcular a média geral para cada estado
+#                 media_por_estado = df_plot.groupby('Estado')['Média'].mean().reset_index()
+#         else:
+#             # Usar a área selecionada para ordenação
+#             media_por_estado = df_plot[df_plot['Área'] == area_selecionada].copy()
             
-        # Criar um mapeamento da ordem dos estados com base na área selecionada
-        ordem_estados = media_por_estado.sort_values('Média', ascending=False)['Estado'].tolist()
+#         # Criar um mapeamento da ordem dos estados com base na área selecionada
+#         ordem_estados = media_por_estado.sort_values('Média', ascending=False)['Estado'].tolist()
         
-        # Reordenar o DataFrame usando o mapeamento
-        df_plot['Estado'] = pd.Categorical(df_plot['Estado'], categories=ordem_estados, ordered=True)
-        df_plot = df_plot.sort_values('Estado')
+#         # Reordenar o DataFrame usando o mapeamento
+#         df_plot['Estado'] = pd.Categorical(df_plot['Estado'], categories=ordem_estados, ordered=True)
+#         df_plot = df_plot.sort_values('Estado')
         
-        # Opcional: Filtrar para mostrar apenas a área selecionada se não for "Média Geral"
-        if area_selecionada != "Média Geral" and st.checkbox("Mostrar apenas a área selecionada", value=False):
-            df_plot = df_plot[df_plot['Área'] == area_selecionada]
+#         # Opcional: Filtrar para mostrar apenas a área selecionada se não for "Média Geral"
+#         if area_selecionada != "Média Geral" and st.checkbox("Mostrar apenas a área selecionada", value=False):
+#             df_plot = df_plot[df_plot['Área'] == area_selecionada]
     
-    # Criar o gráfico com os dados ordenados
-    fig = px.line(
-        df_plot,
-        x='Estado',
-        y='Média',
-        color='Área',
-        markers=True,
-        title='Médias por Estado e Área de Conhecimento',
-        labels={'Média': 'Nota Média', 'Estado': 'Estado', 'Área': 'Área de Conhecimento'},
-        color_discrete_sequence=px.colors.qualitative.Bold
-    )
+#     # Criar o gráfico com os dados ordenados
+#     fig = px.line(
+#         df_plot,
+#         x='Estado',
+#         y='Média',
+#         color='Área',
+#         markers=True,
+#         title='Médias por Estado e Área de Conhecimento',
+#         labels={'Média': 'Nota Média', 'Estado': 'Estado', 'Área': 'Área de Conhecimento'},
+#         color_discrete_sequence=px.colors.qualitative.Bold
+#     )
     
-    fig.update_layout(
-        height=400,
-        xaxis_title="Estado",
-        yaxis_title="Nota Média",
-        legend_title="Área de Conhecimento",
-        xaxis=dict(tickangle=-45),
-        plot_bgcolor='white',
-        hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
-        legend=dict(
-            title=dict(text="Área de Conhecimento<br><sup>Clique para filtrar</sup>"),
-        )
-    )
+#     fig.update_layout(
+#         height=400,
+#         xaxis_title="Estado",
+#         yaxis_title="Nota Média",
+#         legend_title="Área de Conhecimento",
+#         xaxis=dict(tickangle=-45),
+#         plot_bgcolor='white',
+#         hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
+#         legend=dict(
+#             title=dict(text="Área de Conhecimento<br><sup>Clique para filtrar</sup>"),
+#         )
+#     )
     
-    st.plotly_chart(fig, use_container_width=True)
+#     st.plotly_chart(fig, use_container_width=True)
     
-    # Explicação para o gráfico de linha
-    explicacao = criar_explicacao_grafico_linha(estados_selecionados, medias_estados, 
-                                             microdados_estados, colunas_notas, competencia_mapping)
-    st.info(explicacao)
+#     # Explicação para o gráfico de linha
+#     explicacao = criar_explicacao_grafico_linha(estados_selecionados, medias_estados, 
+#                                              microdados_estados, colunas_notas, competencia_mapping)
+#     st.info(explicacao)
 
 def exibir_grafico_faltas(df_faltas, estados_selecionados):
     """
