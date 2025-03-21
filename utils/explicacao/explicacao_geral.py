@@ -57,9 +57,9 @@ def get_tooltip_total_candidatos():
     return """
     Número total de candidatos nos estados selecionados que realizaram a prova do ENEM 2023.
     
-    - Foi coletada uma amostra de 600.000 candidatos para este dashboard
-    - O total de candidatos original é de aproximadamente 3.000.000
-    - Este valor considera apenas os registros válidos após aplicação dos filtros e exclusão de dados inconsistentes
+    - Foi coletada uma amostra com distribuição proporcional com 200.000 candidatos para este dashboard com foco no desempenho da plataforma
+    - O total de candidatos original é de aproximadamente 3.933.955
+    - Este valor considera apenas os registros válidos após aplicação dos filtros e modelagem/exclusão de dados inconsistentes
     """
 
 def get_tooltip_maior_media():
