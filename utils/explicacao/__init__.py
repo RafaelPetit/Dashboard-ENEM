@@ -18,3 +18,15 @@ from .explicacao_aspectos_sociais import (
     get_explicacao_distribuicao,
     get_explicacao_aspectos_por_estado
 )
+
+from .explicacao_geral import (
+    get_tooltip_metricas_principais,
+    get_tooltip_histograma,
+    get_tooltip_faltas,
+    get_tooltip_media_geral,
+    get_tooltip_total_candidatos,
+    get_tooltip_maior_media,
+    get_tooltip_estado_maior_media,
+    get_explicacao_histograma,
+    get_explicacao_faltas
+)

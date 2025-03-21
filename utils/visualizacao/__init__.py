@@ -21,3 +21,8 @@ from .graficos_aspectos_sociais import (
     criar_grafico_aspectos_por_estado,
     configurar_layout_grafico
 )
+
+from .graficos_geral import (
+    criar_histograma,
+    criar_grafico_faltas
+)

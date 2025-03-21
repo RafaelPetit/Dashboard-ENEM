@@ -17,3 +17,8 @@ from .prepara_dados_aspectos_sociais import (
     preparar_dados_sankey,
     preparar_dados_grafico_aspectos_por_estado
 )
+
+from .prepara_dados_geral import (
+    prepara_dados_histograma,
+    prepara_dados_grafico_faltas
+)
