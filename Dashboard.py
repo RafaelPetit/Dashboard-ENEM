@@ -93,6 +93,7 @@ with footer_col2:
     st.markdown("""
     <div style='text-align: center; color: #636363;'>
         <p style='font-size: 16px;'><b>Dashboard de Análise do ENEM 2023</b></p>
+                <br>
         <p style='font-size: 14px;'>Projeto de Iniciação Científica</p>
         <hr style='margin: 10px 0; border-color: #e0e0e0;'>
         <p style='font-size: 12px;'>© 2025 - Todos os direitos reservados</p>
@@ -106,10 +107,8 @@ with footer_col3:
     <div style='text-align: right; color: #636363;'>
         <p style='font-size: 15px;'><b>Equipe</b></p>
         <p style='font-size: 14px; margin-bottom: 2px;'><b>Desenvolvedor:</b></p>
-        <p style='font-size: 13px; margin-top: 0;'>Rafael Petit</p>
-        <p style='font-size: 12px; margin-top: 0;'>rpetit.dev@gmail.com</p>
+        <p style='font-size: 13px; margin-top: 0;'>Rafael Petit <br> rpetit.dev@gmail.com</p>
         <p style='font-size: 14px; margin-bottom: 2px; margin-top: 15px;'><b>Orientador:</b></p>
-        <p style='font-size: 13px; margin-top: 0;'>Prof. Dr. César C. Xavier</p>
-        <p style='font-size: 12px; margin-top: 0;'>cesarcx@gmail.com</p>
+        <p style='font-size: 13px; margin-top: 0;'>Prof. Dr. César C. Xavier <br> cesarcx@gmail.com</p>
     </div>
     """, unsafe_allow_html=True)
