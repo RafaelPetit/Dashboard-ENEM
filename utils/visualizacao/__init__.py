@@ -12,3 +12,12 @@ from .componentes import (
 )
 
 from .config_graficos import aplicar_layout_padrao, cores_padrao
+
+from .graficos_aspectos_sociais import (
+    criar_grafico_heatmap,
+    criar_grafico_barras_empilhadas,
+    criar_grafico_sankey,
+    criar_grafico_distribuicao,
+    criar_grafico_aspectos_por_estado,
+    configurar_layout_grafico
+)

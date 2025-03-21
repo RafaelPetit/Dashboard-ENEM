@@ -8,6 +8,7 @@ def get_tooltip_analise_comparativa():
     - Selecione a variável demográfica desejada
     - Escolha entre gráfico de barras ou linhas
     - Use as opções de ordenação e filtro para personalizar a visualização
+    - Não deixe de expandir a seção "Ver análise detalhada por categoria" abaixo do gráfico
     
     Passe o mouse sobre os elementos para ver valores exatos e use a legenda para destacar áreas específicas.
     """
@@ -22,6 +23,7 @@ def get_tooltip_relacao_competencias():
     - Selecione as competências para os eixos X e Y
     - Aplique filtros opcionais (sexo, tipo de escola, notas zero)
     - Explore os agrupamentos por cor/raça
+    - Consulte a análise detalhada da correlação disponível abaixo
     
     Use os controles de zoom e interaja com a legenda para explorar os dados em detalhe.
     """
@@ -36,6 +38,7 @@ def get_tooltip_desempenho_estados():
     - Compare todas as áreas simultaneamente
     - Ative a ordenação para visualizar rankings
     - Selecione apenas uma área para análises específicas
+    - Explore a "Análise regional detalhada" abaixo para insights aprofundados
     
     Veja a análise automática para identificar rapidamente padrões e disparidades regionais.
     """
@@ -57,6 +60,8 @@ def get_explicacao_barras_comparativo(variavel_nome):
     Analise se as disparidades se repetem consistentemente nas diversas áreas, sugerindo fatores estruturais
     
     Estas informações são essenciais para entender como fatores socioeconômicos impactam resultados educacionais e para direcionar políticas de redução de desigualdades.
+    
+    **💡 Recomendação:** Expanda a seção "Ver análise detalhada por categoria" logo abaixo para acessar métricas adicionais, estatísticas de variabilidade entre grupos e uma análise completa das disparidades por competência.
     """
 
 def get_explicacao_linhas_comparativo(variavel_nome):
@@ -76,6 +81,8 @@ def get_explicacao_linhas_comparativo(variavel_nome):
     Observe onde as linhas de diferentes competências se aproximam ou se distanciam, sugerindo áreas com desafios específicos
     
     Esta perspectiva dinâmica ajuda a compreender como diferentes características socioeconômicas influenciam sistematicamente o desempenho educacional.
+    
+    **💡 Dica:** Para uma análise mais profunda, incluindo estatísticas de disparidade, variabilidade entre categorias e identificação de padrões específicos por competência, clique na seção "Ver análise detalhada por categoria" abaixo.
     """
 
 def get_explicacao_dispersao(eixo_x_nome, eixo_y_nome, correlacao):
@@ -125,6 +132,8 @@ def get_explicacao_dispersao(eixo_x_nome, eixo_y_nome, correlacao):
     As regiões com maior densidade de pontos indicam os padrões de desempenho mais comuns entre os candidatos
     
     Esta visualização é fundamental para entender como diferentes habilidades cognitivas se relacionam no processo educacional e como intervenções em uma área podem impactar outras.
+    
+    **📊 Análise avançada:** Não deixe de clicar em "Ver análise detalhada da correlação" logo abaixo para acessar estatísticas completas de ambas as competências, interpretação educacional contextualizada e métricas de associação como o coeficiente de determinação (r²).
     """
 
 def get_explicacao_desempenho_estados(area_texto, melhor_estado, pior_estado, variabilidade):
@@ -158,4 +167,6 @@ def get_explicacao_desempenho_estados(area_texto, melhor_estado, pior_estado, va
     Estados com desempenho superior podem oferecer modelos e práticas educacionais que, adaptados a contextos locais, poderiam beneficiar outras regiões.
     
     Esta análise espacial é essencial para compreender como fatores regionais - incluindo desenvolvimento econômico, infraestrutura e políticas educacionais - impactam o desempenho dos estudantes.
+    
+    **🔍 Análise aprofundada:** Expanda a seção "Ver análise regional detalhada" abaixo para acessar uma análise completa por região geográfica, estatísticas de variabilidade entre estados, ranking completo e distribuição em relação à média nacional.
     """

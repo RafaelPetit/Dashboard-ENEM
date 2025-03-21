@@ -37,6 +37,12 @@ from utils.explicacao import (
     get_explicacao_desempenho_estados
 )
 
+from utils.expander.expander_desempenho import (
+    criar_expander_analise_comparativa,
+    criar_expander_relacao_competencias,
+    criar_expander_desempenho_estados
+)
+
 def render_desempenho(microdados, microdados_estados, estados_selecionados, 
                      colunas_notas, competencia_mapping, race_mapping, 
                      variaveis_categoricas, desempenho_mapping):
@@ -133,10 +139,8 @@ def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_n
     
     st.info(explicacao)
     
-    with st.expander("Ver dados da análise"):
-        pivot_df = df_resultados.pivot(index='Categoria', columns='Competência', values='Média').reset_index()
-        st.dataframe(pivot_df, hide_index=True)
-
+    # Análise detalhada em expander
+    criar_expander_analise_comparativa(df_resultados, variavel_selecionada, variaveis_categoricas, competencia_mapping, config_filtros)
 
 def render_relacao_competencias(microdados_estados, colunas_notas, competencia_mapping, race_mapping):
     titulo_com_tooltip(
@@ -173,7 +177,7 @@ def render_relacao_competencias(microdados_estados, colunas_notas, competencia_m
     eixo_x_nome = competencia_mapping[config_filtros['eixo_x']]
     eixo_y_nome = competencia_mapping[config_filtros['eixo_y']]
     
-    correlacao, _ = calcular_correlacao_competencias(
+    correlacao, interpretacao = calcular_correlacao_competencias(
         dados_filtrados, 
         config_filtros['eixo_x'], 
         config_filtros['eixo_y']
@@ -182,33 +186,9 @@ def render_relacao_competencias(microdados_estados, colunas_notas, competencia_m
     explicacao = get_explicacao_dispersao(eixo_x_nome, eixo_y_nome, correlacao)
     st.info(explicacao)
     
-    with st.expander("Ver estatísticas detalhadas"):
-        correlacao, interpretacao = calcular_correlacao_competencias(
-            dados_filtrados, 
-            config_filtros['eixo_x'], 
-            config_filtros['eixo_y']
-        )
-        
-        st.write(f"**Coeficiente de correlação de Pearson:** {correlacao:.4f} ({interpretacao})")
-        st.write("""
-        Interpretação:
-        - Próximo a 1: Forte correlação positiva (quando uma nota aumenta, a outra tende a aumentar)
-        - Próximo a 0: Ausência de correlação linear
-        - Próximo a -1: Forte correlação negativa (quando uma nota aumenta, a outra tende a diminuir)
-        """)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write(f"**Estatísticas para {competencia_mapping[config_filtros['eixo_x']]}:**")
-            stats_x = gerar_estatisticas_descritivas(dados_filtrados, config_filtros['eixo_x'])
-            st.dataframe(stats_x)
-            
-        with col2:
-            st.write(f"**Estatísticas para {competencia_mapping[config_filtros['eixo_y']]}:**")
-            stats_y = gerar_estatisticas_descritivas(dados_filtrados, config_filtros['eixo_y'])
-            st.dataframe(stats_y)
-
-
+    # Análise detalhada em expander
+    criar_expander_relacao_competencias(dados_filtrados, config_filtros, competencia_mapping, correlacao, interpretacao)
+    
 def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_notas, competencia_mapping):
     titulo_com_tooltip(
         "Médias por Estado e Área de Conhecimento", 
@@ -246,36 +226,21 @@ def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_
     
     area_texto = f" em {config_filtros['area_selecionada']}" if config_filtros.get('area_selecionada') and config_filtros.get('mostrar_apenas_area') else " nas diversas áreas de conhecimento"
     
-    if config_filtros.get('area_selecionada'):
-        analise = analisar_desempenho_por_estado(df_grafico, config_filtros['area_selecionada'])
-        melhor_estado = analise['melhor_estado']['Estado']
-        pior_estado = analise['pior_estado']['Estado']
-        desvio_padrao = analise['desvio_padrao']
-        variabilidade = "alta" if desvio_padrao > 15 else "moderada" if desvio_padrao > 8 else "baixa"
-    else:
-        analise = analisar_desempenho_por_estado(df_grafico, "Média Geral")
-        melhor_estado = analise['melhor_estado']['Estado']
-        pior_estado = analise['pior_estado']['Estado']
+    # Determinar área para análise (uso a área específica se selecionada, senão uso a Média Geral)
+    area_analise = config_filtros.get('area_selecionada') if config_filtros.get('area_selecionada') else "Média Geral"
+    analise = analisar_desempenho_por_estado(df_grafico, area_analise)
+    
+    melhor_estado = analise['melhor_estado']['Estado']
+    pior_estado = analise['pior_estado']['Estado']
+    desvio_padrao = analise['desvio_padrao']
+    
+    # Determinar variabilidade para explicação
+    variabilidade = "alta" if desvio_padrao > 15 else "moderada" if desvio_padrao > 8 else "baixa"
+    if not config_filtros.get('area_selecionada'):
         variabilidade = "variável"
     
     explicacao = get_explicacao_desempenho_estados(area_texto, melhor_estado, pior_estado, variabilidade)
     st.info(explicacao)
     
-    if config_filtros['area_selecionada']:
-        with st.expander("Ver análise automática"):
-            area_analise = config_filtros['area_selecionada']
-            analise = analisar_desempenho_por_estado(df_grafico, area_analise)
-            
-            st.write(f"#### Análise de desempenho para {area_analise}")
-            st.write(f"• **Melhor desempenho**: {analise['melhor_estado']['Estado']} ({analise['melhor_estado']['Média']:.1f} pontos)")
-            st.write(f"• **Pior desempenho**: {analise['pior_estado']['Estado']} ({analise['pior_estado']['Média']:.1f} pontos)")
-            st.write(f"• **Média nacional**: {analise['media_geral']:.1f} pontos")
-            st.write(f"• **Desvio padrão entre estados**: {analise['desvio_padrao']:.2f} pontos")
-    
-    with st.expander("Ver dados detalhados"):
-        pivot_df = df_grafico.pivot(index='Estado', columns='Área', values='Média').reset_index()
-        st.dataframe(pivot_df, hide_index=True)
-
-if __name__ == "__main__":
-    st.title("Visualização de Desempenho")
-    st.write("Esta é uma versão de teste da aba de desempenho.")
+    # Análise regional detalhada usando a função encapsulada
+    criar_expander_desempenho_estados(df_grafico, area_analise, analise)
