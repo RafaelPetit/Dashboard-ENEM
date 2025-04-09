@@ -92,18 +92,6 @@ def criar_expander_analise_comparativa(df_resultados, variavel_selecionada, vari
             if len(competencias_analise) > 1:
                 st.write("---")
         
-        # Exibir tabela comparativa
-        st.write("#### Tabela completa de médias:")
-        pivot_df = df_resultados.pivot(index='Categoria', columns='Competência', values='Média').reset_index()
-        
-        # Adicionar coluna de média geral se houver mais de uma competência
-        if len(df_resultados['Competência'].unique()) > 1:
-            medias_por_categoria = df_resultados.groupby('Categoria')['Média'].mean().reset_index()
-            pivot_df = pivot_df.merge(medias_por_categoria, on='Categoria', suffixes=('', '_geral'))
-            pivot_df = pivot_df.rename(columns={'Média_geral': 'Média Geral'})
-        
-        st.dataframe(pivot_df, hide_index=True)
-
 
 def criar_expander_relacao_competencias(dados_filtrados, config_filtros, competencia_mapping, correlacao, interpretacao):
     """

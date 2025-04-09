@@ -45,7 +45,7 @@ from utils.expander import (
     criar_expander_dados_completos_estado
 )
 
-def render_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_sociais):
+def render_aspectos_sociais(microdados_estados, estados_selecionados, locais_selecionados, variaveis_sociais):
     """
     Renderiza a aba de Aspectos Sociais com visualizações de correlações entre variáveis sociais.
     
@@ -62,8 +62,7 @@ def render_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_
         st.warning("Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
         return
     
-    # Informar ao usuário quais estados estão sendo considerados
-    mensagem = f"Analisando Aspectos Sociais para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(estados_selecionados)}"
+    mensagem = f"Analisando Desempenho para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
     st.info(mensagem)
     
     # Permitir ao usuário selecionar a análise desejada
@@ -82,7 +81,7 @@ def render_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_
         exibir_grafico_aspectos_por_estado(microdados_estados, estados_selecionados, variaveis_sociais)
 
 
-def exibir_correlacao_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_sociais):
+def exibir_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,    variaveis_sociais):
     """
     Exibe gráficos de correlação entre dois aspectos sociais selecionados.
     """

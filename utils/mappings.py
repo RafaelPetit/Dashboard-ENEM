@@ -2,7 +2,6 @@ def get_mappings():
     """Retorna todos os mapeamentos usados no dashboard."""
     # Definir colunas de notas
     colunas_notas = ['NU_NOTA_CN', 'NU_NOTA_CH', 'NU_NOTA_LC', 'NU_NOTA_MT', 'NU_NOTA_REDACAO']
-    
     # Mapeamentos
     competencia_mapping = {
         'NU_NOTA_CN': 'Ciências da Natureza',
@@ -163,6 +162,14 @@ def get_mappings():
         "NU_INFRAESTRUTURA": {"nome": "Nível de Infraestrutura", "mapeamento": infraestrutura_mapping},
         "Q025": {"nome": "Acesso à Internet", "mapeamento": acesso_internet_mapping}
     }
+
+    regioes_mapping = {
+    "Norte": ["AC", "AM", "AP", "PA", "RO", "RR", "TO"],
+    "Nordeste": ["AL", "BA", "CE", "MA", "PB", "PE", "PI", "RN", "SE"],
+    "Centro-Oeste": ["DF", "GO", "MS", "MT"],
+    "Sudeste": ["ES", "MG", "RJ", "SP"],
+    "Sul": ["PR", "RS", "SC"],
+    }
     
     return (
         colunas_notas, 
@@ -175,5 +182,6 @@ def get_mappings():
         desempenho_mapping, 
         infraestrutura_mapping, 
         faixa_etaria_mapping, 
-        escolaridade_pai_mae_mapping
+        escolaridade_pai_mae_mapping,
+        regioes_mapping
     )

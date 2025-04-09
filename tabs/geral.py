@@ -41,7 +41,7 @@ from utils.expander import (
     criar_expander_analise_faltas
 )
 
-def render_geral(microdados_estados, estados_selecionados, colunas_notas, competencia_mapping):
+def render_geral(microdados_estados, estados_selecionados, locais_selecionados, colunas_notas, competencia_mapping):
     """
     Renderiza a aba Geral do dashboard com métricas e visualizações.
     
@@ -59,9 +59,8 @@ def render_geral(microdados_estados, estados_selecionados, colunas_notas, compet
     if not estados_selecionados:
         st.warning("Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
         return
-        
-    # Informar ao usuário quais estados estão sendo considerados
-    mensagem = f"Analisando Dados Gerais para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(estados_selecionados)}"
+    
+    mensagem = f"Analisando Desempenho para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
     st.info(mensagem)
     
     # Exibir métricas principais (sempre visíveis)
@@ -107,8 +106,16 @@ def exibir_metricas_principais(microdados_estados, estados_selecionados, colunas
     
     # Exibir as métricas em cards usando custom_metric_with_tooltip
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
+        custom_metric_with_tooltip(
+            label="Total de Candidatos",
+            value=f"{metricas['total_candidatos']:,}",
+            explicacao=get_tooltip_total_candidatos(),
+            key="total_candidatos_metrica"
+        )
+    
+    with col2:
         custom_metric_with_tooltip(
             label="Média Geral",
             value=f"{metricas['media_geral']:.2f}",
@@ -116,13 +123,7 @@ def exibir_metricas_principais(microdados_estados, estados_selecionados, colunas
             key="media_geral_metrica"
         )
     
-    with col2:
-        custom_metric_with_tooltip(
-            label="Total de Candidatos",
-            value=f"{metricas['total_candidatos']:,}",
-            explicacao=get_tooltip_total_candidatos(),
-            key="total_candidatos_metrica"
-        )
+    
         
     with col3:
         custom_metric_with_tooltip(

@@ -4,7 +4,7 @@ from utils.mappings import get_mappings
 from tabs.geral import render_geral
 from tabs.aspectos_sociais import render_aspectos_sociais
 from tabs.desempenho import render_desempenho
-from utils.data_loader import load_data, filter_data_by_states
+from utils.data_loader import load_data, filter_data_by_states, agrupar_estados_em_regioes
 
 
 # Configuração inicial da página
@@ -16,53 +16,119 @@ microdados = load_data()
 colunas_notas, competencia_mapping, race_mapping, sexo_mapping, \
     dependencia_escola_mapping, variaveis_sociais, variaveis_categoricas, \
     desempenho_mapping, infraestrutura_mapping, faixa_etaria_mapping, \
-    escolaridade_pai_mae_mapping = get_mappings()
+    escolaridade_pai_mae_mapping, regioes_mapping = get_mappings()
+
+# Mapeamento de regiões para estados
+
+
+# Função para converter seleção de regiões em lista de estados
+def get_estados_por_regiao(regioes_selecionadas):
+    estados = []
+    for regiao in regioes_selecionadas:
+        estados.extend(regioes_mapping[regiao])
+    return sorted(list(set(estados)))  # Remover duplicatas e ordenar
 
 # ---------------------------- FILTROS E CONTROLES ----------------------------
 st.sidebar.header("Filtros")
 
 # Obter lista de todos os estados disponíveis
 todos_estados = sorted(microdados['SG_UF_PROVA'].unique())
+todas_regioes = sorted(regioes_mapping.keys())
 
 # Adicionar checkbox para selecionar todo o Brasil
 selecionar_brasil = st.sidebar.checkbox("Brasil (todos os estados)", value=True)
 
-# Condicionar o multiselect ao estado do checkbox
+# Variáveis para controlar o estado da seleção
+estados_selecionados = []
+regioes_selecionadas = []
+
 if selecionar_brasil:
+    # Se Brasil estiver selecionado, todos os estados estão selecionados
     estados_selecionados = todos_estados
-    # Mostrar o multiselect como desativado para indicar a seleção automática
+    regioes_selecionadas = todas_regioes
+    
+    # Mostrar os selects como desativados para indicar a seleção automática
+    st.sidebar.multiselect(
+        "Regiões selecionadas:",
+        options=todas_regioes,
+        default=todas_regioes,
+        disabled=True,
+        help="Selecione regiões específicas quando a opção Brasil estiver desmarcada"
+    )
+    
     st.sidebar.multiselect(
         "Estados selecionados:",
         options=todos_estados,
         default=todos_estados,
-        disabled=True
+        disabled=True,
+        help="Todos os estados estão selecionados. Desmarque 'Brasil' para selecionar estados específicos."
     )
+    
 else:
     # Permitir seleção manual quando "Brasil" não estiver selecionado
-    estados_selecionados = st.sidebar.multiselect(
-        "Selecione os Estados:",
-        options=todos_estados,
-        default=[]
+    st.sidebar.markdown("#### Filtrar por região")
+    
+    # Seleção por região
+    regioes_selecionadas = st.sidebar.multiselect(
+        "Selecione as regiões:",
+        options=todas_regioes,
+        default=[],
+        help="Selecionar uma região automaticamente seleciona todos os seus estados"
     )
-    # Verificar se pelo menos um estado foi selecionado
+    
+    # Obter estados das regiões selecionadas
+    estados_das_regioes = get_estados_por_regiao(regioes_selecionadas)
+    
+    st.sidebar.markdown("#### Filtrar por estado")
+    st.sidebar.markdown(
+        "<p style='font-size:12px; color:#666;'>Estados das regiões selecionadas já estão incluídos.</p>", 
+        unsafe_allow_html=True
+    )
+    
+    # Seleção manual de estados adicionais
+    estados_adicionais = st.sidebar.multiselect(
+        "Selecione estados específicos:",
+        options=[e for e in todos_estados if e not in estados_das_regioes],
+        default=[],
+        help="Selecione estados específicos além dos já incluídos pelas regiões selecionadas"
+    )
+    
+    # Combinar estados das regiões com estados adicionais selecionados manualmente
+    estados_selecionados = sorted(list(set(estados_das_regioes + estados_adicionais)))
+    
+    # Verificar se pelo menos um estado ou região foi selecionado
     if not estados_selecionados:
-        st.sidebar.warning("Selecione pelo menos um estado ou marque a opção Brasil.")
+        st.sidebar.warning("Selecione pelo menos uma região ou estado, ou marque a opção Brasil.")
+
+# Mostrar resumo dos filtros aplicados
+if estados_selecionados:
+    if len(estados_selecionados) == len(todos_estados):
+        st.sidebar.success("✅ Dados de todo o Brasil")
+    else:
+        if regioes_selecionadas:
+            st.sidebar.success(f"✅ Regiões: {', '.join(regioes_selecionadas)}")
+        if estados_adicionais and not selecionar_brasil:
+            st.sidebar.success(f"✅ Estados adicionais: {', '.join(estados_adicionais)}")
+        st.sidebar.info(f"Total: {len(estados_selecionados)} estados selecionados")
 
 # Filtrar dados com base nos estados selecionados
 microdados_estados = filter_data_by_states(microdados, estados_selecionados)
+
+# Agrupar estados em regiões para exibição amigável
+locais_selecionados = agrupar_estados_em_regioes(estados_selecionados, regioes_mapping)
 
 # Criar abas
 abas = st.tabs(["Geral", "Aspectos Sociais", "Desempenho"])
 
 # Renderizar cada aba
 with abas[0]:
-    render_geral(microdados_estados, estados_selecionados, colunas_notas, competencia_mapping)
+    render_geral(microdados_estados, estados_selecionados, locais_selecionados, colunas_notas, competencia_mapping)
     
 with abas[1]:
-    render_aspectos_sociais(microdados_estados, estados_selecionados, variaveis_sociais)
+    render_aspectos_sociais(microdados_estados, estados_selecionados, locais_selecionados, variaveis_sociais)
     
 with abas[2]:
-    render_desempenho(microdados, microdados_estados, estados_selecionados, 
+    render_desempenho(microdados, microdados_estados, estados_selecionados, locais_selecionados,
                       colunas_notas, competencia_mapping, race_mapping, 
                       variaveis_categoricas, desempenho_mapping)
     

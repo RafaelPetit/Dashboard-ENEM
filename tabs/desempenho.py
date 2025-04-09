@@ -44,13 +44,13 @@ from utils.expander.expander_desempenho import (
 )
 
 def render_desempenho(microdados, microdados_estados, estados_selecionados, 
-                     colunas_notas, competencia_mapping, race_mapping, 
+                     locais_selecionados, colunas_notas, competencia_mapping, race_mapping, 
                      variaveis_categoricas, desempenho_mapping):
     if not estados_selecionados:
         st.warning("Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
         return
     
-    mensagem = f"Analisando Desempenho para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(estados_selecionados)}"
+    mensagem = f"Analisando Desempenho para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
     st.info(mensagem)
     
     microdados_full = preparar_dados_desempenho_geral(microdados_estados, colunas_notas, desempenho_mapping)
