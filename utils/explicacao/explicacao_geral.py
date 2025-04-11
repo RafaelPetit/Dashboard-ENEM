@@ -70,6 +70,18 @@ def get_tooltip_maior_media():
     Este valor indica o melhor desempenho médio observado em qualquer área ou estado dentro da seleção atual.
     """
 
+def get_tooltip_menor_media():
+    """Retorna o texto de tooltip para a métrica de menor média."""
+    return """
+    Esta métrica mostra a menor média do ENEM entre os estados selecionados, considerando todas as provas.
+    
+    O valor é calculado a partir das médias de cada estado nas quatro áreas de conhecimento e na redação.
+    
+    Uma menor média não significa necessariamente um pior desempenho educacional, pois vários fatores 
+    socioeconômicos e regionais influenciam este resultado.
+    """
+
+
 def get_tooltip_estado_maior_media():
     """Retorna o texto do tooltip para estado com maior média"""
     return """
@@ -79,6 +91,7 @@ def get_tooltip_estado_maior_media():
     
     Este dado é útil para identificar regiões com desempenho educacional destacado.
     """
+
 
 def get_explicacao_histograma(nome_area, media, mediana, assimetria, curtose):
     """

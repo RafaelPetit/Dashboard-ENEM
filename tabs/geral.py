@@ -23,7 +23,7 @@ from utils.explicacao import (
     get_tooltip_media_geral,
     get_tooltip_total_candidatos,
     get_tooltip_maior_media,
-    get_tooltip_estado_maior_media,
+    get_tooltip_menor_media,  # Nova importação
     get_explicacao_histograma,
     get_explicacao_faltas
 )
@@ -51,6 +51,8 @@ def render_geral(microdados_estados, estados_selecionados, locais_selecionados, 
         DataFrame com os microdados dos candidatos
     estados_selecionados : list
         Lista com os estados selecionados para análise
+    locais_selecionados : list
+        Lista de regiões/estados formatada para exibição
     colunas_notas : list
         Lista com os nomes das colunas de notas
     competencia_mapping : dict
@@ -60,7 +62,7 @@ def render_geral(microdados_estados, estados_selecionados, locais_selecionados, 
         st.warning("Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
         return
     
-    mensagem = f"Analisando Desempenho para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
+    mensagem = f"Analisando Dados Gerais para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
     st.info(mensagem)
     
     # Exibir métricas principais (sempre visíveis)
@@ -107,36 +109,43 @@ def exibir_metricas_principais(microdados_estados, estados_selecionados, colunas
     # Exibir as métricas em cards usando custom_metric_with_tooltip
     col1, col2, col3, col4 = st.columns(4)
 
+    # Função para formatar números com vírgula como separador decimal
+    def formatar_numero_br(valor, casas_decimais=2):
+        formatado = f"{valor:,.{casas_decimais}f}"
+        return formatado.replace(',', 'X').replace('.', ',').replace('X', '.')
+
     with col1:
         custom_metric_with_tooltip(
             label="Candidatos Inscritos",
-            value=f"{metricas['total_candidatos']:,}",
+            value=f"{metricas['total_candidatos']:,}".replace(',', '.'),
             explicacao=get_tooltip_total_candidatos(),
-            key="total_candidatos_metrica"
+            key="1"
         )
     
     with col2:
         custom_metric_with_tooltip(
             label="Média Geral",
-            value=f"{metricas['media_geral']:.2f}",
+            value=formatar_numero_br(metricas['media_geral']),
             explicacao=get_tooltip_media_geral(),
-            key="media_geral_metrica"
+            key="2"
         )
         
     with col3:
+        # Formatar maior média com o estado entre parênteses
         custom_metric_with_tooltip(
             label="Maior Média",
-            value=f"{metricas['maior_media']:.2f}",
+            value=f"{formatar_numero_br(metricas['valor_maior_media_estado'])} ({metricas['estado_maior_media']})",
             explicacao=get_tooltip_maior_media(),
-            key="maior_media_metrica"
+            key="3"
         )
     
     with col4:
+        # Substituir estado com maior média por menor média
         custom_metric_with_tooltip(
-            label="Estado com Maior Média",
-            value=f"{metricas['estado_maior_media']}",
-            explicacao=get_tooltip_estado_maior_media(),
-            key="estado_maior_media_metrica",
+            label="Menor Média",
+            value=f"{formatar_numero_br(metricas['valor_menor_media_estado'])} ({metricas['estado_menor_media']})",
+            explicacao=get_tooltip_menor_media(),
+            key="4",
         )
                 
     return metricas

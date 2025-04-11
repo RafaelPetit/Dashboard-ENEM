@@ -41,14 +41,20 @@ def analisar_metricas_principais(microdados_estados, estados_selecionados, colun
     # Métricas gerais
     media_geral = np.mean(media_por_estado) if media_por_estado else 0.0
     
-    # Encontrar o estado com a maior média
+    # Valores padrão caso não haja dados
     estado_maior_media = "N/A"
+    estado_menor_media = "N/A"
     valor_maior_media_estado = 0.0
+    valor_menor_media_estado = 0.0
+    
+    # Encontrar o estado com a maior e menor média
     if medias_estados:
         estado_maior_media, valor_maior_media_estado = max(medias_estados.items(), key=lambda x: x[1])
+        estado_menor_media, valor_menor_media_estado = min(medias_estados.items(), key=lambda x: x[1])
     
     # Maior média entre todas as áreas e estados
     maior_media = np.max(media_por_estado) if media_por_estado else 0.0
+    menor_media = np.min([m for m in media_por_estado if m > 0]) if media_por_estado else 0.0
     
     # Total de candidatos
     total_candidatos = microdados_estados.shape[0]
@@ -56,8 +62,11 @@ def analisar_metricas_principais(microdados_estados, estados_selecionados, colun
     return {
         'media_geral': media_geral,
         'maior_media': maior_media,
+        'menor_media': menor_media,
         'estado_maior_media': estado_maior_media,
+        'estado_menor_media': estado_menor_media,
         'valor_maior_media_estado': valor_maior_media_estado,
+        'valor_menor_media_estado': valor_menor_media_estado,
         'total_candidatos': total_candidatos,
         'medias_estados': medias_estados
     }

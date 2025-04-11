@@ -26,6 +26,7 @@ from .explicacao_geral import (
     get_tooltip_media_geral,
     get_tooltip_total_candidatos,
     get_tooltip_maior_media,
+    get_tooltip_menor_media,
     get_tooltip_estado_maior_media,
     get_explicacao_histograma,
     get_explicacao_faltas
