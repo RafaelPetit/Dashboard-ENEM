@@ -109,7 +109,7 @@ def exibir_metricas_principais(microdados_estados, estados_selecionados, colunas
 
     with col1:
         custom_metric_with_tooltip(
-            label="Total de Candidatos",
+            label="Candidatos Inscritos",
             value=f"{metricas['total_candidatos']:,}",
             explicacao=get_tooltip_total_candidatos(),
             key="total_candidatos_metrica"
@@ -122,8 +122,6 @@ def exibir_metricas_principais(microdados_estados, estados_selecionados, colunas
             explicacao=get_tooltip_media_geral(),
             key="media_geral_metrica"
         )
-    
-    
         
     with col3:
         custom_metric_with_tooltip(
