@@ -111,38 +111,104 @@ def criar_grafico_linha_estados(df_plot, area_selecionada=None, ordenado=False):
     return fig
 
 
-def criar_grafico_scatter(dados_filtrados, eixo_x, eixo_y, competencia_mapping):
+def criar_grafico_scatter(df, eixo_x, eixo_y, competencia_mapping, colorir_por_faixa=False):
     """
-    Cria o gráfico de dispersão para análise da relação entre competências.
-    Versão otimizada sem linhas de tendência para melhorar performance.
+    Cria um gráfico de dispersão para mostrar a relação entre duas competências.
+    
+    Parâmetros:
+    -----------
+    df : DataFrame
+        DataFrame com os dados filtrados
+    eixo_x : str
+        Nome da coluna para o eixo X
+    eixo_y : str
+        Nome da coluna para o eixo Y
+    competencia_mapping : dict
+        Mapeamento das colunas para nomes legíveis
+    colorir_por_faixa : bool, default=False
+        Se True, colore os pontos por faixa salarial
+        
+    Retorna:
+    --------
+    Figure: Objeto figura do Plotly
     """
-    # Limitar número de pontos para desempenho
-    amostra_dados = dados_filtrados
-    max_points = 10000
+    # Adicionar labels para faixa salarial se necessário
+    if colorir_por_faixa and 'TP_FAIXA_SALARIAL' in df.columns:
+        # Criar mapeamento para nomes descritivos das faixas
+        faixa_labels = {
+            0: "Nenhuma Renda",
+            1: "Até 1 Salário Mínimo",
+            2: "1 a 2 Salários Mínimos",
+            3: "2 a 3 Salários Mínimos",
+            4: "3 a 5 Salários Mínimos",
+            5: "5 a 10 Salários Mínimos",
+            6: "10 a 20 Salários Mínimos",
+            7: "Mais de 20 Salários Mínimos"
+        }
+        
+        # Converter para string para melhor exibição
+        df['Faixa Salarial'] = df['TP_FAIXA_SALARIAL'].map(faixa_labels)
+        
+        fig = px.scatter(
+            df, 
+            x=eixo_x, 
+            y=eixo_y, 
+            color='Faixa Salarial',
+            labels={
+                eixo_x: competencia_mapping[eixo_x], 
+                eixo_y: competencia_mapping[eixo_y],
+                'Faixa Salarial': 'Faixa Salarial'
+            },
+            opacity=0.7,
+            color_discrete_sequence=px.colors.qualitative.Bold
+        )
+    else:
+        # Gráfico padrão sem coloração por faixa salarial
+        fig = px.scatter(
+            df, 
+            x=eixo_x, 
+            y=eixo_y, 
+            labels={
+                eixo_x: competencia_mapping[eixo_x], 
+                eixo_y: competencia_mapping[eixo_y]
+            },
+            opacity=0.7,
+            color_discrete_sequence=['#3366CC']
+        )
     
-    if len(dados_filtrados) > max_points:
-        amostra_dados = dados_filtrados.sample(n=max_points, random_state=42)
+    # Adicionar linha de tendência
+    fig.update_traces(marker=dict(size=6))
     
-    # Criar figura usando plotly express diretamente (mais simples e eficiente)
-    fig = px.scatter(
-        amostra_dados,
-        x=eixo_x,
-        y=eixo_y,
-        color='RACA_COR',
-        opacity=0.5,
-        title=f"Relação entre {competencia_mapping[eixo_x]} e {competencia_mapping[eixo_y]}",
-        labels={
-            eixo_x: competencia_mapping[eixo_x],
-            eixo_y: competencia_mapping[eixo_y],
-            'RACA_COR': 'COR/RAÇA'
-        },
-        color_discrete_sequence=cores_padrao()
+    x = df[eixo_x].values
+    y = df[eixo_y].values
+    
+    if len(x) > 1 and len(y) > 1:  # Verificar se há dados suficientes
+        # Calcular linha de tendência
+        z = np.polyfit(x, y, 1)
+        p = np.poly1d(z)
+        
+        # Adicionar linha com um estilo translúcido
+        fig.add_trace(
+            go.Scatter(
+                x=[min(x), max(x)], 
+                y=[p(min(x)), p(max(x))], 
+                mode='lines', 
+                name='Tendência',
+                line=dict(color='red', dash='dash', width=2),
+                opacity=0.7
+            )
+        )
+    
+    # Estilização do gráfico
+    fig.update_layout(
+        height=500,
+        xaxis_title=competencia_mapping[eixo_x],
+        yaxis_title=competencia_mapping[eixo_y],
+        xaxis=dict(showgrid=True, gridwidth=1, gridcolor='rgba(0,0,0,0.1)'),
+        yaxis=dict(showgrid=True, gridwidth=1, gridcolor='rgba(0,0,0,0.1)'),
+        plot_bgcolor='white',
+        hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial")
     )
-    
-    # Configurar layout do gráfico
-    fig = aplicar_layout_padrao(fig, f"Relação entre {competencia_mapping[eixo_x]} e {competencia_mapping[eixo_y]}")
-    fig.update_traces(marker=dict(size=8))
-    fig.update_layout(legend_title=dict(text="COR/RAÇA<br><sup>Clique para filtrar</sup>"))
     
     return fig
 

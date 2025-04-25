@@ -43,9 +43,17 @@ def obter_ordem_categorias(df_resultados, variavel_selecionada, variaveis_catego
     Determina a ordem das categorias para exibição no gráfico.
     """
     categorias_unicas = df_resultados['Categoria'].unique()
-    ordem_categorias = variaveis_categoricas[variavel_selecionada].get('ordem')
     
-    if not ordem_categorias:
+    # Tentar obter a ordem definida para esta variável
+    if variavel_selecionada in variaveis_categoricas and 'ordem' in variaveis_categoricas[variavel_selecionada]:
+        # Filtrar a ordem para incluir apenas categorias presentes nos dados
+        ordem_definida = variaveis_categoricas[variavel_selecionada]['ordem']
+        ordem_filtrada = [cat for cat in ordem_definida if cat in categorias_unicas]
+        
+        # Adicionar quaisquer categorias que estejam nos dados mas não na ordem definida
+        categorias_faltantes = [cat for cat in categorias_unicas if cat not in ordem_filtrada]
+        ordem_categorias = ordem_filtrada + sorted(categorias_faltantes)
+    else:
         # Se não há ordem específica definida, usar ordem alfabética
         ordem_categorias = sorted(categorias_unicas)
     
@@ -66,12 +74,25 @@ def preparar_dados_grafico_linha(df_resultados, competencia_ordenacao=None, comp
         ordem_categorias = df_ordem.sort_values('Média', ascending=False)['Categoria'].unique().tolist()
         
         # Aplicar essa ordem a todos os dados
-        df_linha['Categoria'] = pd.Categorical(df_linha['Categoria'], categories=ordem_categorias, ordered=True)
-        df_linha = df_linha.sort_values(['Competência', 'Categoria'])
+        df_linha['Categoria'] = pd.Categorical(df_linha['Categoria'], 
+                                               categories=ordem_categorias, 
+                                               ordered=True)
+        df_linha = df_linha.sort_values('Categoria')
     
-    # Depois aplicar filtro (se solicitado) - isso deve vir depois da ordenação
-    if competencia_filtro:
+    # Aplicar filtro de competência (se solicitado)
+    if competencia_filtro is not None:
         df_linha = df_linha[df_linha['Competência'] == competencia_filtro]
+    
+    # Garantir que temos uma ordem categórica mesmo quando não ordenamos por valor
+    if not ordenar_decrescente and 'Categoria' in df_linha.columns:
+        # Preservar a ordem original da categoria se ela já for categórica e ordenada
+        if not (isinstance(df_linha['Categoria'].dtype, pd.CategoricalDtype) and 
+                df_linha['Categoria'].dtype.ordered):
+            # Caso contrário, ordenar alfabeticamente
+            categorias_unicas = df_linha['Categoria'].unique()
+            df_linha['Categoria'] = pd.Categorical(df_linha['Categoria'], 
+                                                  categories=categorias_unicas, 
+                                                  ordered=True)
     
     return df_linha
 
@@ -92,48 +113,29 @@ def preparar_dados_desempenho_geral(microdados, colunas_notas, desempenho_mappin
 
 
 @optimized_cache()
-def filtrar_dados_scatter(microdados_estados, sexo, tipo_escola, eixo_x, eixo_y, 
-                         excluir_notas_zero, race_mapping, max_points=15000):
-    """
-    Filtra os dados para o gráfico de dispersão de forma otimizada.
-    """
-    # Construir filtros como expressões de consulta
-    query_parts = []
-    if sexo != "Todos":
-        query_parts.append(f"TP_SEXO == '{sexo}'")
-    if tipo_escola != "Todos":
-        tipo_map = {"Federal": 1, "Estadual": 2, "Municipal": 3, "Privada": 4}
-        query_parts.append(f"TP_DEPENDENCIA_ADM_ESC == {tipo_map[tipo_escola]}")
+def filtrar_dados_scatter(dados, filtro_sexo, filtro_tipo_escola, eixo_x, eixo_y, excluir_notas_zero=True, race_mapping=None, filtro_faixa_salarial=None):
+    df = dados.copy()
+    registros_removidos = 0
+    
+    # Filtros existentes
+    if filtro_sexo:
+        df = df[df['TP_SEXO'] == filtro_sexo]
+    
+    if filtro_tipo_escola == 'Pública':
+        df = df[df['TP_DEPENDENCIA_ADM_ESC'].isin(['1', '2', '3'])]
+    elif filtro_tipo_escola == 'Privada':
+        df = df[df['TP_DEPENDENCIA_ADM_ESC'] == '4']
+    
+    # Novo filtro para faixa salarial
+    if filtro_faixa_salarial is not None:
+        df = df[df['TP_FAIXA_SALARIAL'] == filtro_faixa_salarial]
+    
     if excluir_notas_zero:
-        query_parts.append(f"{eixo_x} > 0 and {eixo_y} > 0")
+        tamanho_antes = len(df)
+        df = df[(df[eixo_x] > 0) & (df[eixo_y] > 0)]
+        registros_removidos = tamanho_antes - len(df)
     
-    # Aplicar todos os filtros de uma vez
-    if query_parts:
-        query_string = " and ".join(query_parts)
-        dados_filtrados = microdados_estados.query(query_string).copy()
-    else:
-        dados_filtrados = microdados_estados.copy()
-    
-    registros_removidos = len(microdados_estados) - len(dados_filtrados)
-    
-    # Aplicar mapeamento para raça/cor
-    dados_filtrados['RACA_COR'] = dados_filtrados['TP_COR_RACA'].map(race_mapping)
-    
-    # # Amostragem se o DataFrame for muito grande
-    # if len(dados_filtrados) > max_points:
-    #     # Usar amostragem estratificada para preservar distribuição por raça
-    #     amostra_resultado = []
-        
-    #     for raca in dados_filtrados['RACA_COR'].unique():
-    #         subset = dados_filtrados[dados_filtrados['RACA_COR'] == raca]
-    #         n_samples = int(max_points * len(subset) / len(dados_filtrados))
-    #         if n_samples > 0:
-    #             amostra_resultado.append(subset.sample(min(n_samples, len(subset)), random_state=42))
-        
-    #     if amostra_resultado:
-    #         dados_filtrados = pd.concat(amostra_resultado)
-    
-    return dados_filtrados, registros_removidos
+    return df, registros_removidos
 
 
 @optimized_cache()

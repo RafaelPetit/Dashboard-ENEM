@@ -210,7 +210,7 @@ def exibir_histograma_notas(microdados_estados, colunas_notas, competencia_mappi
 
 def exibir_analise_faltas(microdados_estados, estados_selecionados):
     """
-    Exibe análise de faltas por estado e área de conhecimento.
+    Exibe análise de faltas por estado e dia de prova.
     
     Parâmetros:
     -----------
@@ -219,7 +219,7 @@ def exibir_analise_faltas(microdados_estados, estados_selecionados):
     estados_selecionados : list
         Lista com os estados selecionados para análise
     """
-    # Definir mapeamento das colunas de presença
+    # Definir mapeamento das colunas de presença (mantido para compatibilidade)
     colunas_presenca = {
         'TP_PRESENCA_CN': 'Ciências da Natureza',
         'TP_PRESENCA_CH': 'Ciências Humanas',
@@ -229,7 +229,7 @@ def exibir_analise_faltas(microdados_estados, estados_selecionados):
     }
     
     # Título com tooltip
-    titulo_com_tooltip("Análise de Faltas", get_tooltip_faltas(), "faltas_tooltip")
+    titulo_com_tooltip("Análise de Faltas por Dia de Prova", get_tooltip_faltas(), "faltas_tooltip")
     
     # Preparar dados para o gráfico de faltas
     with st.spinner("Processando dados para análise de faltas..."):
@@ -244,42 +244,49 @@ def exibir_analise_faltas(microdados_estados, estados_selecionados):
     with col1:
         ordenar_por_faltas = st.checkbox("Ordenar estados por % de faltas", value=False)
     
-    # Mostrar seletor de área apenas se o usuário escolheu ordenar
-    area_selecionada = None
+    # Mostrar seletor de tipo de falta apenas se o usuário escolheu ordenar
+    tipo_selecionado = None
     if ordenar_por_faltas:
         with col2:
-            areas_disponiveis = df_faltas['Área'].unique().tolist()
-            area_selecionada = st.selectbox(
-                "Ordenar por área:",
-                options=["Geral (qualquer prova)"] + [a for a in areas_disponiveis if a != "Geral (qualquer prova)"]
+            tipos_disponiveis = df_faltas['Tipo de Falta'].unique().tolist()
+            # Remover qualquer tipo que contenha "Total de faltas"
+            tipos_disponiveis = [tipo for tipo in tipos_disponiveis if "Total de faltas" not in tipo]
+            tipo_selecionado = st.selectbox(
+                "Ordenar por tipo de falta:",
+                options=tipos_disponiveis
             )
     
     # Criar o gráfico
     with st.spinner("Gerando visualização..."):
         fig = criar_grafico_faltas(
             df_faltas, 
-            order_by_area=area_selecionada if ordenar_por_faltas else None,
+            order_by_area=tipo_selecionado if ordenar_por_faltas else None,
             order_ascending=False,
-            filtro_area=area_selecionada if (ordenar_por_faltas and st.checkbox("Mostrar apenas a área selecionada", value=False)) else None
+            filtro_area=tipo_selecionado if (ordenar_por_faltas and st.checkbox("Mostrar apenas o tipo de falta selecionado", value=False)) else None
         )
         st.plotly_chart(fig, use_container_width=True)
     
     # Calcular análise completa das faltas
     analise_faltas_dados = analisar_faltas(df_faltas)
     
-    # Extrair os dados necessários para a explicação - adaptado para o formato correto
+    # Extrair os dados necessários para a explicação
     taxa_media_geral = analise_faltas_dados['taxa_media_geral']
-    estado_maior_falta = analise_faltas_dados['estado_maior_falta']['Estado']
-    area_maior_falta = analise_faltas_dados['area_maior_falta']['Área']
-    estado_menor_falta = analise_faltas_dados['estado_menor_falta']['Estado']
-    area_menor_falta = analise_faltas_dados['area_menor_falta']['Área']
+    tipo_mais_comum = analise_faltas_dados['tipo_mais_comum']
+    
+    # Verificar se os dados de estado estão disponíveis
+    estado_maior_falta = "N/A"
+    if analise_faltas_dados['estado_maior_falta'] is not None:
+        estado_maior_falta = analise_faltas_dados['estado_maior_falta']['Estado']
+    
+    estado_menor_falta = "N/A"
+    if analise_faltas_dados['estado_menor_falta'] is not None:
+        estado_menor_falta = analise_faltas_dados['estado_menor_falta']['Estado']
     
     # Explicação com os argumentos corretos
     explicacao = get_explicacao_faltas(
         taxa_media_geral,
-        area_maior_falta,
+        tipo_mais_comum,
         estado_maior_falta,
-        area_menor_falta,
         estado_menor_falta
     )
     st.info(explicacao)

@@ -26,11 +26,11 @@ def get_tooltip_histograma():
 def get_tooltip_faltas():
     """Retorna o texto do tooltip para o gráfico de faltas"""
     return """
-    Este gráfico mostra o percentual de candidatos que faltaram em cada área de conhecimento por estado.
+    Este gráfico mostra o percentual de candidatos que faltaram em cada dia do ENEM por estado.
 
-    - Cada linha colorida representa uma área de conhecimento diferente
-    - A linha "Geral (qualquer prova)" representa candidatos que faltaram em pelo menos uma das provas
-    - Os pontos mostram o percentual de faltas para um estado específico naquela área
+    - A linha "Faltou nos dois dias" representa candidatos que não compareceram a nenhum dia de prova
+    - A linha "Faltou apenas no primeiro dia" mostra candidatos que estiveram presentes apenas no segundo dia
+    - A linha "Faltou apenas no segundo dia" mostra candidatos que estiveram presentes apenas no primeiro dia
     
     O ENEM é realizado em dois dias, com as seguintes provas:
     - 1º dia: Linguagens e Códigos + Ciências Humanas + Redação
@@ -162,7 +162,7 @@ def get_implicacao_educacional(media, mediana, assimetria):
     else:
         return "relativa homogeneidade no aprendizado, com a maioria dos candidatos demonstrando nível semelhante de domínio do conteúdo"
 
-def get_explicacao_faltas(taxa_geral, area_maior_falta, estado_maior_falta, area_menor_falta, estado_menor_falta):
+def get_explicacao_faltas(taxa_geral, tipo_mais_comum, estado_maior_falta, estado_menor_falta):
     """
     Retorna a explicação para o gráfico de faltas.
     
@@ -170,33 +170,23 @@ def get_explicacao_faltas(taxa_geral, area_maior_falta, estado_maior_falta, area
     -----------
     taxa_geral : float
         Taxa média de faltas geral
-    area_maior_falta : str
-        Área com maior taxa de faltas
+    tipo_mais_comum : str
+        Tipo de falta mais comum
     estado_maior_falta : str
         Estado com maior taxa de faltas
-    area_menor_falta : str
-        Área com menor taxa de faltas
     estado_menor_falta : str
         Estado com menor taxa de faltas
     """
     return f"""
     **Análise do padrão de ausências no ENEM:**
     
-    Em média, {taxa_geral:.1f}% dos candidatos faltaram em pelo menos uma das provas do exame:
+    Em média, {taxa_geral:.1f}% dos candidatos faltaram em pelo menos um dos dias de prova:
     
-    - Maior taxa de ausência:
-    {estado_maior_falta} apresenta a maior taxa de faltas geral
+    - O padrão mais comum de ausência foi: {tipo_mais_comum}
+    - {estado_maior_falta} apresenta a maior taxa de candidatos que faltaram nos dois dias
+    - {estado_menor_falta} registra a menor taxa de candidatos que faltaram nos dois dias
     
-    - Área com mais ausências:
-    {area_maior_falta} é a área com maior percentual de faltas
+    A análise por dia de falta permite insights importantes sobre o comportamento dos candidatos. Faltas no segundo dia podem indicar desistência após a experiência do primeiro dia, enquanto faltas apenas no primeiro dia podem estar relacionadas a questões logísticas ou estratégia de foco em determinadas provas.
     
-    - Menor taxa de ausência:
-    {estado_menor_falta} registra a menor taxa de faltas
-    
-    - Área com menos ausências:
-    {area_menor_falta} é a área com menor percentual de faltas
-    
-    O padrão de ausências pode refletir fatores como dificuldade de acesso aos locais de prova, interesse específico em determinadas áreas ou cursos, e preparação variável dos candidatos para diferentes conteúdos.
-    
-    **🔍 Análise detalhada:** Para explorar estatísticas completas sobre as ausências, incluindo análise por dia de prova, comparativo entre áreas e variabilidade regional, expanda a seção "Ver análise detalhada de ausências" abaixo do gráfico.
+    **🔍 Análise detalhada:** Para explorar estatísticas completas sobre as ausências, expanda a seção "Ver análise detalhada de ausências" abaixo do gráfico.
     """

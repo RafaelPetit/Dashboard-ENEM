@@ -140,7 +140,7 @@ def analisar_distribuicao_notas(df_dados, coluna):
 
 def analisar_faltas(df_faltas):
     """
-    Analisa padrões de faltas no ENEM.
+    Analisa padrões de faltas no ENEM com base nos dias de ausência.
     
     Parâmetros:
     -----------
@@ -152,51 +152,50 @@ def analisar_faltas(df_faltas):
     dict
         Dicionário com análises sobre faltas
     """
-    # DataFrame para análise geral
-    df_geral = df_faltas[df_faltas['Área'] == 'Geral (qualquer prova)'].copy()
+    # Filtrar para tipos específicos de falta
+    df_ambos_dias = df_faltas[df_faltas['Tipo de Falta'].str.contains('Faltou nos dois dias')].copy()
+    df_dia1 = df_faltas[df_faltas['Tipo de Falta'].str.contains('Faltou apenas no primeiro dia')].copy()
+    df_dia2 = df_faltas[df_faltas['Tipo de Falta'].str.contains('Faltou apenas no segundo dia')].copy()
     
-    # Taxa média geral de faltas
-    taxa_media_geral = df_geral['Percentual de Faltas'].mean()
-    
-    # Estado com maior taxa de faltas
-    estado_maior_falta = df_geral.loc[df_geral['Percentual de Faltas'].idxmax()]
-    
-    # Estado com menor taxa de faltas
-    estado_menor_falta = df_geral.loc[df_geral['Percentual de Faltas'].idxmin()]
-    
-    # Calcular média de faltas por área
-    medias_por_area = df_faltas.groupby('Área')['Percentual de Faltas'].mean().reset_index()
-    
-    # Área com maior média de faltas
-    area_maior_falta = medias_por_area.loc[medias_por_area['Percentual de Faltas'].idxmax()]
-    
-    # Área com menor média de faltas
-    area_menor_falta = medias_por_area.loc[medias_por_area['Percentual de Faltas'].idxmin()]
-    
-    # Combinação de estado e área com maior faltas
-    max_combo = None
-    max_falta_valor = 0
-    
-    for i, row in df_faltas.iterrows():
-        if row['Percentual de Faltas'] > max_falta_valor:
-            max_falta_valor = row['Percentual de Faltas']
-            max_combo = (row['Estado'], row['Área'], row['Percentual de Faltas'])
-    
-    # Calcular média do primeiro e segundo dia
-    areas_primeiro_dia = ['Ciências Humanas', 'Linguagens e Códigos']
-    areas_segundo_dia = ['Ciências da Natureza', 'Matemática']
-    
-    df_dia1 = df_faltas[df_faltas['Área'].isin(areas_primeiro_dia)]
-    df_dia2 = df_faltas[df_faltas['Área'].isin(areas_segundo_dia)]
-    
+    # Calcular médias por tipo de falta
+    media_faltas_ambos_dias = df_ambos_dias['Percentual de Faltas'].mean() if not df_ambos_dias.empty else 0
     media_faltas_dia1 = df_dia1['Percentual de Faltas'].mean() if not df_dia1.empty else 0
     media_faltas_dia2 = df_dia2['Percentual de Faltas'].mean() if not df_dia2.empty else 0
     
-    # Comparar faltas entre dias
-    diferenca_dias = media_faltas_dia2 - media_faltas_dia1
+    # Calcular taxa média geral (soma das três médias)
+    taxa_media_geral = media_faltas_ambos_dias + media_faltas_dia1 + media_faltas_dia2
     
-    # Desvio padrão das faltas por estado
-    desvio_padrao_faltas = df_geral['Percentual de Faltas'].std()
+    # Estado com maior taxa de faltas em ambos os dias
+    estado_maior_falta = None
+    estado_menor_falta = None
+    
+    if not df_ambos_dias.empty:
+        estado_maior_falta = df_ambos_dias.loc[df_ambos_dias['Percentual de Faltas'].idxmax()]
+    
+    # Estado com menor taxa de faltas em ambos os dias
+    if not df_ambos_dias.empty:
+        estado_menor_falta = df_ambos_dias.loc[df_ambos_dias['Percentual de Faltas'].idxmin()]
+    
+    # Tipo de falta mais comum (média mais alta)
+    tipo_mais_comum = 'Ambos os dias'
+    maior_media = media_faltas_ambos_dias
+    
+    if media_faltas_dia1 > maior_media:
+        tipo_mais_comum = 'Apenas o primeiro dia'
+        maior_media = media_faltas_dia1
+    
+    if media_faltas_dia2 > maior_media:
+        tipo_mais_comum = 'Apenas o segundo dia'
+        maior_media = media_faltas_dia2
+    
+    # Criar DataFrame com médias por tipo
+    medias_por_tipo = pd.DataFrame({
+        'Tipo de Falta': ['Faltou nos dois dias', 'Faltou apenas no primeiro dia', 'Faltou apenas no segundo dia'],
+        'Percentual de Faltas': [media_faltas_ambos_dias, media_faltas_dia1, media_faltas_dia2]
+    })
+    
+    # Desvio padrão das faltas por estado (para os dois dias)
+    desvio_padrao_faltas = df_ambos_dias['Percentual de Faltas'].std() if not df_ambos_dias.empty else 0
     
     # Análise da variabilidade de faltas por estado
     if desvio_padrao_faltas < 2:
@@ -206,15 +205,17 @@ def analisar_faltas(df_faltas):
     else:
         variabilidade = "Alta variabilidade entre estados"
     
+    # Diferença entre faltas no primeiro e segundo dia
+    diferenca_dias = media_faltas_dia2 - media_faltas_dia1
+    
     # Retornar análise completa
     return {
         'taxa_media_geral': taxa_media_geral,
         'estado_maior_falta': estado_maior_falta,
         'estado_menor_falta': estado_menor_falta,
-        'medias_por_area': medias_por_area,
-        'area_maior_falta': area_maior_falta,
-        'area_menor_falta': area_menor_falta,
-        'max_combo': max_combo,
+        'medias_por_tipo': medias_por_tipo,
+        'tipo_mais_comum': tipo_mais_comum,
+        'media_faltas_ambos_dias': media_faltas_ambos_dias,
         'media_faltas_dia1': media_faltas_dia1,
         'media_faltas_dia2': media_faltas_dia2,
         'diferenca_dias': diferenca_dias,

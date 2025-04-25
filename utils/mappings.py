@@ -84,7 +84,18 @@ def get_mappings():
         'A': 'Não',
         'B': 'Sim'
     }
-    
+
+    faixa_salarial = {
+        0: 'Nenhuma Renda',
+        1: 'Até 1 salário mínimo',
+        2: '1 a 2 salários mínimos',
+        3: '2 a 3 salários mínimos',
+        4: '3 a 5 salários mínimos',
+        5: '5 a 10 salários mínimos',
+        6: '10 a 20 salários mínimos',
+        7: ' > 20 salários mínimos'
+    }
+
     variaveis_categoricas = {
         "TP_COR_RACA": {
             "nome": "Raça/Cor",
@@ -120,9 +131,14 @@ def get_mappings():
             "nome": "Acesso à Internet",
             "mapeamento": acesso_internet_mapping,
             "ordem": list(acesso_internet_mapping.values())
+        },
+
+        "TP_FAIXA_SALARIAL": {
+            "nome": "Faixa Salarial",
+            "mapeamento": faixa_salarial,
+            "ordem": list(faixa_salarial.values())
         }
     }
-    
     # Variáveis sociais para a aba de Aspectos Sociais
     variaveis_sociais = {
         "TP_COR_RACA": {"nome": "Raça/Cor", "mapeamento": race_mapping},
@@ -183,5 +199,6 @@ def get_mappings():
         infraestrutura_mapping, 
         faixa_etaria_mapping, 
         escolaridade_pai_mae_mapping,
-        regioes_mapping
+        regioes_mapping,
+        faixa_salarial
     )

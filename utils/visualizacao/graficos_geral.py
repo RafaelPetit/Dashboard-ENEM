@@ -103,18 +103,18 @@ def criar_histograma(df, coluna, nome_area, estatisticas):
 
 def criar_grafico_faltas(df_faltas, order_by_area=None, order_ascending=False, filtro_area=None):
     """
-    Cria gráfico de linha para análise de faltas.
+    Cria gráfico de linha para análise de faltas por dia de prova.
     
     Parâmetros:
     -----------
     df_faltas : DataFrame
         DataFrame com dados de faltas preparados
     order_by_area : str, optional
-        Área para ordenar os estados
+        Tipo de falta para ordenar os estados
     order_ascending : bool, default=False
         Se a ordenação deve ser ascendente
     filtro_area : str, optional
-        Filtrar para mostrar apenas uma área específica
+        Filtrar para mostrar apenas um tipo específico de falta
         
     Retorna:
     --------
@@ -123,31 +123,34 @@ def criar_grafico_faltas(df_faltas, order_by_area=None, order_ascending=False, f
     # Criar uma cópia para não modificar o DataFrame original
     df_plot = df_faltas.copy()
     
+    # Remover linhas que contenham "Total de faltas" no Tipo de Falta
+    df_plot = df_plot[~df_plot['Tipo de Falta'].str.contains('Total de faltas')]
+    
     # Aplicar ordenação se solicitado
     if order_by_area is not None:
-        # Filtrar para a área selecionada
-        ordem_estados = df_plot[df_plot['Área'] == order_by_area].sort_values(
+        # Filtrar para o tipo de falta selecionado
+        ordem_estados = df_plot[df_plot['Tipo de Falta'] == order_by_area].sort_values(
             'Percentual de Faltas', ascending=order_ascending)['Estado'].tolist()
         
         # Criar categoria ordenada
         df_plot['Estado'] = pd.Categorical(df_plot['Estado'], categories=ordem_estados, ordered=True)
         df_plot = df_plot.sort_values('Estado')
     
-    # Aplicar filtro de área se solicitado
+    # Aplicar filtro se solicitado
     if filtro_area is not None:
-        df_plot = df_plot[df_plot['Área'] == filtro_area]
+        df_plot = df_plot[df_plot['Tipo de Falta'] == filtro_area]
     
     # Criar gráfico de linha
     fig = px.line(
         df_plot,
         x='Estado',
         y='Percentual de Faltas',
-        color='Área',
+        color='Tipo de Falta',
         markers=True,
         labels={
             'Percentual de Faltas': '% de Candidatos Ausentes', 
             'Estado': 'Estado', 
-            'Área': 'Área de Conhecimento'
+            'Tipo de Falta': 'Padrão de Ausência'
         },
         color_discrete_sequence=px.colors.qualitative.Bold
     )
@@ -156,16 +159,16 @@ def criar_grafico_faltas(df_faltas, order_by_area=None, order_ascending=False, f
         height=400,
         xaxis_title="Estado",
         yaxis_title="% de Candidatos Ausentes",
-        legend_title="Área de Conhecimento",
+        legend_title="Padrão de Ausência",
         xaxis=dict(tickangle=-45),
         plot_bgcolor='white',
         hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
         legend=dict(
-            title=dict(text="Área de Conhecimento<br><sup>Clique para comparar áreas específicas</sup>"),
+            title=dict(text="Padrão de Ausência<br><sup>Clique para comparar padrões específicos</sup>"),
         ),
         yaxis=dict(
             ticksuffix="%",  # Adicionar símbolo % aos valores do eixo Y
-            range=[0, df_faltas['Percentual de Faltas'].max() * 1.1]  # Margem superior para visualização
+            range=[0, df_plot['Percentual de Faltas'].max() * 1.1]  # Margem superior para visualização
         )
     )
     

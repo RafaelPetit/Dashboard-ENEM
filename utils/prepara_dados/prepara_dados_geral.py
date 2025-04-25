@@ -29,23 +29,22 @@ def prepara_dados_histograma(df, coluna, competencia_mapping):
 
 def prepara_dados_grafico_faltas(microdados_estados, estados_selecionados, colunas_presenca):
     """
-    Prepara os dados para o gráfico de faltas por estado e área de conhecimento.
+    Prepara os dados para o gráfico de faltas por estado e dia de prova.
     
     Parâmetros:
     -----------
     microdados_estados : DataFrame
-        DataFrame com os dados dos candidatos
+        DataFrame com os microdados dos candidatos
     estados_selecionados : lista
         Lista de estados selecionados para análise
     colunas_presenca : dict
-        Dicionário mapeando as colunas de presença com seus nomes para exibição
+        Dicionário mapeando as colunas de presença (mantido para compatibilidade)
         
     Retorna:
     --------
-    DataFrame: Dados preparados para o gráfico de linha de faltas
+    DataFrame: Dados preparados para o gráfico de faltas por dia de prova
     """
     dados_grafico = []
-    dados_gerais = []  # Lista separada para os dados gerais
     
     for estado in estados_selecionados:
         dados_estado = microdados_estados[microdados_estados['SG_UF_PROVA'] == estado]
@@ -54,58 +53,41 @@ def prepara_dados_grafico_faltas(microdados_estados, estados_selecionados, colun
         if total_candidatos == 0:
             continue  # Pular estados sem candidatos
         
-        # Contar faltas gerais (quem faltou em pelo menos uma prova)
-        # Calcular faltas gerais como proxy caso a coluna não exista
+        # Verificar se a coluna TP_PRESENCA_GERAL existe
         if 'TP_PRESENCA_GERAL' in dados_estado.columns:
-            faltas_gerais = len(dados_estado[dados_estado['TP_PRESENCA_GERAL'] == 0])
-        else:
-            # Considerar ausente se faltou em qualquer uma das provas principais
-            faltas_cn = len(dados_estado[dados_estado['TP_PRESENCA_CN'] == 0]) if 'TP_PRESENCA_CN' in dados_estado.columns else 0
-            faltas_ch = len(dados_estado[dados_estado['TP_PRESENCA_CH'] == 0]) if 'TP_PRESENCA_CH' in dados_estado.columns else 0
-            faltas_lc = len(dados_estado[dados_estado['TP_PRESENCA_LC'] == 0]) if 'TP_PRESENCA_LC' in dados_estado.columns else 0
-            faltas_mt = len(dados_estado[dados_estado['TP_PRESENCA_MT'] == 0]) if 'TP_PRESENCA_MT' in dados_estado.columns else 0
+            # Contar faltas em ambos os dias (valor 0)
+            faltas_ambos_dias = len(dados_estado[dados_estado['TP_PRESENCA_GERAL'] == 0])
             
-            # União (não soma) das faltas
-            faltas_gerais = max(faltas_cn, faltas_ch, faltas_lc, faltas_mt)
-        
-        percentual_faltas_gerais = (faltas_gerais / total_candidatos * 100) if total_candidatos > 0 else 0
-        
-        # Armazenar dados gerais em lista separada
-        dados_gerais.append({
-            'Estado': estado,
-            'Área': 'Geral (qualquer prova)',
-            'Percentual de Faltas': percentual_faltas_gerais
-        })
-        
-        # Contar faltas por área específica
-        for coluna, nome_area in colunas_presenca.items():
-            # Para a redação, precisamos tratar de forma especial
-            if coluna == 'TP_PRESENCA_REDACAO':
-                # Verificar se temos a coluna de nota de redação
-                if 'NU_NOTA_REDACAO' in dados_estado.columns:
-                    # Considerar como falta se a nota é 0, nula, ou menor ou igual a zero
-                    faltas_redacao = len(dados_estado[(dados_estado['NU_NOTA_REDACAO'].isna()) | 
-                                                      (dados_estado['NU_NOTA_REDACAO'] <= 0)])
-                    percentual_faltas_area = (faltas_redacao / total_candidatos * 100) if total_candidatos > 0 else 0
-                    
-                    dados_grafico.append({
-                        'Estado': estado,
-                        'Área': 'Redação',
-                        'Percentual de Faltas': percentual_faltas_area
-                    })
-            elif coluna in dados_estado.columns:
-                faltas_area = len(dados_estado[dados_estado[coluna] == 0])
-                percentual_faltas_area = (faltas_area / total_candidatos * 100) if total_candidatos > 0 else 0
-                
-                dados_grafico.append({
-                    'Estado': estado,
-                    'Área': nome_area,
-                    'Percentual de Faltas': percentual_faltas_area
-                })
-    
-    # Combinar os DataFrames com dados gerais primeiro
-    df_geral = pd.DataFrame(dados_gerais)
-    df_areas = pd.DataFrame(dados_grafico)
-    df_final = pd.concat([df_geral, df_areas], ignore_index=True)
-    
-    return df_final
+            # Contar faltas apenas no segundo dia (valor 1 - presente só no primeiro)
+            faltas_dia2 = len(dados_estado[dados_estado['TP_PRESENCA_GERAL'] == 1])
+            
+            # Contar faltas apenas no primeiro dia (valor 2 - presente só no segundo)
+            faltas_dia1 = len(dados_estado[dados_estado['TP_PRESENCA_GERAL'] == 2])
+            
+            # Calcular percentuais
+            percentual_faltas_ambos = (faltas_ambos_dias / total_candidatos * 100) if total_candidatos > 0 else 0
+            percentual_faltas_dia1 = (faltas_dia1 / total_candidatos * 100) if total_candidatos > 0 else 0
+            percentual_faltas_dia2 = (faltas_dia2 / total_candidatos * 100) if total_candidatos > 0 else 0
+            
+            # Adicionar dados para ambos os dias
+            dados_grafico.append({
+                'Estado': estado,
+                'Tipo de Falta': 'Faltou nos dois dias',
+                'Percentual de Faltas': percentual_faltas_ambos
+            })
+            
+            # Adicionar dados para o primeiro dia
+            dados_grafico.append({
+                'Estado': estado,
+                'Tipo de Falta': 'Faltou no primeiro dia',
+                'Percentual de Faltas': percentual_faltas_dia1
+            })
+            
+            # Adicionar dados para o segundo dia
+            dados_grafico.append({
+                'Estado': estado,
+                'Tipo de Falta': 'Faltou no segundo dia',
+                'Percentual de Faltas': percentual_faltas_dia2
+            })
+            
+    return pd.DataFrame(dados_grafico)

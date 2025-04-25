@@ -66,66 +66,55 @@ def criar_filtros_comparativo(df_resultados, variaveis_categoricas, variavel_sel
 
 
 def criar_filtros_dispersao(colunas_notas, competencia_mapping):
-    """
-    Cria e gerencia os filtros para o gráfico de dispersão.
+    col1, col2, col3 = st.columns(3)
     
-    Parâmetros:
-    -----------
-    colunas_notas: list
-        Lista de colunas de notas
-    competencia_mapping: dict
-        Mapeamento de códigos para nomes de competências
-        
-    Retorna:
-    --------
-    dict: Configurações dos filtros selecionados
-    """
-    # Configurar layout dos filtros em colunas
-    col1, col2 = st.columns(2)
-    
-    # Inicializar configurações
-    config = {
-        'eixo_x': None,
-        'eixo_y': None,
-        'sexo': 'Todos',
-        'tipo_escola': 'Todos',
-        'excluir_notas_zero': True
-    }
-    
-    # Primeira coluna de filtros
     with col1:
-        config['eixo_x'] = st.selectbox(
-            "Eixo X:", 
-            options=colunas_notas, 
-            format_func=lambda x: competencia_mapping[x],
-            key="scatter_eixo_x"
-        )
-        config['sexo'] = st.selectbox(
-            "Sexo:", 
-            options=["Todos", "M", "F"], 
-            key="scatter_sexo"
-        )
-        config['excluir_notas_zero'] = st.checkbox(
-            "Desconsiderar notas zero", 
-            value=True, 
-            key="scatter_excluir_zeros"
-        )
-    
-    # Segunda coluna de filtros
+        eixo_x = st.selectbox('Eixo X:', colunas_notas, format_func=lambda x: competencia_mapping[x])
     with col2:
-        config['eixo_y'] = st.selectbox(
-            "Eixo Y:", 
-            options=colunas_notas, 
-            format_func=lambda x: competencia_mapping[x],
-            key="scatter_eixo_y"
-        )
-        config['tipo_escola'] = st.selectbox(
-            "Tipo de Escola:", 
-            options=["Todos", "Federal", "Estadual", "Municipal", "Privada"],
-            key="scatter_tipo_escola"
-        )
+        eixo_y = st.selectbox('Eixo Y:', [col for col in colunas_notas if col != eixo_x], 
+                            format_func=lambda x: competencia_mapping[x])
+    with col3:
+        excluir_notas_zero = st.checkbox('Excluir notas zero', value=True)
     
-    return config
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        sexo = st.selectbox('Filtrar por gênero:', ['Todos', 'M', 'F'], 
+                        format_func=lambda x: 'Todos' if x == 'Todos' else 'Masculino' if x == 'M' else 'Feminino')
+    with col2:
+        tipo_escola = st.selectbox('Filtrar por tipo de escola:', ['Todos', 'Pública', 'Privada'])
+    
+    # Novo filtro para faixa salarial
+    with col3:
+        # Definir as opções de faixa salarial com labels amigáveis
+        faixa_salarial_opcoes = {
+            'Todas': None, 
+            'Nenhuma Renda': 0,
+            'Até 1 Salário Mínimo': 1,
+            '1 a 2 Salários Mínimos': 2,
+            '2 a 3 Salários Mínimos': 3,
+            '3 a 5 Salários Mínimos': 4,
+            '5 a 10 Salários Mínimos': 5, 
+            '10 a 20 Salários Mínimos': 6,
+            'Mais de 20 Salários Mínimos': 7
+        }
+        
+        faixa_salarial_label = st.selectbox('Filtrar por faixa salarial:', list(faixa_salarial_opcoes.keys()))
+        faixa_salarial = faixa_salarial_opcoes[faixa_salarial_label]
+    
+    # Novo filtro para colorir por faixa salarial
+    col1, col2 = st.columns(2)
+    with col1:
+        colorir_por_faixa = st.checkbox('Colorir por faixa salarial', value=False)
+    
+    return {
+        'eixo_x': eixo_x,
+        'eixo_y': eixo_y,
+        'excluir_notas_zero': excluir_notas_zero,
+        'sexo': None if sexo == 'Todos' else sexo,
+        'tipo_escola': None if tipo_escola == 'Todos' else tipo_escola,
+        'faixa_salarial': faixa_salarial,  # Novo campo
+        'colorir_por_faixa': colorir_por_faixa  # Novo campo
+    }
 
 
 def criar_filtros_estados(df_grafico):

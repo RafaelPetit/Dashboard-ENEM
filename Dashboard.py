@@ -15,7 +15,7 @@ st.title("📊 Dashboard de Análise do ENEM - 2023")
 colunas_notas, competencia_mapping, race_mapping, sexo_mapping, \
     dependencia_escola_mapping, variaveis_sociais, variaveis_categoricas, \
     desempenho_mapping, infraestrutura_mapping, faixa_etaria_mapping, \
-    escolaridade_pai_mae_mapping, regioes_mapping = get_mappings()
+    escolaridade_pai_mae_mapping, regioes_mapping, faixa_salarial = get_mappings()
 
 # Carregar apenas os dados mínimos necessários para os filtros iniciais
 # (só precisamos da coluna de estado para o filtro)

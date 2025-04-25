@@ -114,42 +114,45 @@ def criar_expander_analise_faltas(df_faltas, analise):
         
         # Bloco de métricas principais
         st.write(f"- **Taxa média geral de faltas:** {analise['taxa_media_geral']:.2f}%")
-        st.write(f"- **Estado com maior taxa de faltas:** {analise['estado_maior_falta']['Estado']} ({analise['estado_maior_falta']['Percentual de Faltas']:.2f}%)")
-        st.write(f"- **Estado com menor taxa de faltas:** {analise['estado_menor_falta']['Estado']} ({analise['estado_menor_falta']['Percentual de Faltas']:.2f}%)")
         
-        # Análise por área
-        st.write("#### Comparativo entre áreas de conhecimento")
+        if analise['estado_maior_falta'] is not None:
+            st.write(f"- **Estado com maior taxa de faltas nos dois dias:** {analise['estado_maior_falta']['Estado']} ({analise['estado_maior_falta']['Percentual de Faltas']:.2f}%)")
+        
+        if analise['estado_menor_falta'] is not None:
+            st.write(f"- **Estado com menor taxa de faltas nos dois dias:** {analise['estado_menor_falta']['Estado']} ({analise['estado_menor_falta']['Percentual de Faltas']:.2f}%)")
+        
+        # Análise por tipo de falta
+        st.write("#### Comparativo entre tipos de falta")
         
         # Criar dataframe para o gráfico
-        medias_areas = analise['medias_por_area']
-        medias_areas = medias_areas.sort_values('Percentual de Faltas', ascending=False)
+        medias_por_tipo = analise['medias_por_tipo']
         
-        fig_areas = px.bar(
-            medias_areas,
-            x='Área',
+        fig_tipos = px.bar(
+            medias_por_tipo,
+            x='Tipo de Falta',
             y='Percentual de Faltas',
             text_auto='.1f',
-            title="Taxa média de faltas por área de conhecimento",
-            labels={'Percentual de Faltas': '% de Faltas', 'Área': 'Área de Conhecimento'},
+            title="Taxa média de faltas por tipo",
+            labels={'Percentual de Faltas': '% de Faltas', 'Tipo de Falta': 'Padrão de Ausência'},
             color_discrete_sequence=['#3366CC']
         )
         
-        fig_areas.update_layout(
+        fig_tipos.update_layout(
             yaxis=dict(ticksuffix='%'),
-            xaxis_title="Área de Conhecimento",
+            xaxis_title="Padrão de Ausência",
             yaxis_title="Taxa média de faltas (%)",
             plot_bgcolor='white'
         )
         
-        st.plotly_chart(fig_areas, use_container_width=True)
+        st.plotly_chart(fig_tipos, use_container_width=True)
         
         # Análise por dia de prova
         st.write("#### Comparativo entre dias de prova")
         
         # Criar dataframe para comparação entre dias
         dias_df = pd.DataFrame({
-            'Dia de Prova': ['Primeiro dia (CH/LC)', 'Segundo dia (CN/MT)'],
-            'Taxa média de faltas (%)': [analise['media_faltas_dia1'], analise['media_faltas_dia2']]
+            'Dia de Prova': ['Primeiro dia apenas', 'Segundo dia apenas', 'Ambos os dias'],
+            'Taxa média de faltas (%)': [analise['media_faltas_dia1'], analise['media_faltas_dia2'], analise['media_faltas_ambos_dias']]
         })
         
         fig_dias = px.bar(
@@ -158,12 +161,12 @@ def criar_expander_analise_faltas(df_faltas, analise):
             y='Taxa média de faltas (%)',
             text_auto='.1f',
             title="Comparativo de faltas entre dias de prova",
-            color_discrete_sequence=['#7D3C98', '#2471A3']
+            color_discrete_sequence=['#7D3C98', '#2471A3', '#CB4335']
         )
         
         fig_dias.update_layout(
             yaxis=dict(ticksuffix='%'),
-            xaxis_title="Dia de Prova",
+            xaxis_title="Padrão de Ausência",
             yaxis_title="Taxa média de faltas (%)",
             plot_bgcolor='white'
         )
@@ -177,7 +180,7 @@ def criar_expander_analise_faltas(df_faltas, analise):
         
         # Diferença entre dias
         if abs(analise['diferenca_dias']) < 0.5:
-            st.write("- **Padrão de dias:** Taxa de faltas semelhante entre os dois dias de prova")
+            st.write("- **Padrão de dias:** Taxa de faltas semelhante entre primeiro e segundo dia de prova")
         elif analise['diferenca_dias'] > 0:
             st.write(f"- **Padrão de dias:** Taxa de faltas maior no segundo dia (diferença de {analise['diferenca_dias']:.2f} pontos percentuais)")
         else:
@@ -188,19 +191,18 @@ def criar_expander_analise_faltas(df_faltas, analise):
         st.write("""
         As ausências em exames nacionais como o ENEM podem ser atribuídas a diversos fatores:
         
-        1. **Fatores logísticos:**
-           - Dificuldade de acesso aos locais de prova
-           - Problemas de transporte público aos finais de semana
-           - Longas distâncias percorridas em áreas rurais ou menos urbanas
+        1. **Fatores associados a faltar nos dois dias:**
+           - Inscrição apenas para obter certificado de conclusão do Ensino Médio (necessita apenas da inscrição)
+           - Impossibilidade de comparecer em ambos os dias (trabalho, saúde, etc.)
+           - Inscrição para reservar a possibilidade de fazer a prova, mas desistência posterior
         
-        2. **Fatores acadêmicos:**
-           - Despreparo ou insegurança para determinadas áreas do conhecimento
-           - Interesse específico em apenas algumas áreas, levando a faltas estratégicas
-           - Candidatos que se inscrevem apenas para treinar, sem intenção de realizar todas as provas
+        2. **Fatores associados a faltar apenas no primeiro dia:**
+           - Interesse específico apenas nas provas de Ciências da Natureza e Matemática
+           - Problemas logísticos específicos do primeiro fim de semana
+           - Estratégia focada em cursos que priorizam as provas do segundo dia
         
-        3. **Fatores sociais:**
-           - Compromissos de trabalho que impedem a participação
-           - Condições socioeconômicas que dificultam o comparecimento em dois dias consecutivos
-           - Custos associados ao deslocamento e alimentação durante o período de provas
+        3. **Fatores associados a faltar apenas no segundo dia:**
+           - Percepção de dificuldade após o primeiro dia, levando à desistência
+           - Interesse específico apenas nas provas de Ciências Humanas, Linguagens e Redação
+           - Problemas logísticos específicos do segundo fim de semana
         """)
-        

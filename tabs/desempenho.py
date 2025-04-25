@@ -162,7 +162,8 @@ def render_relacao_competencias(microdados_estados, colunas_notas, competencia_m
             config_filtros['eixo_x'], 
             config_filtros['eixo_y'], 
             config_filtros['excluir_notas_zero'], 
-            race_mapping
+            race_mapping,
+            config_filtros['faixa_salarial']  # Novo parâmetro
         )
     
     if config_filtros['excluir_notas_zero'] and registros_removidos > 0:
@@ -173,7 +174,8 @@ def render_relacao_competencias(microdados_estados, colunas_notas, competencia_m
             dados_filtrados, 
             config_filtros['eixo_x'], 
             config_filtros['eixo_y'], 
-            competencia_mapping
+            competencia_mapping,
+            config_filtros['colorir_por_faixa']  # Novo parâmetro
         )
         st.plotly_chart(fig, use_container_width=True)
     
