@@ -4,35 +4,28 @@ from utils.mappings import get_mappings
 from tabs.geral import render_geral
 from tabs.aspectos_sociais import render_aspectos_sociais
 from tabs.desempenho import render_desempenho
-from utils.data_loader import load_data, filter_data_by_states, agrupar_estados_em_regioes
-
+from utils.data_loader import load_data_for_tab, filter_data_by_states, agrupar_estados_em_regioes
+import pandas as pd
 
 # Configuração inicial da página
 st.set_page_config(page_title="Dashboard ENEM", page_icon="📚", layout="wide")
 st.title("📊 Dashboard de Análise do ENEM - 2023")
 
-# Carregar dados e mapeamentos
-microdados = load_data()
+# Carregar mapeamentos (apenas os mapeamentos, não os dados ainda)
 colunas_notas, competencia_mapping, race_mapping, sexo_mapping, \
     dependencia_escola_mapping, variaveis_sociais, variaveis_categoricas, \
     desempenho_mapping, infraestrutura_mapping, faixa_etaria_mapping, \
     escolaridade_pai_mae_mapping, regioes_mapping = get_mappings()
 
-# Mapeamento de regiões para estados
-
-
-# Função para converter seleção de regiões em lista de estados
-def get_estados_por_regiao(regioes_selecionadas):
-    estados = []
-    for regiao in regioes_selecionadas:
-        estados.extend(regioes_mapping[regiao])
-    return sorted(list(set(estados)))  # Remover duplicatas e ordenar
+# Carregar apenas os dados mínimos necessários para os filtros iniciais
+# (só precisamos da coluna de estado para o filtro)
+filtros_dados = load_data_for_tab("geral")
 
 # ---------------------------- FILTROS E CONTROLES ----------------------------
 st.sidebar.header("Filtros")
 
 # Obter lista de todos os estados disponíveis
-todos_estados = sorted(microdados['SG_UF_PROVA'].unique())
+todos_estados = sorted(filtros_dados['SG_UF_PROVA'].unique())
 todas_regioes = sorted(regioes_mapping.keys())
 
 # Adicionar checkbox para selecionar todo o Brasil
@@ -41,6 +34,13 @@ selecionar_brasil = st.sidebar.checkbox("Brasil (todos os estados)", value=True)
 # Variáveis para controlar o estado da seleção
 estados_selecionados = []
 regioes_selecionadas = []
+
+# Função para converter seleção de regiões em lista de estados
+def get_estados_por_regiao(regioes_selecionadas):
+    estados = []
+    for regiao in regioes_selecionadas:
+        estados.extend(regioes_mapping[regiao])
+    return sorted(list(set(estados)))  # Remover duplicatas e ordenar
 
 if selecionar_brasil:
     # Se Brasil estiver selecionado, todos os estados estão selecionados
@@ -107,12 +107,9 @@ if estados_selecionados:
     else:
         if regioes_selecionadas:
             st.sidebar.success(f"✅ Regiões: {', '.join(regioes_selecionadas)}")
-        if estados_adicionais and not selecionar_brasil:
+        if 'estados_adicionais' in locals() and estados_adicionais and not selecionar_brasil:
             st.sidebar.success(f"✅ Estados adicionais: {', '.join(estados_adicionais)}")
         st.sidebar.info(f"Total: {len(estados_selecionados)} estados selecionados")
-
-# Filtrar dados com base nos estados selecionados
-microdados_estados = filter_data_by_states(microdados, estados_selecionados)
 
 # Agrupar estados em regiões para exibição amigável
 locais_selecionados = agrupar_estados_em_regioes(estados_selecionados, regioes_mapping)
@@ -120,17 +117,43 @@ locais_selecionados = agrupar_estados_em_regioes(estados_selecionados, regioes_m
 # Criar abas
 abas = st.tabs(["Geral", "Aspectos Sociais", "Desempenho"])
 
-# Renderizar cada aba
+# Renderizar cada aba com seus dados específicos
 with abas[0]:
-    render_geral(microdados_estados, estados_selecionados, locais_selecionados, colunas_notas, competencia_mapping)
+    # Carregar dados específicos para aba Geral
+    microdados_geral = load_data_for_tab("geral")
+    # Filtrar dados com base nos estados selecionados
+    microdados_estados_geral = filter_data_by_states(microdados_geral, estados_selecionados)
+    # Renderizar aba
+    render_geral(microdados_estados_geral, estados_selecionados, locais_selecionados, 
+                colunas_notas, competencia_mapping)
+    # Liberar memória
+    del microdados_geral
+    del microdados_estados_geral
     
 with abas[1]:
-    render_aspectos_sociais(microdados_estados, estados_selecionados, locais_selecionados, variaveis_sociais)
+    # Carregar dados específicos para aba Aspectos Sociais
+    microdados_aspectos = load_data_for_tab("aspectos_sociais")
+    # Filtrar dados com base nos estados selecionados 
+    microdados_estados_aspectos = filter_data_by_states(microdados_aspectos, estados_selecionados)
+    # Renderizar aba
+    render_aspectos_sociais(microdados_estados_aspectos, estados_selecionados, 
+                           locais_selecionados, variaveis_sociais)
+    # Liberar memória
+    del microdados_aspectos
+    del microdados_estados_aspectos
     
 with abas[2]:
-    render_desempenho(microdados, microdados_estados, estados_selecionados, locais_selecionados,
-                      colunas_notas, competencia_mapping, race_mapping, 
-                      variaveis_categoricas, desempenho_mapping)
+    # Carregar dados específicos para aba Desempenho
+    microdados_desempenho = load_data_for_tab("desempenho")
+    # Filtrar dados com base nos estados selecionados
+    microdados_estados_desempenho = filter_data_by_states(microdados_desempenho, estados_selecionados)
+    # Renderizar aba
+    render_desempenho(microdados_desempenho, microdados_estados_desempenho, estados_selecionados, 
+                    locais_selecionados, colunas_notas, competencia_mapping, 
+                    race_mapping, variaveis_categoricas, desempenho_mapping)
+    # Liberar memória
+    del microdados_desempenho
+    del microdados_estados_desempenho
     
 # Exibir informações sobre o projeto
 st.markdown("---")  # Linha divisória
@@ -163,7 +186,7 @@ with footer_col2:
         <p style='font-size: 14px;'>Projeto de Iniciação Científica</p>
         <hr style='margin: 10px 0; border-color: #e0e0e0;'>
         <p style='font-size: 12px;'>© 2025 - Todos os direitos reservados</p>
-        <p style='font-size: 11px; margin-top: 10px;'>v1.3.0 - Atualizado em 21/03/2025</p>
+        <p style='font-size: 11px; margin-top: 10px;'>v1.4.0 - Atualizado em 25/04/2025</p>
     </div>
     """, unsafe_allow_html=True)
 

@@ -3,18 +3,69 @@ import pandas as pd
 import numpy as np
 from scipy import stats
 
+@st.cache_data(ttl=3600)  # Cache válido por 1 hora
+def generate_aggregated_data_cache(df, estados, groupby_col):
+    """Cache de dados pré-agregados por estado/região."""
+    return df.groupby([groupby_col, 'SG_UF_PROVA']).agg({
+        'NU_NOTA_CN': ['mean', 'median', 'std'],
+        'NU_NOTA_CH': ['mean', 'median', 'std'],
+        'NU_NOTA_LC': ['mean', 'median', 'std'],
+        'NU_NOTA_MT': ['mean', 'median', 'std']
+    }).reset_index()
+
 @st.cache_data
-def load_data():
-    """Carrega os dados do ENEM e faz pré-processamento inicial."""
-    microdados = pd.DataFrame(pd.read_csv('sample.csv', sep=';', encoding='ISO-8859-1'))
-    dtypes = pd.read_json("dtypes - Copia.json", typ='series')
-    dados = microdados.astype(dtypes)
+def load_data_for_tab(tab_name):
+    """Carrega dados otimizados para uma aba específica."""
+    file_path = f"sample_{tab_name.lower()}.parquet"
     
-    # Converter colunas de notas para float64
-    colunas_notas = ['NU_NOTA_CN', 'NU_NOTA_CH', 'NU_NOTA_LC', 'NU_NOTA_MT', 'NU_NOTA_REDACAO']
-    for col in colunas_notas:
-        dados[col] = dados[col].astype('float64')
-    return dados
+    try:
+        dados = pd.read_parquet(file_path)
+        dtypes = pd.read_json(f"dtypes_{tab_name.lower()}.json", typ='series')
+        dados = dados.astype(dtypes)
+        
+        # Converter colunas de notas para float64 apenas se existirem no dataframe
+        colunas_notas = [col for col in ['NU_NOTA_CN', 'NU_NOTA_CH', 'NU_NOTA_LC', 'NU_NOTA_MT', 'NU_NOTA_REDACAO'] 
+                         if col in dados.columns]
+        for col in colunas_notas:
+            dados[col] = dados[col].astype('float64')
+            
+        return dados
+    except Exception as e:
+        st.error(f"Erro ao carregar dados para aba {tab_name}: {e}")
+        return pd.DataFrame()
+    
+    # Criar amostras progressivas em diferentes tamanhos
+@st.cache_data
+def load_data_for_tab_with_sampling(tab_name, sample_level='normal'):
+    """Carrega dados com amostragem adaptativa baseada no nível de detalhe."""
+    file_path = f"sample_{tab_name.lower()}.parquet"
+    
+    try:
+        # Definir fração da amostra com base no nível solicitado
+        sample_fraction = {
+            'ultra_fast': 0.01,  # 1% da amostra para navegação/filtragem muito rápida
+            'fast': 0.05,        # 5% para análise exploratória rápida
+            'normal': 0.25,      # 25% para análise detalhada (padrão)
+            'detailed': 0.5,     # 50% para análise mais profunda
+            'full': 1.0          # 100% para análise completa (lenta)
+        }.get(sample_level, 0.25)
+        
+        # Carregar apenas uma amostra dos dados para economizar memória e tempo
+        dados = pd.read_parquet(file_path, engine='pyarrow')
+        
+        # Aplicar amostragem estratificada por estado para manter representatividade
+        if sample_fraction < 1.0:
+            # Amostragem estratificada por estado
+            dados_amostrados = dados.groupby('SG_UF_PROVA', group_keys=False).apply(
+                lambda x: x.sample(frac=sample_fraction, random_state=42)
+            )
+            return dados_amostrados
+        
+        return dados
+        
+    except Exception as e:
+        st.error(f"Erro ao carregar dados: {e}")
+        return pd.DataFrame()
 
 def filter_data_by_states(microdados, estados_selecionados):
     """Filtra os dados por estados selecionados."""

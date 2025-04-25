@@ -41,6 +41,8 @@ from utils.expander import (
     criar_expander_analise_faltas
 )
 
+# pd.options.display.float_format = "{:,.2f}".format
+
 def render_geral(microdados_estados, estados_selecionados, locais_selecionados, colunas_notas, competencia_mapping):
     """
     Renderiza a aba Geral do dashboard com métricas e visualizações.
@@ -126,6 +128,7 @@ def exibir_metricas_principais(microdados_estados, estados_selecionados, colunas
         custom_metric_with_tooltip(
             label="Média Geral",
             value=formatar_numero_br(metricas['media_geral']),
+            # value=metricas['media_geral'],
             explicacao=get_tooltip_media_geral(),
             key="2"
         )

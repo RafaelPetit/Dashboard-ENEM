@@ -45,6 +45,9 @@ from utils.expander import (
     criar_expander_dados_completos_estado
 )
 
+pd.options.display.float_format = '{:,.2f}'.format
+
+
 def render_aspectos_sociais(microdados_estados, estados_selecionados, locais_selecionados, variaveis_sociais):
     """
     Renderiza a aba de Aspectos Sociais com visualizações de correlações entre variáveis sociais.

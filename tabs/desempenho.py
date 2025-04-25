@@ -43,6 +43,9 @@ from utils.expander.expander_desempenho import (
     criar_expander_desempenho_estados
 )
 
+pd.options.display.float_format = '{:,.2f}'.format
+
+
 def render_desempenho(microdados, microdados_estados, estados_selecionados, 
                      locais_selecionados, colunas_notas, competencia_mapping, race_mapping, 
                      variaveis_categoricas, desempenho_mapping):
