@@ -264,9 +264,9 @@ def preparar_dados_sankey(df_correlacao, var_x_plot, var_y_plot):
 
 
 @optimized_cache()
-def preparar_dados_grafico_aspectos_por_estado(microdados_estados, aspecto_social, estados_selecionados, variaveis_sociais):
+def preparar_dados_grafico_aspectos_por_estado(microdados_estados, aspecto_social, estados_selecionados, variaveis_sociais, agrupar_por_regiao=False):
     """
-    Prepara os dados para o gráfico de distribuição de aspectos sociais por estado.
+    Prepara os dados para o gráfico de distribuição de aspectos sociais por estado ou região.
     
     Parâmetros:
     -----------
@@ -278,11 +278,13 @@ def preparar_dados_grafico_aspectos_por_estado(microdados_estados, aspecto_socia
         Lista de estados selecionados para análise
     variaveis_sociais : dict
         Dicionário com mapeamentos e configurações das variáveis sociais
+    agrupar_por_regiao : bool, default=False
+        Se True, agrupa os dados por região em vez de mostrar por estado
     
     Retorna:
     --------
     DataFrame
-        DataFrame formatado para o gráfico de linha por estado
+        DataFrame formatado para o gráfico de linha por estado/região
     """
     # Verificar se a coluna existe nos dados
     if aspecto_social not in microdados_estados.columns:
@@ -302,6 +304,8 @@ def preparar_dados_grafico_aspectos_por_estado(microdados_estados, aspecto_socia
     
     # Otimização: Pré-calcular a contagem para todos os estados de uma vez
     agrupado = df.groupby(['SG_UF_PROVA', coluna_plot]).size().reset_index(name='Quantidade')
+    
+    # Calcular totais por estado
     totais_por_estado = df.groupby('SG_UF_PROVA').size().reset_index(name='Total')
     
     # Mesclar para obter totais
@@ -322,5 +326,17 @@ def preparar_dados_grafico_aspectos_por_estado(microdados_estados, aspecto_socia
     # Se o DataFrame estiver vazio, retorna um DataFrame vazio
     if len(resultado) == 0:
         return pd.DataFrame()
+    
+    # Agrupar por região se solicitado
+    if agrupar_por_regiao:
+        from utils.helpers.regiao_utils import agrupar_por_regiao as agrupar_regiao
+        resultado = agrupar_regiao(resultado, coluna_estado='Estado', coluna_valores='Percentual')
+        
+        # Converter a coluna Estado para categórico
+        regioes = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul']
+        resultado['Estado'] = pd.Categorical(resultado['Estado'], categories=regioes)
+    
+    # Ordenar resultado para garantir consistência na visualização
+    resultado = resultado.sort_values(['Estado', 'Categoria'])
         
     return resultado

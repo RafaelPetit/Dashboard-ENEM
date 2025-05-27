@@ -127,23 +127,28 @@ def get_explicacao_distribuicao(aspecto_nome, total, categoria_mais_frequente):
     **📈 Estatísticas detalhadas:** Expanda a seção "Ver dados detalhados" logo abaixo para acessar métricas completas sobre a distribuição, incluindo análise de concentração, estatísticas de equidade e visualização da tabela completa.
     """
 
-def get_explicacao_aspectos_por_estado(aspecto_nome):
-    """Retorna explicação para o gráfico de aspectos por estado"""
+def get_explicacao_aspectos_por_estado(aspecto_nome, tipo_localidade="estado"):
+    """
+    Retorna o texto explicativo para o gráfico de aspectos sociais por estado/região.
+    
+    Parâmetros:
+    -----------
+    aspecto_nome : str
+        Nome do aspecto social selecionado
+    tipo_localidade : str, default="estado"
+        Tipo de localidade (estado ou região)
+    """
     return f"""
-    **Análise geográfica de {aspecto_nome}:**
+    **Análise da distribuição de {aspecto_nome} por {tipo_localidade}:**
+
+    O gráfico mostra como a distribuição de {aspecto_nome} varia entre os diferentes {tipo_localidade}s do Brasil. 
     
-    A distribuição por estado revela padrões regionais importantes:
+    Esta visualização permite:
+    - Identificar padrões regionais na distribuição de {aspecto_nome}
+    - Comparar percentuais entre diferentes {tipo_localidade}s para cada categoria
+    - Observar possíveis tendências geográficas e disparidades regionais
     
-    - Variações geográficas:
-    Observe como a composição demográfica varia entre diferentes regiões do país
+    As diferenças observadas podem refletir aspectos socioeconômicos, culturais, históricos ou políticos característicos de cada {tipo_localidade}, oferecendo insights sobre as desigualdades e particularidades regionais do Brasil.
     
-    - Disparidades regionais:
-    Identifique estados com distribuições atípicas que podem indicar contextos sociais distintos
-    
-    - Concentrações específicas:
-    Note onde certas categorias apresentam percentuais significativamente maiores ou menores que a média nacional
-    
-    Esta análise espacial contribui para entender como fatores regionais podem influenciar características sociodemográficas dos candidatos, oferecendo insights para políticas educacionais contextualizadas.
-    
-    **🗺️ Análise regional aprofundada:** Para explorar estatísticas detalhadas por região, rankings completos e padrões de distribuição geográfica, selecione uma categoria específica e clique em "Ver análise regional detalhada" abaixo do gráfico.
+    **💡 Dica:** Para uma análise mais detalhada, selecione uma categoria específica no filtro de ordenação e explore a seção "Ver análise detalhada por categoria" abaixo.
     """

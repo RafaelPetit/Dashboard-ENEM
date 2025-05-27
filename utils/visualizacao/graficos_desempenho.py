@@ -82,12 +82,28 @@ def criar_grafico_linha_desempenho(df_linha, variavel_selecionada, variaveis_cat
     return fig
 
 
-def criar_grafico_linha_estados(df_plot, area_selecionada=None, ordenado=False):
+def criar_grafico_linha_estados(df_plot, area_selecionada=None, ordenado=False, por_regiao=False):
     """
-    Cria o gráfico de linha para visualização do desempenho por estado.
+    Cria o gráfico de linha para visualização do desempenho por estado ou região.
+    
+    Parâmetros:
+    -----------
+    df_plot : DataFrame
+        DataFrame com dados preparados para visualização
+    area_selecionada : str, opcional
+        Área de conhecimento selecionada para filtrar o gráfico
+    ordenado : bool, default=False
+        Indica se os dados estão ordenados por desempenho
+    por_regiao : bool, default=False
+        Indica se os dados estão agrupados por região
+        
+    Retorna:
+    --------
+    Figure: Objeto de figura Plotly com o gráfico de linha
     """
     # Determinar título adequado
-    titulo_base = 'Médias de Desempenho por Estado e Área de Conhecimento'
+    tipo_localidade = "Região" if por_regiao else "Estado"
+    titulo_base = f'Médias de Desempenho por {tipo_localidade} e Área de Conhecimento'
     sufixo = ""
     if ordenado and area_selecionada:
         sufixo = f" (ordenado por {area_selecionada})"
@@ -99,7 +115,7 @@ def criar_grafico_linha_estados(df_plot, area_selecionada=None, ordenado=False):
         color='Área',
         markers=True,
         title=f"{titulo_base}{sufixo}",
-        labels={'Média': 'Nota Média', 'Estado': 'Estado', 'Área': 'Área de Conhecimento'},
+        labels={'Média': 'Nota Média', 'Estado': tipo_localidade, 'Área': 'Área de Conhecimento'},
         color_discrete_sequence=cores_padrao()
     )
     
@@ -114,43 +130,40 @@ def criar_grafico_linha_estados(df_plot, area_selecionada=None, ordenado=False):
 def criar_grafico_scatter(df, eixo_x, eixo_y, competencia_mapping, colorir_por_faixa=False):
     """
     Cria um gráfico de dispersão para mostrar a relação entre duas competências.
-    
-    Parâmetros:
-    -----------
-    df : DataFrame
-        DataFrame com os dados filtrados
-    eixo_x : str
-        Nome da coluna para o eixo X
-    eixo_y : str
-        Nome da coluna para o eixo Y
-    competencia_mapping : dict
-        Mapeamento das colunas para nomes legíveis
-    colorir_por_faixa : bool, default=False
-        Se True, colore os pontos por faixa salarial
-        
-    Retorna:
-    --------
-    Figure: Objeto figura do Plotly
+    Versão otimizada com melhor tratamento de erros e eficiência.
     """
+    # Verificar se temos dados válidos suficientes
+    df_valido = df[(df[eixo_x] > 0) & (df[eixo_y] > 0) & 
+                  (~df[eixo_x].isna()) & (~df[eixo_y].isna())].copy()
+    
     # Adicionar labels para faixa salarial se necessário
-    if colorir_por_faixa and 'TP_FAIXA_SALARIAL' in df.columns:
-        # Criar mapeamento para nomes descritivos das faixas
+    if colorir_por_faixa and 'TP_FAIXA_SALARIAL' in df_valido.columns:
+        # Criar mapeamento para nomes descritivos das faixas com prefixo numérico para garantir ordem
         faixa_labels = {
-            0: "Nenhuma Renda",
-            1: "Até 1 Salário Mínimo",
-            2: "1 a 2 Salários Mínimos",
-            3: "2 a 3 Salários Mínimos",
-            4: "3 a 5 Salários Mínimos",
-            5: "5 a 10 Salários Mínimos",
-            6: "10 a 20 Salários Mínimos",
-            7: "Mais de 20 Salários Mínimos"
+            0: "0 - Nenhuma Renda",
+            1: "1 - Até 1 SM",
+            2: "2 - 1 a 2 SM",
+            3: "3 - 2 a 3 SM",
+            4: "4 - 3 a 5 SM",
+            5: "5 - 5 a 10 SM",
+            6: "6 - 10 a 20 SM",
+            7: "7 - Mais de 20 SM"
         }
         
-        # Converter para string para melhor exibição
-        df['Faixa Salarial'] = df['TP_FAIXA_SALARIAL'].map(faixa_labels)
+        # Converter para string para exibição
+        df_valido['Faixa Salarial'] = df_valido['TP_FAIXA_SALARIAL'].map(faixa_labels)
         
+        # Garantir ordem categórica
+        ordem_categorias = [faixa_labels[i] for i in sorted(faixa_labels.keys())]
+        df_valido['Faixa Salarial'] = pd.Categorical(
+            df_valido['Faixa Salarial'],
+            categories=ordem_categorias,
+            ordered=True
+        )
+        
+        # Criar gráfico com coloração por faixa salarial
         fig = px.scatter(
-            df, 
+            df_valido, 
             x=eixo_x, 
             y=eixo_y, 
             color='Faixa Salarial',
@@ -160,12 +173,13 @@ def criar_grafico_scatter(df, eixo_x, eixo_y, competencia_mapping, colorir_por_f
                 'Faixa Salarial': 'Faixa Salarial'
             },
             opacity=0.7,
-            color_discrete_sequence=px.colors.qualitative.Bold
+            color_discrete_sequence=px.colors.qualitative.Bold,
+            category_orders={'Faixa Salarial': ordem_categorias}
         )
     else:
         # Gráfico padrão sem coloração por faixa salarial
         fig = px.scatter(
-            df, 
+            df_valido, 
             x=eixo_x, 
             y=eixo_y, 
             labels={
@@ -176,28 +190,40 @@ def criar_grafico_scatter(df, eixo_x, eixo_y, competencia_mapping, colorir_por_f
             color_discrete_sequence=['#3366CC']
         )
     
-    # Adicionar linha de tendência
+    # Ajustar tamanho dos marcadores
     fig.update_traces(marker=dict(size=6))
     
-    x = df[eixo_x].values
-    y = df[eixo_y].values
+    # Adicionar linha de tendência de forma segura
+    x = df_valido[eixo_x].values
+    y = df_valido[eixo_y].values
     
-    if len(x) > 1 and len(y) > 1:  # Verificar se há dados suficientes
-        # Calcular linha de tendência
-        z = np.polyfit(x, y, 1)
-        p = np.poly1d(z)
-        
-        # Adicionar linha com um estilo translúcido
-        fig.add_trace(
-            go.Scatter(
-                x=[min(x), max(x)], 
-                y=[p(min(x)), p(max(x))], 
-                mode='lines', 
-                name='Tendência',
-                line=dict(color='red', dash='dash', width=2),
-                opacity=0.7
-            )
-        )
+    # Verificações adicionais para garantir que podemos fazer uma regressão confiável
+    if len(x) > 10 and len(np.unique(x)) > 5:
+        try:
+            # Usar scipy.stats para maior robustez
+            slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+            
+            # Verificar se o cálculo foi bem-sucedido
+            if not np.isnan(slope) and not np.isnan(intercept):
+                # Criar pontos para a linha de tendência
+                x_min, x_max = np.min(x), np.max(x)
+                x_trend = np.array([x_min, x_max])
+                y_trend = slope * x_trend + intercept
+                
+                # Adicionar linha com detalhes da correlação
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_trend,
+                        y=y_trend,
+                        mode='lines', 
+                        name=f'Tendência (r={r_value:.2f})',
+                        line=dict(color='red', dash='dash', width=2),
+                        opacity=0.7
+                    )
+                )
+        except Exception:
+            # Em caso de erro, apenas prosseguir sem a linha de tendência
+            pass
     
     # Estilização do gráfico
     fig.update_layout(

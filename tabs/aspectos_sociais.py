@@ -253,18 +253,18 @@ def exibir_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais):
 
 def exibir_grafico_aspectos_por_estado(microdados_estados, estados_selecionados, variaveis_sociais):
     """
-    Exibe gráfico de linha mostrando distribuição de aspectos sociais por estado.
+    Exibe gráfico de linha mostrando distribuição de aspectos sociais por estado ou região.
     """
     # Usar título com tooltip
     titulo_com_tooltip(
-        "Distribuição de Aspectos Sociais por Estado", 
+        "Distribuição de Aspectos Sociais por Estado/Região", 
         get_tooltip_aspectos_por_estado(), 
         "aspectos_por_estado_tooltip"
     )
     
     # Permitir ao usuário selecionar qual aspecto social visualizar
     aspecto_social = st.selectbox(
-        "Selecione o aspecto social para análise por estado:",
+        "Selecione o aspecto social para análise por estado/região:",
         options=list(variaveis_sociais.keys()),
         format_func=lambda x: variaveis_sociais[x]["nome"],
         key="aspecto_por_estado"
@@ -275,23 +275,34 @@ def exibir_grafico_aspectos_por_estado(microdados_estados, estados_selecionados,
         st.warning(f"A variável {variaveis_sociais[aspecto_social]['nome']} não está disponível no conjunto de dados.")
         return
     
+    # Adicionar opção para agrupar por região
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        agrupar_por_regiao = st.radio(
+            "Visualizar por:",
+            ["Estados", "Regiões"],
+            horizontal=True,
+            key="agrupar_aspectos_regiao"
+        ) == "Regiões"
+    
     # Preparar dados para visualização
     with st.spinner("Preparando dados..."):
         df_por_estado = preparar_dados_grafico_aspectos_por_estado(
             microdados_estados, 
             aspecto_social, 
             estados_selecionados, 
-            variaveis_sociais
+            variaveis_sociais,
+            agrupar_por_regiao
         )
     
     if df_por_estado.empty:
-        st.warning(f"Não há dados suficientes para mostrar a distribuição de {variaveis_sociais[aspecto_social]['nome']} por estado.")
+        st.warning(f"Não há dados suficientes para mostrar a distribuição de {variaveis_sociais[aspecto_social]['nome']} por {('região' if agrupar_por_regiao else 'estado')}.")
         return
     
     # Interface para ordenação
     col1, col2 = st.columns([1, 2])
     with col1:
-        ordenar_por_percentual = st.checkbox("Ordenar estados por percentual", value=False, key="ordenar_estados_percentual")
+        ordenar_por_percentual = st.checkbox("Ordenar por percentual", value=False, key="ordenar_estados_percentual")
     
     # Mostrar seletor de categoria apenas se o usuário escolheu ordenar
     categoria_selecionada = None
@@ -325,13 +336,14 @@ def exibir_grafico_aspectos_por_estado(microdados_estados, estados_selecionados,
     
     # Criar o gráfico
     with st.spinner("Gerando visualização..."):
-        fig = criar_grafico_aspectos_por_estado(df_plot, aspecto_social, variaveis_sociais)
+        fig = criar_grafico_aspectos_por_estado(df_plot, aspecto_social, variaveis_sociais, por_regiao=agrupar_por_regiao)
     
     # Exibir o gráfico
     st.plotly_chart(fig, use_container_width=True)
     
     # Texto explicativo
-    explicacao = get_explicacao_aspectos_por_estado(variaveis_sociais[aspecto_social]['nome'])
+    tipo_localidade = "região" if agrupar_por_regiao else "estado"
+    explicacao = get_explicacao_aspectos_por_estado(variaveis_sociais[aspecto_social]['nome'], tipo_localidade)
     st.info(explicacao)
     
     # Adicionar análise estatística usando o expander encapsulado
@@ -340,7 +352,7 @@ def exibir_grafico_aspectos_por_estado(microdados_estados, estados_selecionados,
         analise = analisar_distribuicao_regional(df_por_estado, aspecto_social, categoria_selecionada)
         
         # Usar o expander encapsulado para a análise regional
-        criar_expander_analise_regional(df_por_estado, aspecto_social, categoria_selecionada, analise, variaveis_sociais)
+        criar_expander_analise_regional(df_por_estado, aspecto_social, categoria_selecionada, analise, variaveis_sociais, tipo_localidade)
     
     # Usar o expander encapsulado para dados completos
-    criar_expander_dados_completos_estado(df_por_estado)
+    criar_expander_dados_completos_estado(df_por_estado, tipo_localidade)

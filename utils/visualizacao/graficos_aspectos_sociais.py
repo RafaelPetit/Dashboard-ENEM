@@ -253,34 +253,35 @@ def configurar_layout_grafico(fig, opcao_viz, contagem_aspecto, aspecto_social, 
         )
 
 
-def criar_grafico_aspectos_por_estado(df_plot, aspecto_social, variaveis_sociais):
+def criar_grafico_aspectos_por_estado(df_plot, aspecto_social, variaveis_sociais, por_regiao=False):
     """
-    Cria um gráfico de linha mostrando a distribuição de aspectos sociais por estado.
+    Cria um gráfico de linha para visualizar a distribuição de um aspecto social por estado ou região.
     
     Parâmetros:
     -----------
     df_plot : DataFrame
-        DataFrame com os dados preparados
+        DataFrame formatado com os dados para visualização
     aspecto_social : str
-        Nome do aspecto social a ser analisado
+        Nome do aspecto social a ser visualizado
     variaveis_sociais : dict
         Dicionário com mapeamentos e configurações das variáveis sociais
+    por_regiao : bool, default=False
+        Se True, os dados estão agrupados por região
         
     Retorna:
     --------
-    figura
-        Objeto plotly.graph_objects.Figure
+    figura: Objeto plotly.graph_objects.Figure
     """
-    # Criar o gráfico
+    tipo_localidade = "Região" if por_regiao else "Estado"
+    
     fig = px.line(
         df_plot,
         x='Estado',
         y='Percentual',
         color='Categoria',
         markers=True,
-        title=f'Distribuição de {variaveis_sociais[aspecto_social]["nome"]} por Estado',
         labels={
-            'Estado': 'Estado',
+            'Estado': tipo_localidade,
             'Percentual': 'Percentual (%)',
             'Categoria': variaveis_sociais[aspecto_social]["nome"]
         },
@@ -290,7 +291,7 @@ def criar_grafico_aspectos_por_estado(df_plot, aspecto_social, variaveis_sociais
     # Configurar layout do gráfico
     fig.update_layout(
         height=500,
-        xaxis_title="Estado",
+        xaxis_title=tipo_localidade,
         yaxis_title="Percentual (%)",
         yaxis=dict(ticksuffix="%"),
         legend_title=variaveis_sociais[aspecto_social]["nome"],

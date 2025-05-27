@@ -155,109 +155,187 @@ def criar_expander_dados_distribuicao(contagem_aspecto, estatisticas, aspecto_so
             st.dataframe(contagem_aspecto)
 
 
-def criar_expander_analise_regional(df_por_estado, aspecto_social, categoria_selecionada, analise, variaveis_sociais):
+def criar_expander_analise_regional(df_dados, aspecto_social, categoria_selecionada, analise, variaveis_sociais, tipo_localidade="estado"):
     """
-    Cria um expander com análise regional detalhada de aspectos sociais por estado.
+    Cria um expander com análise detalhada da distribuição regional de uma categoria específica.
     
     Parâmetros:
     -----------
-    df_por_estado : DataFrame
-        DataFrame com dados por estado
+    df_dados : DataFrame
+        DataFrame com os dados da análise
     aspecto_social : str
         Nome do aspecto social analisado
     categoria_selecionada : str
-        Categoria selecionada para análise
+        Nome da categoria selecionada para análise
     analise : dict
-        Dicionário com métricas da análise regional
+        Dicionário com os resultados da análise estatística
     variaveis_sociais : dict
-        Dicionário com informações sobre variáveis sociais
+        Dicionário com mapeamentos e configurações das variáveis sociais
+    tipo_localidade : str, default="estado"
+        Tipo de localidade (estado ou região)
     """
-    with st.expander("Ver análise regional detalhada"):
-        # Título da análise
-        st.write(f"### Análise regional de {categoria_selecionada}")
+    with st.expander(f"Ver análise detalhada da categoria '{categoria_selecionada}'"):
+        st.write(f"### Análise da categoria '{categoria_selecionada}' por {tipo_localidade}")
         
-        # Métricas gerais
-        st.write(f"• **Percentual médio:** {analise['percentual_medio']:.2f}%")
-        st.write(f"• **Desvio padrão:** {analise['desvio_padrao']:.2f} pontos percentuais")
-        st.write(f"• **Coeficiente de variação:** {analise['coef_variacao']:.2f}%")
-        st.write(f"• **Maior percentual:** {analise['maior_percentual']['Estado']} ({analise['maior_percentual']['Percentual']:.2f}%)")
-        st.write(f"• **Menor percentual:** {analise['menor_percentual']['Estado']} ({analise['menor_percentual']['Percentual']:.2f}%)")
-        st.write(f"• **Variabilidade regional:** {analise['variabilidade']}")
+        # Filtrar dados para a categoria selecionada
+        df_categoria = df_dados[df_dados['Categoria'] == categoria_selecionada]
         
-        # Análise por região geográfica
-        st.write("#### Análise por região geográfica:")
+        # Exibir estatísticas
+        st.write("#### Estatísticas gerais")
+        media = analise['media']
+        mediana = analise['mediana']
+        desvio = analise['desvio']
+        maximo = analise['maximo']
+        minimo = analise['minimo']
+        amplitude = analise['amplitude']
         
-        # Adicionar informação regional ao DataFrame
-        df_regioes = adicionar_regiao_aos_estados(df_por_estado)
+        col1, col2 = st.columns(2)
         
-        # Filtrar apenas para a categoria selecionada
-        df_categoria = df_regioes[df_regioes['Categoria'] == categoria_selecionada]
+        with col1:
+            st.metric("Média nacional", f"{media:.1f}%")
+            st.metric("Desvio padrão", f"{desvio:.1f}%")
+            st.metric("Amplitude", f"{amplitude:.1f}%")
         
-        # Calcular médias por região
-        medias_por_regiao = df_categoria.groupby('Região')['Percentual'].mean().reset_index()
-        medias_por_regiao = medias_por_regiao.sort_values('Percentual', ascending=False)
+        with col2:
+            st.metric("Mediana", f"{mediana:.1f}%")
+            st.metric("Valor máximo", f"{maximo:.1f}%")
+            st.metric("Valor mínimo", f"{minimo:.1f}%")
         
-        # Exibir percentuais médios por região
-        for i, row in medias_por_regiao.iterrows():
-            st.write(f"• **{row['Região']}:** {row['Percentual']:.2f}% em média")
+        # Exibir análise de distribuição
+        st.write(f"#### Variação por {tipo_localidade}")
         
-        # Análise de distribuição
-        st.write("#### Distribuição em relação à média nacional:")
-        
-        # Calcular quantos estados estão acima e abaixo da média
-        media_nacional = analise['percentual_medio']
-        acima_da_media = df_categoria[df_categoria['Percentual'] > media_nacional]
-        abaixo_da_media = df_categoria[df_categoria['Percentual'] < media_nacional]
-        
-        st.write(f"• **Estados acima da média nacional:** {len(acima_da_media)}")
-        st.write(f"• **Estados abaixo da média nacional:** {len(abaixo_da_media)}")
-        
-        # Análise de extremos
-        diferenca_extremos = analise['maior_percentual']['Percentual'] - analise['menor_percentual']['Percentual']
-        st.write(f"• **Diferença entre extremos:** {diferenca_extremos:.2f} pontos percentuais")
-        
-        # Interpretação adicional
-        st.write("#### Interpretação da variabilidade:")
-        if analise['coef_variacao'] > 40:
-            interpretacao = "Extremamente alta variabilidade, indicando profundas diferenças regionais"
-        elif analise['coef_variacao'] > 25:
-            interpretacao = "Alta variabilidade, mostrando importantes disparidades regionais"
-        elif analise['coef_variacao'] > 15:
-            interpretacao = "Variabilidade moderada, sugerindo diferenças regionais significativas"
+        if desvio > 10:
+            nivel_variacao = "**Alta variação**"
+            descricao = f"Existe uma diferença significativa na distribuição de '{categoria_selecionada}' entre os {tipo_localidade}s."
+        elif desvio > 5:
+            nivel_variacao = "**Variação moderada**" 
+            descricao = f"Há alguma diferença na distribuição de '{categoria_selecionada}' entre os {tipo_localidade}s."
         else:
-            interpretacao = "Baixa variabilidade, indicando relativa homogeneidade regional"
+            nivel_variacao = "**Baixa variação**"
+            descricao = f"A distribuição de '{categoria_selecionada}' é relativamente uniforme entre os {tipo_localidade}s."
         
-        st.write(f"• {interpretacao}")
+        st.write(f"**Nível de variação:** {nivel_variacao}")
+        st.write(descricao)
         
-        # Opção para ver ranking completo
-        if st.checkbox("Ver ranking completo de estados", key="ver_ranking_categoria_estado"):
-            ranking = df_categoria.sort_values('Percentual', ascending=False)[['Estado', 'Percentual']]
-            st.dataframe(ranking, column_config={"Percentual": st.column_config.NumberColumn(format="%.2f%%")})
+        # Criação da tabela ordenada
+        st.write(f"#### Ranking de {tipo_localidade}s")
+        df_ranking = df_categoria.sort_values('Percentual', ascending=False)[['Estado', 'Percentual']]
+        
+        # Adicionar classificação relativa à média
+        df_ranking['Comparação à média'] = df_ranking['Percentual'].apply(
+            lambda x: "Acima da média" if x > media else ("Na média" if abs(x - media) < 1 else "Abaixo da média")
+        )
+        
+        # Renomear colunas para melhor legibilidade
+        df_ranking = df_ranking.rename(columns={
+            'Estado': tipo_localidade.capitalize(),
+            'Percentual': 'Percentual (%)'
+        })
+        
+        # Adicionar índice a partir de 1
+        df_ranking = df_ranking.reset_index(drop=True)
+        df_ranking.index = df_ranking.index + 1
+        
+        # Exibir o ranking
+        st.dataframe(
+            df_ranking,
+            column_config={
+                'Percentual (%)': st.column_config.NumberColumn(
+                    'Percentual (%)',
+                    format="%.1f%%"
+                ),
+                'Comparação à média': st.column_config.TextColumn(
+                    'Comparação à média',
+                    width="medium"
+                )
+            },
+            hide_index=False
+        )
+        
+        # Se for por estado, adicionar análise por região
+        if tipo_localidade == "estado" and len(df_categoria) > 5:
+            st.write("#### Análise por região")
+            
+            # Adicionar informação de região
+            from utils.helpers.regiao_utils import obter_mapa_regioes
+            mapa_regioes = obter_mapa_regioes()
+            
+            df_regioes = df_categoria.copy()
+            df_regioes['Região'] = df_regioes['Estado'].map(mapa_regioes)
+            
+            # Agrupar por região
+            df_por_regiao = df_regioes.groupby('Região')['Percentual'].mean().reset_index()
+            df_por_regiao = df_por_regiao.sort_values('Percentual', ascending=False)
+            
+            # Gráfico de barras por região
+            fig = px.bar(
+                df_por_regiao,
+                x='Região',
+                y='Percentual',
+                text_auto='.1f',
+                title=f"Média de '{categoria_selecionada}' por região",
+                labels={'Percentual': 'Percentual (%)', 'Região': 'Região'},
+                color_discrete_sequence=['#3366CC']
+            )
+            
+            fig.update_layout(
+                yaxis=dict(ticksuffix='%'),
+                plot_bgcolor='white',
+                height=400
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Análise textual da distribuição regional
+            maior_regiao = df_por_regiao.iloc[0]['Região']
+            menor_regiao = df_por_regiao.iloc[-1]['Região']
+            
+            st.write(f"**Maior concentração:** {maior_regiao} ({df_por_regiao.iloc[0]['Percentual']:.1f}%)")
+            st.write(f"**Menor concentração:** {menor_regiao} ({df_por_regiao.iloc[-1]['Percentual']:.1f}%)")
 
-
-def criar_expander_dados_completos_estado(df_por_estado):
+def criar_expander_dados_completos_estado(df_dados, tipo_localidade="estado"):
     """
-    Cria um expander com dados completos por estado para todas as categorias.
+    Cria um expander com tabela completa de dados por estado/região.
     
     Parâmetros:
     -----------
-    df_por_estado : DataFrame
-        DataFrame com dados por estado e categoria
+    df_dados : DataFrame
+        DataFrame com os dados para a tabela
+    tipo_localidade : str, default="estado"
+        Tipo de localidade (estado ou região)
     """
-    with st.expander("Ver dados completos por estado"):
-        # Criar tabela pivot com estados nas linhas e categorias nas colunas
-        pivot_df = df_por_estado.pivot(index='Estado', columns='Categoria', values='Percentual').reset_index()
+    with st.expander(f"Ver tabela completa de dados por {tipo_localidade}"):
+        # Usar pivot_table em vez de pivot para lidar com valores duplicados
+        df_pivot = df_dados.pivot_table(
+            index='Estado', 
+            columns='Categoria', 
+            values='Percentual',
+            aggfunc='mean'  # Calcula a média quando há valores duplicados
+        ).reset_index()
         
-        # Configurar formatação para percentuais
-        column_config = {"Estado": st.column_config.TextColumn("Estado")}
-        for col in pivot_df.columns:
-            if col != "Estado":
-                column_config[col] = st.column_config.NumberColumn(col, format="%.2f%%")
+        # Renomear o índice para o tipo de localidade
+        df_pivot = df_pivot.rename(columns={'Estado': tipo_localidade.capitalize()})
         
-        # Exibir dataframe com formatação
-        st.dataframe(pivot_df, column_config=column_config, hide_index=True)
-
-
+        # Expandir colunas para formato adequado
+        df_pivot = df_pivot.round(1)
+        
+        # Exibir tabela
+        st.dataframe(
+            df_pivot,
+            column_config={col: st.column_config.NumberColumn(col, format="%.1f%%") 
+                          for col in df_pivot.columns if col != tipo_localidade.capitalize()},
+            height=400
+        )
+        
+        # Opção para download
+        csv = df_pivot.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            f"Download dos dados por {tipo_localidade} (CSV)",
+            csv,
+            f"aspectos_sociais_por_{tipo_localidade}.csv",
+            "text/csv",
+            key=f'download_{tipo_localidade}_csv'
+        )
 # Funções auxiliares
 
 def adicionar_regiao_aos_estados(df):

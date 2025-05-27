@@ -209,83 +209,83 @@ def criar_expander_relacao_competencias(dados_filtrados, config_filtros, compete
             st.write("• Sem filtros ativos (todos os dados)")
 
 
-def criar_expander_desempenho_estados(df_grafico, area_analise, analise):
+def criar_expander_desempenho_estados(df_grafico, area_analise, analise, tipo_localidade="estado"):
     """
-    Cria um expander com análise regional detalhada do desempenho por estado.
+    Cria um expander com análise detalhada do desempenho por estado/região.
     
     Parâmetros:
     -----------
     df_grafico : DataFrame
-        DataFrame com os dados de desempenho por estado
+        DataFrame com os dados utilizados para o gráfico
     area_analise : str
-        Área de conhecimento selecionada para análise
+        Nome da área selecionada para análise
     analise : dict
-        Dicionário com resultados da análise de desempenho por estado
+        Dicionário com resultados da análise estatística
+    tipo_localidade : str, default="estado"
+        Tipo de localidade (estado ou região)
     """
-    with st.expander("Ver análise regional detalhada", ):
-        # Calcular métricas adicionais
-        media_geral = analise['media_geral']
-        desvio_padrao = analise['desvio_padrao']
-        coef_variacao = (desvio_padrao / media_geral * 100) if media_geral > 0 else 0
+    with st.expander(f"Ver análise detalhada por {tipo_localidade}"):
+        # Título principal
+        titulo_analise = f"Análise de desempenho em {area_analise}" if area_analise != "Média Geral" else "Análise de desempenho geral"
         
-        # Determinar nível de variabilidade
-        if coef_variacao > 15:
-            variabilidade_texto = "alta"
-            variabilidade_explicacao = "indicando grandes disparidades regionais no desempenho educacional"
-        elif coef_variacao > 8:
-            variabilidade_texto = "moderada"
-            variabilidade_explicacao = "sugerindo diferenças regionais importantes, mas não extremas"
-        else:
-            variabilidade_texto = "baixa"
-            variabilidade_explicacao = "indicando relativa homogeneidade no desempenho entre os sistemas educacionais regionais"
-        
-        # Formatação do título
-        titulo_analise = f"Análise regional de desempenho em {area_analise}"
+        # Verificar se é análise específica ou geral
         if area_analise == "Média Geral":
-            titulo_analise = "Análise regional do desempenho geral"
-            if not area_analise:
-                st.info("Selecione uma área específica no filtro de ordenação para ver análise detalhada por área.")
+            competencias = df_grafico['Área'].unique().tolist()
+            if 'Média Geral' in competencias:
+                competencias.remove('Média Geral')
+            st.selectbox(
+                "Selecione uma área específica para análise detalhada:",
+                ["Média Geral"] + sorted(competencias),
+                key="area_analise_detalhada",
+                on_change=lambda: None
+            )
+            if st.session_state.area_analise_detalhada != "Média Geral":
+                area_analise = st.session_state.area_analise_detalhada
+                titulo_analise = f"Análise de desempenho em {area_analise}"
+                # Recalcular análise para a área específica
+                analise = analisar_desempenho_por_estado(df_grafico, area_analise)
+            else:
+                st.info(f"Selecione uma área específica no filtro de ordenação para ver análise detalhada por área.")
         
         st.write(f"### {titulo_analise}")
         
-        # Desempenho comparativo entre estados
-        st.write("#### Comparativo entre estados:")
+        # Desempenho comparativo entre estados/regiões
+        st.write(f"#### Comparativo entre {tipo_localidade}s:")
         st.write(f"• **Melhor desempenho:** {analise['melhor_estado']['Estado']} ({analise['melhor_estado']['Média']:.1f} pontos)")
         st.write(f"• **Pior desempenho:** {analise['pior_estado']['Estado']} ({analise['pior_estado']['Média']:.1f} pontos)")
         st.write(f"• **Diferença entre extremos:** {analise['melhor_estado']['Média'] - analise['pior_estado']['Média']:.1f} pontos")
         
         # Estatísticas descritivas
-        st.write("#### Estatísticas gerais:")
+        st.write(f"#### Estatísticas gerais:")
         st.write(f"• **Média nacional:** {analise['media_geral']:.1f} pontos")
-        st.write(f"• **Desvio padrão:** {desvio_padrao:.2f} pontos")
-        st.write(f"• **Coeficiente de variação:** {coef_variacao:.2f}%")
-        st.write(f"• **Variabilidade:** {variabilidade_texto} ({variabilidade_explicacao})")
+        st.write(f"• **Desvio padrão:** {analise['desvio_padrao']:.1f} pontos")
+        interpretacao_variabilidade = "alta" if analise['desvio_padrao'] > 15 else "moderada" if analise['desvio_padrao'] > 8 else "baixa"
+        st.write(f"• **Variabilidade:** {interpretacao_variabilidade.capitalize()}")
         
-        # Estados acima/abaixo da média
-        acima_da_media = df_grafico[(df_grafico['Área'] == area_analise) & (df_grafico['Média'] > media_geral)]
-        abaixo_da_media = df_grafico[(df_grafico['Área'] == area_analise) & (df_grafico['Média'] < media_geral)]
-        
-        # Contagem de estados acima/abaixo da média
-        st.write("#### Distribuição em relação à média nacional:")
-        st.write(f"• **Estados acima da média:** {len(acima_da_media)} estados")
-        st.write(f"• **Estados abaixo da média:** {len(abaixo_da_media)} estados")
-        
-        # Análise regional
-        st.write("#### Análise por região:")
-        df_regioes = adicionar_regiao_aos_estados(df_grafico)
-        medias_por_regiao = df_regioes[df_regioes['Área'] == area_analise].groupby('Região')['Média'].mean().reset_index()
-        medias_por_regiao = medias_por_regiao.sort_values('Média', ascending=False)
-        
-        for i, row in medias_por_regiao.iterrows():
-            st.write(f"• **{row['Região']}:** {row['Média']:.1f} pontos")
+        # Se os dados estão agrupados por região, não mostrar a análise regional separadamente
+        if tipo_localidade == "estado":
+            # Análise por região
+            st.write("#### Desempenho por região:")
+            
+            # Adicionar coluna de região aos dados
+            df_regioes = adicionar_regiao_aos_estados(df_grafico)
+            
+            # Filtrar para a área específica
+            df_regioes = df_regioes[df_regioes['Área'] == area_analise]
+            
+            # Agrupar por região
+            medias_por_regiao = df_regioes.groupby('Região')['Média'].mean().reset_index()
+            medias_por_regiao = medias_por_regiao.sort_values('Média', ascending=False)
+            
+            for i, row in medias_por_regiao.iterrows():
+                st.write(f"• **{row['Região']}:** {row['Média']:.1f} pontos")
         
         # Opção para ver lista completa ordenada
-        if st.checkbox("Ver ranking completo de estados", key="ver_ranking_completo"):
+        if st.checkbox(f"Ver ranking completo de {tipo_localidade}s", key="ver_ranking_completo"):
             ranking = df_grafico[df_grafico['Área'] == area_analise].sort_values('Média', ascending=False)
             ranking = ranking[['Estado', 'Média']].reset_index(drop=True)
             ranking.index = ranking.index + 1  # Iniciar índice em 1
             st.dataframe(ranking, column_config={"Média": st.column_config.NumberColumn("Média", format="%.1f")})
-
 
 # Funções auxiliares para cálculos
 

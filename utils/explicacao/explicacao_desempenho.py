@@ -136,37 +136,33 @@ def get_explicacao_dispersao(eixo_x_nome, eixo_y_nome, correlacao):
     **📊 Análise avançada:** Não deixe de clicar em "Ver análise detalhada da correlação" logo abaixo para acessar estatísticas completas de ambas as competências, interpretação educacional contextualizada e métricas de associação como o coeficiente de determinação (r²).
     """
 
-def get_explicacao_desempenho_estados(area_texto, melhor_estado, pior_estado, variabilidade):
-    """Retorna a explicação para o gráfico de desempenho por estado"""
-    # Personalizar texto com base na variabilidade
-    if variabilidade == "alta":
-        var_texto = "significativa variabilidade"
-        implica_texto = "indicando grandes desigualdades regionais no sistema educacional"
-    elif variabilidade == "moderada":
-        var_texto = "moderada variabilidade"
-        implica_texto = "sugerindo diferenças regionais importantes, mas não extremas"
-    elif variabilidade == "baixa":
-        var_texto = "baixa variabilidade"
-        implica_texto = "indicando relativa homogeneidade entre os sistemas educacionais regionais"
-    else:
-        var_texto = "variabilidade heterogênea"
-        implica_texto = "com diferentes padrões por área de conhecimento"
+def get_explicacao_desempenho_estados(area_texto, melhor_estado, pior_estado, variabilidade, tipo_localidade="estado"):
+    """
+    Retorna a explicação para o gráfico de desempenho por estado/região.
     
+    Parâmetros:
+    -----------
+    area_texto : str
+        Texto descritivo da área selecionada
+    melhor_estado : str
+        Nome do estado/região com melhor desempenho
+    pior_estado : str
+        Nome do estado/região com pior desempenho
+    variabilidade : str
+        Descrição da variabilidade entre estados/regiões
+    tipo_localidade : str, default="estado"
+        Tipo de localidade (estado ou região)
+    """
     return f"""
-    **Análise do desempenho por estado{area_texto}:**
+    **Análise do desempenho por {tipo_localidade}{area_texto}:**
     
-    A visualização revela padrões geográficos significativos no desempenho educacional:
+    O gráfico mostra diferenças significativas no desempenho médio entre diferentes {tipo_localidade}s do Brasil:
     
-    - Disparidades regionais:
-    Observa-se {var_texto} entre os estados, {implica_texto}. {melhor_estado} apresenta o melhor desempenho geral, enquanto {pior_estado} mostra os menores resultados.
+    - **{melhor_estado}** apresenta o melhor desempenho médio
+    - **{pior_estado}** apresenta o menor desempenho médio
+    - A análise indica uma **{variabilidade} variação** no desempenho entre {tipo_localidade}s
     
-    - Padrões por competência:
-    As áreas de conhecimento apresentam perfis distintos de distribuição territorial, refletindo possivelmente tradições educacionais regionais e foco curricular.
+    Essas diferenças podem refletir disparidades nos sistemas educacionais locais, no nível socioeconômico médio, no acesso a recursos educacionais e em outros fatores contextuais.
     
-    - Potencial para políticas públicas:
-    Estados com desempenho superior podem oferecer modelos e práticas educacionais que, adaptados a contextos locais, poderiam beneficiar outras regiões.
-    
-    Esta análise espacial é essencial para compreender como fatores regionais - incluindo desenvolvimento econômico, infraestrutura e políticas educacionais - impactam o desempenho dos estudantes.
-    
-    **🔍 Análise aprofundada:** Expanda a seção "Ver análise regional detalhada" abaixo para acessar uma análise completa por região geográfica, estatísticas de variabilidade entre estados, ranking completo e distribuição em relação à média nacional.
+    **💡 Dica:** Para explorar estatísticas detalhadas, comparações regionais e análise percentual das diferenças, clique em "Ver análise detalhada por {tipo_localidade}" abaixo.
     """
