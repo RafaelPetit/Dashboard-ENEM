@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from utils.tooltip import titulo_com_tooltip
-from utils.helpers.cache_utils import release_memory
+from utils.helpers.cache_utils import release_memory, optimized_cache
 from functools import partial
 
 from utils.prepara_dados import (
@@ -10,7 +11,7 @@ from utils.prepara_dados import (
     preparar_dados_grafico_linha,
     preparar_dados_desempenho_geral,
     filtrar_dados_scatter,
-    prepara_dados_grafico_linha_desempenho
+    preparar_dados_grafico_linha_desempenho
 )
 
 from utils.visualizacao import (
@@ -26,7 +27,8 @@ from utils.visualizacao import (
 from utils.estatisticas import (
     calcular_correlacao_competencias,
     gerar_estatisticas_descritivas,
-    analisar_desempenho_por_estado
+    analisar_desempenho_por_estado,
+    calcular_estatisticas_comparativas
 )
 
 from utils.explicacao import (
@@ -44,6 +46,8 @@ from utils.expander.expander_desempenho import (
     criar_expander_relacao_competencias,
     criar_expander_desempenho_estados
 )
+
+from utils.helpers.regiao_utils import obter_regiao_do_estado
 
 pd.options.display.float_format = '{:,.2f}'.format
 
@@ -92,6 +96,27 @@ def render_desempenho(microdados, microdados_estados, estados_selecionados,
                      variaveis_categoricas, desempenho_mapping):
     """
     Renderiza a aba de Desempenho com diferentes análises baseadas na seleção do usuário.
+    
+    Parâmetros:
+    -----------
+    microdados : DataFrame
+        DataFrame com dados originais
+    microdados_estados : DataFrame
+        DataFrame com dados filtrados por estado
+    estados_selecionados : list
+        Lista de estados selecionados pelo usuário
+    locais_selecionados : list
+        Lista de nomes de locais selecionados
+    colunas_notas : list
+        Lista de colunas com notas a analisar
+    competencia_mapping : dict
+        Mapeamento de códigos para nomes de competências
+    race_mapping : dict
+        Mapeamento de códigos para raça/cor
+    variaveis_categoricas : dict
+        Dicionário com metadados das variáveis categóricas
+    desempenho_mapping : dict
+        Mapeamento de códigos para categorias de desempenho
     """
     if not estados_selecionados:
         st.warning("Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
@@ -124,6 +149,17 @@ def render_desempenho(microdados, microdados_estados, estados_selecionados,
 def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_notas, competencia_mapping):
     """
     Renderiza a análise comparativa de desempenho por variável demográfica.
+    
+    Parâmetros:
+    -----------
+    microdados_full : DataFrame
+        DataFrame com dados preparados
+    variaveis_categoricas : dict
+        Dicionário com metadados das variáveis categóricas
+    colunas_notas : list
+        Lista de colunas com notas a analisar
+    competencia_mapping : dict
+        Mapeamento de códigos para nomes de competências
     """
     titulo_com_tooltip(
         "Análise Comparativa do Desempenho por Variáveis Demográficas", 
@@ -137,8 +173,11 @@ def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_n
         format_func=lambda x: variaveis_categoricas[x]["nome"]
     )
 
+    # Verificação mais robusta com feedback detalhado
     if variavel_selecionada not in microdados_full.columns:
-        st.warning(f"A variável {variaveis_categoricas[variavel_selecionada]['nome']} não está disponível no conjunto de dados.")
+        colunas_disponiveis = ", ".join(microdados_full.columns.tolist())
+        st.warning(f"A variável {variaveis_categoricas[variavel_selecionada]['nome']} (código: {variavel_selecionada}) não está disponível no conjunto de dados.")
+        st.info(f"Você pode verificar se esta variável está presente nos dados originais ou se o nome da coluna está correto no mapeamento.")
         return
     
     # Processamento dos dados em um único bloco para evitar redundâncias
@@ -195,6 +234,17 @@ def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_n
 def render_relacao_competencias(microdados_estados, colunas_notas, competencia_mapping, race_mapping):
     """
     Renderiza a análise de relação entre competências usando gráfico de dispersão.
+    
+    Parâmetros:
+    -----------
+    microdados_estados : DataFrame
+        DataFrame com dados filtrados por estado
+    colunas_notas : list
+        Lista de colunas com notas a analisar
+    competencia_mapping : dict
+        Mapeamento de códigos para nomes de competências
+    race_mapping : dict
+        Mapeamento de códigos para raça/cor
     """
     titulo_com_tooltip(
         "Relação entre Competências", 
@@ -256,6 +306,17 @@ def render_relacao_competencias(microdados_estados, colunas_notas, competencia_m
 def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_notas, competencia_mapping):
     """
     Renderiza a análise de desempenho médio por estado ou região.
+    
+    Parâmetros:
+    -----------
+    microdados_estados : DataFrame
+        DataFrame com dados filtrados por estado
+    estados_selecionados : list
+        Lista de estados selecionados pelo usuário
+    colunas_notas : list
+        Lista de colunas com notas a analisar
+    competencia_mapping : dict
+        Mapeamento de códigos para nomes de competências
     """
     titulo_com_tooltip(
         "Médias por Estado/Região e Área de Conhecimento", 
@@ -275,7 +336,7 @@ def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_
     
     # Processamento dos dados
     with st.spinner("Processando dados..."):
-        df_grafico = prepara_dados_grafico_linha_desempenho(
+        df_grafico = preparar_dados_grafico_linha_desempenho(
             microdados_estados, 
             estados_selecionados, 
             colunas_notas, 
@@ -291,25 +352,13 @@ def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_
     # Configuração dos filtros
     config_filtros = criar_filtros_estados(df_grafico)
     
-    # Otimização: evita cópia desnecessária se não precisar ordernar
-    if config_filtros['ordenar_por_nota'] and config_filtros['area_selecionada']:
-        # Aplicar ordenação e filtro
-        df_plot = df_grafico.copy()
-        
-        # Obter ordem dos estados/regiões pela área selecionada
-        media_por_estado = df_plot[df_plot['Área'] == config_filtros['area_selecionada']]
-        ordem_estados = media_por_estado.sort_values('Média', ascending=False)['Estado'].tolist()
-        
-        # Aplicar ordenação como categoria
-        df_plot['Estado'] = pd.Categorical(df_plot['Estado'], categories=ordem_estados, ordered=True)
-        df_plot = df_plot.sort_values('Estado')
-        
-        # Filtrar para mostrar apenas a área selecionada se solicitado
-        if config_filtros['mostrar_apenas_area']:
-            df_plot = df_plot[df_plot['Área'] == config_filtros['area_selecionada']]
-    else:
-        # Se não precisar ordenar, usa o DataFrame original sem cópia
-        df_plot = df_grafico
+    # Preparação dos dados para visualização
+    df_plot = preparar_dados_estados_para_visualizacao(
+        df_grafico, 
+        config_filtros['area_selecionada'],
+        config_filtros['ordenar_por_nota'],
+        config_filtros['mostrar_apenas_area']
+    )
     
     # Exibição do gráfico
     with st.spinner("Gerando visualização..."):
@@ -331,14 +380,12 @@ def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_
     analise = analisar_desempenho_por_estado(df_grafico, area_analise)
     
     # Preparação da explicação
-    melhor_estado = analise['melhor_estado']['Estado']
-    pior_estado = analise['pior_estado']['Estado']
+    melhor_estado = analise['melhor_estado']['Estado'] if analise['melhor_estado'] is not None else ""
+    pior_estado = analise['pior_estado']['Estado'] if analise['pior_estado'] is not None else ""
     desvio_padrao = analise['desvio_padrao']
     
     # Determinar variabilidade para explicação
-    variabilidade = "alta" if desvio_padrao > 15 else "moderada" if desvio_padrao > 8 else "baixa"
-    if not config_filtros.get('mostrar_apenas_area'):
-        variabilidade = "variável"
+    variabilidade = determinar_variabilidade(desvio_padrao, config_filtros.get('mostrar_apenas_area', False))
     
     # Texto de localidade baseado no modo de visualização
     tipo_localidade = "região" if agrupar_por_regiao else "estado"
@@ -348,6 +395,78 @@ def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_
     st.info(explicacao)
     criar_expander_desempenho_estados(df_grafico, area_analise, analise, tipo_localidade)
     
-    # Liberar memória se criamos uma cópia
-    if config_filtros['ordenar_por_nota'] and config_filtros['area_selecionada'] and id(df_plot) != id(df_grafico):
+    # Liberar memória se não é uma referência ao original
+    if id(df_plot) != id(df_grafico):
         release_memory(df_plot)
+
+
+def preparar_dados_estados_para_visualizacao(df_grafico, area_selecionada, ordenar_por_nota, mostrar_apenas_area):
+    """
+    Prepara os dados de estados/regiões para visualização, aplicando filtros e ordenação.
+    
+    Parâmetros:
+    -----------
+    df_grafico : DataFrame
+        DataFrame com dados de desempenho por estado/região
+    area_selecionada : str
+        Área de conhecimento selecionada
+    ordenar_por_nota : bool
+        Indica se deve ordenar por nota
+    mostrar_apenas_area : bool
+        Indica se deve mostrar apenas a área selecionada
+        
+    Retorna:
+    --------
+    DataFrame: DataFrame preparado para visualização
+    """
+    # Otimização: evita cópia desnecessária se não precisar ordenar
+    if ordenar_por_nota and area_selecionada:
+        # Aplicar ordenação e filtro
+        df_plot = df_grafico.copy()
+        
+        # Obter ordem dos estados/regiões pela área selecionada
+        media_por_estado = df_plot[df_plot['Área'] == area_selecionada]
+        ordem_estados = media_por_estado.sort_values('Média', ascending=False)['Estado'].tolist()
+        
+        # Aplicar ordenação como categoria
+        df_plot['Estado'] = pd.Categorical(df_plot['Estado'], categories=ordem_estados, ordered=True)
+        df_plot = df_plot.sort_values('Estado')
+        
+        # Filtrar para mostrar apenas a área selecionada se solicitado
+        if mostrar_apenas_area:
+            df_plot = df_plot[df_plot['Área'] == area_selecionada]
+    else:
+        # Se não precisar ordenar, usa o DataFrame original sem cópia
+        df_plot = df_grafico
+        
+        # Filtrar para mostrar apenas a área selecionada se solicitado
+        if mostrar_apenas_area and area_selecionada:
+            df_plot = df_plot[df_plot['Área'] == area_selecionada]
+    
+    return df_plot
+
+
+def determinar_variabilidade(desvio_padrao, mostrar_apenas_area):
+    """
+    Determina a classificação de variabilidade com base no desvio padrão.
+    
+    Parâmetros:
+    -----------
+    desvio_padrao : float
+        Valor do desvio padrão
+    mostrar_apenas_area : bool
+        Indica se está mostrando apenas uma área específica
+        
+    Retorna:
+    --------
+    str: Classificação de variabilidade
+    """
+    if not mostrar_apenas_area:
+        return "variável"
+    
+    if desvio_padrao > 15:
+        return "alta"
+    elif desvio_padrao > 8:
+        return "moderada"
+    else:
+        return "baixa"

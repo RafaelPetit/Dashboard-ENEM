@@ -13,6 +13,7 @@ from .componentes import (
 
 from .config_graficos import aplicar_layout_padrao, cores_padrao
 
+
 from .graficos_aspectos_sociais import (
     criar_grafico_heatmap,
     criar_grafico_barras_empilhadas,

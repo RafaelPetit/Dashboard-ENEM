@@ -4,7 +4,13 @@ from .prepara_dados_desempenho import (
     preparar_dados_grafico_linha,
     preparar_dados_desempenho_geral,
     filtrar_dados_scatter,
-    prepara_dados_grafico_linha_desempenho
+    preparar_dados_grafico_linha_desempenho
+)
+
+from .validacao_dados import (
+    validar_completude_dados,
+    verificar_outliers,
+    validar_distribuicao_dados
 )
 
 from .prepara_dados_aspectos_sociais import (
