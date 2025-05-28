@@ -16,7 +16,10 @@ from .explicacao_aspectos_sociais import (
     get_explicacao_barras_empilhadas,
     get_explicacao_sankey,
     get_explicacao_distribuicao,
-    get_explicacao_aspectos_por_estado
+    get_explicacao_aspectos_por_estado,
+    get_interpretacao_associacao,
+    get_interpretacao_variabilidade_regional,
+    get_analise_concentracao
 )
 
 from .explicacao_geral import (

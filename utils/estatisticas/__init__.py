@@ -14,7 +14,9 @@ from .metricas_desempenho import (
 from .analise_aspectos_sociais import (
     calcular_estatisticas_distribuicao,
     analisar_correlacao_categorias,
-    analisar_distribuicao_regional
+    analisar_distribuicao_regional,
+    calcular_estatisticas_por_categoria,
+    analisar_tendencias_temporais
 )
 
 from .analise_geral import (

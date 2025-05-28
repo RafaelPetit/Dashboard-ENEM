@@ -2,7 +2,8 @@ from .graficos_desempenho import (
     criar_grafico_comparativo_barras,
     criar_grafico_linha_desempenho,
     criar_grafico_scatter,
-    criar_grafico_linha_estados
+    criar_grafico_linha_estados,
+    adicionar_linha_tendencia
 )
 
 from .componentes import (
@@ -11,8 +12,11 @@ from .componentes import (
     criar_filtros_estados
 )
 
-from .config_graficos import aplicar_layout_padrao, cores_padrao
-
+from .config_graficos import (
+    aplicar_layout_padrao, 
+    cores_padrao,
+    aplicar_tema_grafico
+)
 
 from .graficos_aspectos_sociais import (
     criar_grafico_heatmap,
@@ -20,7 +24,7 @@ from .graficos_aspectos_sociais import (
     criar_grafico_sankey,
     criar_grafico_distribuicao,
     criar_grafico_aspectos_por_estado,
-    configurar_layout_grafico
+    _criar_grafico_vazio
 )
 
 from .graficos_geral import (

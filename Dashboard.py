@@ -1,11 +1,14 @@
 import streamlit as st
+import pandas as pd
+import gc
+import time
 # Importar módulos do projeto
 from utils.mappings import get_mappings
 from tabs.geral import render_geral
 from tabs.aspectos_sociais import render_aspectos_sociais
 from tabs.desempenho import render_desempenho
 from utils.data_loader import load_data_for_tab, filter_data_by_states, agrupar_estados_em_regioes
-import pandas as pd
+from utils.helpers.cache_utils import release_memory
 
 # Configuração inicial da página
 st.set_page_config(page_title="Dashboard ENEM", page_icon="📚", layout="wide")
@@ -29,7 +32,8 @@ faixa_salarial = mappings['faixa_salarial']
 
 # Carregar apenas os dados mínimos necessários para os filtros iniciais
 # (só precisamos da coluna de estado para o filtro)
-filtros_dados = load_data_for_tab("geral")
+with st.spinner("Carregando dados iniciais..."):
+    filtros_dados = load_data_for_tab("geral")
 
 # ---------------------------- FILTROS E CONTROLES ----------------------------
 st.sidebar.header("Filtros")
@@ -124,6 +128,10 @@ if estados_selecionados:
 # Agrupar estados em regiões para exibição amigável
 locais_selecionados = agrupar_estados_em_regioes(estados_selecionados, regioes_mapping)
 
+# Liberar memória dos dados usados apenas para filtros
+del filtros_dados
+gc.collect()
+
 # Criar abas
 abas = st.tabs(["Geral", "Aspectos Sociais", "Desempenho"])
 
@@ -131,49 +139,60 @@ abas = st.tabs(["Geral", "Aspectos Sociais", "Desempenho"])
 with abas[0]:
     try:
         # Carregar dados específicos para aba Geral
-        microdados_geral = load_data_for_tab("geral")
-        # Filtrar dados com base nos estados selecionados
-        microdados_estados_geral = filter_data_by_states(microdados_geral, estados_selecionados)
+        with st.spinner("Carregando dados para análise geral..."):
+            microdados_geral = load_data_for_tab("geral")
+            # Filtrar dados com base nos estados selecionados
+            microdados_estados_geral = filter_data_by_states(microdados_geral, estados_selecionados)
+        
         # Renderizar aba
         render_geral(microdados_estados_geral, estados_selecionados, locais_selecionados, 
                     colunas_notas, competencia_mapping)
         # Liberar memória
-        del microdados_geral
-        del microdados_estados_geral
+        release_memory([microdados_geral, microdados_estados_geral])
     except Exception as e:
         st.error(f"Erro ao carregar a aba Geral: {str(e)}")
     
 with abas[1]:
     try:
         # Carregar dados específicos para aba Aspectos Sociais
-        microdados_aspectos = load_data_for_tab("aspectos_sociais")
-        # Filtrar dados com base nos estados selecionados 
-        microdados_estados_aspectos = filter_data_by_states(microdados_aspectos, estados_selecionados)
-        # Renderizar aba
-        render_aspectos_sociais(microdados_estados_aspectos, estados_selecionados, 
-                               locais_selecionados, variaveis_sociais)
+        with st.spinner("Carregando dados para análise de aspectos sociais..."):
+            microdados_aspectos = load_data_for_tab("aspectos_sociais")
+            # Filtrar dados com base nos estados selecionados 
+            microdados_estados_aspectos = filter_data_by_states(microdados_aspectos, estados_selecionados)
+        
+        # Verificar se temos dados suficientes para análise
+        if microdados_estados_aspectos.empty:
+            st.warning("Não há dados suficientes para análise de aspectos sociais com os filtros atuais.")
+        else:
+            # Renderizar aba
+            render_aspectos_sociais(microdados_estados_aspectos, estados_selecionados, 
+                                  locais_selecionados, variaveis_sociais)
+        
         # Liberar memória
-        del microdados_aspectos
-        del microdados_estados_aspectos
+        release_memory([microdados_aspectos, microdados_estados_aspectos])
     except Exception as e:
         st.error(f"Erro ao carregar a aba Aspectos Sociais: {str(e)}")
     
 with abas[2]:
     try:
         # Carregar dados específicos para aba Desempenho
-        microdados_desempenho = load_data_for_tab("desempenho")
-        # Filtrar dados com base nos estados selecionados
-        microdados_estados_desempenho = filter_data_by_states(microdados_desempenho, estados_selecionados)
+        with st.spinner("Carregando dados para análise de desempenho..."):
+            microdados_desempenho = load_data_for_tab("desempenho")
+            # Filtrar dados com base nos estados selecionados
+            microdados_estados_desempenho = filter_data_by_states(microdados_desempenho, estados_selecionados)
+        
         # Renderizar aba
         render_desempenho(microdados_desempenho, microdados_estados_desempenho, estados_selecionados, 
                         locais_selecionados, colunas_notas, competencia_mapping, 
                         race_mapping, variaveis_categoricas, desempenho_mapping)
         # Liberar memória
-        del microdados_desempenho
-        del microdados_estados_desempenho
+        release_memory([microdados_desempenho, microdados_estados_desempenho])
     except Exception as e:
         st.error(f"Erro ao carregar a aba Desempenho: {str(e)}")
     
+# Forçar coleta de lixo para garantir liberação de memória
+gc.collect()
+
 # Exibir informações sobre o projeto
 st.markdown("---")  # Linha divisória
 
@@ -205,7 +224,7 @@ with footer_col2:
         <p style='font-size: 14px;'>Projeto de Iniciação Científica</p>
         <hr style='margin: 10px 0; border-color: #e0e0e0;'>
         <p style='font-size: 12px;'>© 2025 - Todos os direitos reservados</p>
-        <p style='font-size: 11px; margin-top: 10px;'>v1.4.0 - Atualizado em 25/04/2025</p>
+        <p style='font-size: 11px; margin-top: 10px;'>v1.5.0 - Atualizado em 28/05/2025</p>
     </div>
     """, unsafe_allow_html=True)
 
