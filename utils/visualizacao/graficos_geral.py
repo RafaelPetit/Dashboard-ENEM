@@ -319,6 +319,7 @@ def criar_grafico_comparativo_areas(
         elif tipo_grafico == "linha":
             fig = _criar_grafico_linha_areas(df_areas)
         else:  # "barras" como padrão
+            # Passar explicitamente o parâmetro mostrar_dispersao
             fig = _criar_grafico_barras_areas(df_areas, mostrar_dispersao)
         
         # Aplicar layout padrão
@@ -782,7 +783,6 @@ def _criar_grafico_barras_areas(df: pd.DataFrame, mostrar_dispersao: bool = True
     )
     
     return fig
-
 
 def _criar_grafico_radar_areas(df: pd.DataFrame) -> go.Figure:
     """

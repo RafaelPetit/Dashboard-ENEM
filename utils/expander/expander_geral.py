@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import plotly.figure_factory as ff
+import plotly.graph_objects as go
 from typing import Dict, List, Any, Optional, Union, Tuple
 from utils.helpers.regiao_utils import obter_regiao_do_estado, obter_todas_regioes
 from utils.estatisticas.analise_geral import (
@@ -988,16 +988,30 @@ def _mostrar_medias_competencia_regiao(metricas_regiao: Dict[str, Dict[str, floa
         linha = {'Região': regiao}
         
         # Adicionar métricas por competência
-        for cod_comp, valor in metricas.items():
-            if cod_comp != 'total_candidatos' and cod_comp != 'media_geral':
-                nome_comp = competencia_mapping.get(cod_comp, cod_comp)
-                linha[nome_comp] = valor
+        for cod_comp, nome_comp in competencia_mapping.items():
+            # Obter valor da métrica para esta competência nesta região
+            valor = metricas.get(cod_comp, 0)
+            
+            # Verificar se o valor é válido (não NaN ou None)
+            if pd.isna(valor) or valor is None:
+                valor = 0
+                
+            # Adicionar à linha com nome legível da competência
+            linha[nome_comp] = valor
         
         # Adicionar média geral
-        linha['Média Geral'] = metricas.get('media_geral', 0)
+        media_geral = metricas.get('media_geral', 0)
+        if pd.isna(media_geral) or media_geral is None:
+            media_geral = 0
+            
+        linha['Média Geral'] = media_geral
         
         # Adicionar total de candidatos
-        linha['Total de Candidatos'] = metricas.get('total_candidatos', 0)
+        total_candidatos = metricas.get('total_candidatos', 0)
+        if pd.isna(total_candidatos) or total_candidatos is None:
+            total_candidatos = 0
+            
+        linha['Total de Candidatos'] = total_candidatos
         
         dados.append(linha)
     
@@ -1007,6 +1021,14 @@ def _mostrar_medias_competencia_regiao(metricas_regiao: Dict[str, Dict[str, floa
     # Ordenar por média geral (decrescente)
     if 'Média Geral' in df_metricas.columns:
         df_metricas = df_metricas.sort_values('Média Geral', ascending=False)
+    
+    # Substituir NaN por zeros
+    df_metricas = df_metricas.fillna(0)
+    
+    # Formatar números para evitar exibição de NaN
+    for col in df_metricas.columns:
+        if col != 'Região':
+            df_metricas[col] = df_metricas[col].apply(lambda x: round(float(x), 2) if pd.notnull(x) else 0)
     
     # Mostrar tabela formatada
     st.dataframe(
@@ -1081,34 +1103,63 @@ def _criar_mapa_calor_regioes(metricas_regiao: Dict[str, Dict[str, float]], comp
         
     # Criar DataFrame para visualização
     dados = []
+    
+    # Percorrer cada região
     for regiao, metricas in metricas_regiao.items():
-        for cod_comp, valor in metricas.items():
-            if cod_comp != 'total_candidatos' and cod_comp != 'media_geral':
-                nome_comp = competencia_mapping.get(cod_comp, cod_comp)
+        # Percorrer cada competência
+        for cod_comp, nome_comp in competencia_mapping.items():
+            # Pular a média geral, total de candidatos e outras métricas que não são competências
+            if cod_comp not in metricas:
+                continue
+                
+            # Obter valor da métrica
+            valor = metricas.get(cod_comp, 0)
+            
+            # Verificar se o valor é válido
+            if valor > 0 and not pd.isna(valor):
                 dados.append({
                     'Região': regiao,
                     'Competência': nome_comp,
                     'Média': valor
                 })
     
+    # Verificar se temos dados suficientes
+    if not dados:
+        st.info("Dados insuficientes para criar mapa de calor.")
+        return
+        
+    # Criar DataFrame
     df_plot = pd.DataFrame(dados)
     
-    # Criar mapa de calor
-    fig = px.imshow(
-        pd.pivot_table(
+    # Criar mapa de calor apenas se tivermos dados
+    if not df_plot.empty:
+        # Pivotar o DataFrame para formato de matriz
+        pivot_df = pd.pivot_table(
             df_plot, 
             values='Média',
             index=['Região'],
-            columns=['Competência']
-        ),
-        text_auto='.1f',
-        aspect="auto",
-        color_continuous_scale='Viridis',
-        title="Mapa de calor do desempenho regional por competência"
-    )
-    
-    fig.update_layout(height=400)
-    st.plotly_chart(fig, use_container_width=True)
+            columns=['Competência'],
+            aggfunc='mean'
+        )
+        
+        # Criar mapa de calor
+        fig = px.imshow(
+            pivot_df,
+            text_auto='.1f',
+            aspect="auto",
+            color_continuous_scale='Viridis',
+            title="Mapa de calor do desempenho regional por competência"
+        )
+        
+        fig.update_layout(
+            height=400,
+            xaxis_title="Área de Conhecimento",
+            yaxis_title="Região"
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Dados insuficientes para criar mapa de calor das regiões.")
 
 
 def _mostrar_analise_disparidades_regionais(metricas_regiao: Dict[str, Dict[str, float]]) -> None:
