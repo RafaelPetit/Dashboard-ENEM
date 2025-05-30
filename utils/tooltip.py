@@ -103,7 +103,7 @@ def custom_metric_with_tooltip(label, value, delta=None, delta_color="normal", e
         delta_html = f'<div class="metric-delta {color_class}">{delta_value}</div>'
 
         # Determinar se está na metade direita da tela
-    is_right_side ="estado_maior_media_metrica" in (key or "")
+    is_right_side ="4" in (key or "")
 
     # CSS para a métrica personalizada
     st.markdown("""
