@@ -286,7 +286,6 @@ def get_explicacao_distribuicao(
     **📈 Estatísticas detalhadas:** Expanda a seção "Ver dados detalhados" logo abaixo para acessar métricas completas sobre a distribuição, incluindo análise de concentração, estatísticas de equidade e visualização da tabela completa.
     """
 
-
 def get_explicacao_aspectos_por_estado(
     aspecto_nome: str, 
     categoria_selecionada: Optional[str] = None,

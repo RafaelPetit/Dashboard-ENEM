@@ -22,5 +22,7 @@ from .analise_aspectos_sociais import (
 from .analise_geral import (
     analisar_metricas_principais,
     analisar_distribuicao_notas,
-    analisar_faltas
+    analisar_faltas,
+    analisar_desempenho_por_faixa_nota,
+    analisar_metricas_por_regiao
 )

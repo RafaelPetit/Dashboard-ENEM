@@ -29,5 +29,8 @@ from .graficos_aspectos_sociais import (
 
 from .graficos_geral import (
     criar_histograma,
-    criar_grafico_faltas
+    criar_grafico_faltas,
+    criar_grafico_media_por_estado,
+    criar_grafico_comparativo_areas,
+    criar_grafico_evasao
 )

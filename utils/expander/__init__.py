@@ -13,5 +13,8 @@ from .expander_aspectos_sociais import (
 
 from .expander_geral import (
     criar_expander_analise_histograma,
-    criar_expander_analise_faltas
+    criar_expander_analise_faltas,
+    criar_expander_analise_faixas_desempenho,
+    criar_expander_analise_regional,
+    criar_expander_analise_comparativo_areas
 )
