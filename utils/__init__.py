@@ -1,11 +1,9 @@
 # Este arquivo permite que a pasta utils funcione como um pacote Python
 from .data_loader import (
     load_data_for_tab, 
-    load_data_for_tab_with_sampling, 
+    filter_data_by_states, 
     agrupar_estados_em_regioes, 
-    calcular_seguro, 
-    filter_data_by_states,
-    optimize_dtypes
+    release_memory
 )
 from .mappings import get_mappings
 
