@@ -48,14 +48,13 @@ class DataConfig:
 @dataclass(frozen=True)
 class StatisticsConfig:
     """Configurações para cálculos estatísticos."""
-    
     SUPPORTED_OPERATIONS: List[str] = None
     DEFAULT_OPERATION: str = "media"
     
     def __post_init__(self):
         if self.SUPPORTED_OPERATIONS is None:
             object.__setattr__(self, 'SUPPORTED_OPERATIONS', [
-                'media', 'mediana', 'min', 'max', 'std'
+                'media', 'mediana', 'min', 'max', 'std', 'curtose', 'assimetria'
             ])
     
     def is_valid_operation(self, operation: str) -> bool:

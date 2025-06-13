@@ -133,7 +133,7 @@ def _calcular_faltas_por_estado(
     
     # Processamento mais eficiente usando agrupamento
     try:
-        grupos_estado = df.groupby('SG_UF_PROVA')
+        grupos_estado = df.groupby('SG_UF_PROVA', observed=True)
     except Exception as e:
         print(f"Erro ao agrupar por estado: {e}")
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
@@ -383,9 +383,8 @@ def preparar_dados_media_geral_estados(
             return pd.DataFrame(columns=['Local', 'Média Geral'])
             
         resultado = []
-        
-        # Processo eficiente usando agrupamento
-        grupos_estado = microdados_estados.groupby('SG_UF_PROVA')
+          # Processo eficiente usando agrupamento
+        grupos_estado = microdados_estados.groupby('SG_UF_PROVA', observed=True)
         
         for estado in estados_selecionados:
             try:
@@ -497,9 +496,8 @@ def preparar_dados_evasao(
     
     try:
         resultado = []
-        
-        # Processamento eficiente usando agrupamento
-        grupos_estado = microdados_estados.groupby('SG_UF_PROVA')
+          # Processamento eficiente usando agrupamento
+        grupos_estado = microdados_estados.groupby('SG_UF_PROVA', observed=True)
         
         for estado in estados_selecionados:
             try:

@@ -7,6 +7,7 @@ Este módulo foi completamente refatorado seguindo princípios SOLID, Clean Code
 ## 🏗️ Arquitetura
 
 ### Princípios Aplicados
+
 - **Single Responsibility Principle**: Cada classe tem uma responsabilidade única
 - **Open/Closed Principle**: Extensível sem modificar código existente
 - **Dependency Inversion**: Depende de abstrações, não de implementações concretas
@@ -34,6 +35,7 @@ data/
 ## 🚀 Como Usar
 
 ### Interface Compatível (Para código existente)
+
 ```python
 from data import load_data_for_tab, filter_data_by_states
 
@@ -43,6 +45,7 @@ df_filtered = filter_data_by_states(df, ['SP', 'RJ'])
 ```
 
 ### Nova API Avançada (Para desenvolvimento futuro)
+
 ```python
 from data.loaders import tab_loader
 from data.processors import state_filter
@@ -61,37 +64,44 @@ media = statistics_calculator.calculate(df['NOTA'], 'media')
 ## 🔧 Componentes Principais
 
 ### 1. Carregadores (`loaders.py`)
+
 - **ParquetLoader**: Carregamento básico de arquivos Parquet
 - **FilteredParquetLoader**: Carregamento otimizado para filtros
 - **TabDataLoader**: Carregamento especializado por abas
 - **DataLoaderFactory**: Factory para criação de carregadores
 
 ### 2. Processadores (`processors.py`)
+
 - **StateFilter**: Filtro especializado por estados
 - **RegionGrouper**: Agrupamento de estados por regiões
 - **DataCombiner**: Combinação eficiente de DataFrames
 
 ### 3. Gerenciamento de Memória (`memory.py`)
+
 - **DataFrameOptimizer**: Otimização automática de tipos
 - **MemoryManagerImpl**: Liberação controlada de memória
 
 ### 4. Sistema de Estatísticas (`statistics.py`)
+
 - **SafeStatisticsCalculator**: Cálculos seguros com tratamento de NaN
 - Suporte a múltiplas operações: média, mediana, min, max, std
 
 ### 5. Configurações (`config.py`)
+
 - **DataConfig**: Configurações de arquivos e caminhos
 - **StatisticsConfig**: Configurações de operações estatísticas
 
 ## 🔍 Melhorias Implementadas
 
 ### Performance
+
 - ✅ Carregamento lazy e otimizado
 - ✅ Redução automática de uso de memória (até 50%)
 - ✅ Cache inteligente do Streamlit mantido
 - ✅ Liberação proativa de objetos intermediários
 
 ### Qualidade de Código
+
 - ✅ Separação clara de responsabilidades
 - ✅ Tipagem explícita em toda a base
 - ✅ Documentação completa de métodos
@@ -99,12 +109,14 @@ media = statistics_calculator.calculate(df['NOTA'], 'media')
 - ✅ Sistema de logging estruturado
 
 ### Manutenibilidade
+
 - ✅ Configurações centralizadas
 - ✅ Código testável e modular
 - ✅ Interface compatível com código legado
 - ✅ Extensibilidade para novos tipos de dados
 
 ### Robustez
+
 - ✅ Validação de entrada em todos os métodos
 - ✅ Exceções customizadas e informativas
 - ✅ Fallbacks seguros para operações críticas
@@ -113,6 +125,7 @@ media = statistics_calculator.calculate(df['NOTA'], 'media')
 ## 🧪 Validação
 
 Execute os testes para verificar a integridade:
+
 ```bash
 cd Streamlit
 python data/test_refactor.py
@@ -120,16 +133,16 @@ python data/test_refactor.py
 
 ## 📊 Comparação: Antes vs Depois
 
-| Aspecto | Antes | Depois |
-|---------|-------|--------|
-| **Linhas de código** | 239 linhas em 1 arquivo | 800+ linhas em 9 módulos |
-| **Responsabilidades** | Misturadas | Separadas por módulo |
-| **Testabilidade** | Difícil | Fácil com mocks |
-| **Extensibilidade** | Modificar código existente | Adicionar novos módulos |
-| **Tratamento de erros** | Básico | Exceções customizadas |
-| **Logging** | Prints básicos | Sistema estruturado |
-| **Configuração** | Hardcoded | Centralizada |
-| **Tipagem** | Parcial | Completa |
+| Aspecto                 | Antes                      | Depois                   |
+| ----------------------- | -------------------------- | ------------------------ |
+| **Linhas de código**    | 239 linhas em 1 arquivo    | 800+ linhas em 9 módulos |
+| **Responsabilidades**   | Misturadas                 | Separadas por módulo     |
+| **Testabilidade**       | Difícil                    | Fácil com mocks          |
+| **Extensibilidade**     | Modificar código existente | Adicionar novos módulos  |
+| **Tratamento de erros** | Básico                     | Exceções customizadas    |
+| **Logging**             | Prints básicos             | Sistema estruturado      |
+| **Configuração**        | Hardcoded                  | Centralizada             |
+| **Tipagem**             | Parcial                    | Completa                 |
 
 ## 🔄 Compatibilidade
 
@@ -152,6 +165,7 @@ O módulo mantém **100% de compatibilidade** com o código existente. Todas as 
 ## 👥 Contribuição
 
 Para desenvolvimento futuro:
+
 1. Use as novas APIs modulares
 2. Siga os padrões estabelecidos
 3. Adicione testes para novos recursos

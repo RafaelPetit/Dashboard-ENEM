@@ -153,15 +153,14 @@ def _calcular_medias_estados_competencias(
     Retorna:
     --------
     Dict[str, Any]: Dicionário com médias calculadas
-    """
-    # Inicializar estruturas de dados
+    """    # Inicializar estruturas de dados
     todas_medias = []
     medias_por_estado = {}
     medias_por_competencia = {}
     
     try:
         # Agrupar por estado para melhor desempenho
-        grupos_estado = df.groupby('SG_UF_PROVA')
+        grupos_estado = df.groupby('SG_UF_PROVA', observed=True)
         
         # Processar cada estado
         for estado in estados:

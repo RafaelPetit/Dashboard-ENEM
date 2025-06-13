@@ -577,7 +577,7 @@ def _processar_aspectos_por_estado(
     
     # Agrupar por estado para processamento mais eficiente
     try:
-        grupos_estado = df.groupby('SG_UF_PROVA')
+        grupos_estado = df.groupby('SG_UF_PROVA', observed=True)
     except Exception as e:
         print(f"Erro ao agrupar por estado: {e}")
         return resultados

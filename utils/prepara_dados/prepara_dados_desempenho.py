@@ -585,7 +585,7 @@ def _processar_estados_em_lotes(
     
     # Agrupar por estado para processamento mais eficiente
     try:
-        grupos_estado = microdados.groupby('SG_UF_PROVA')
+        grupos_estado = microdados.groupby('SG_UF_PROVA', observed=True)
     except Exception as e:
         print(f"Erro ao agrupar por estado: {e}")
         return resultados

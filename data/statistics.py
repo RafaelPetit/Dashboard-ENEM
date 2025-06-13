@@ -6,6 +6,7 @@ Implementa cálculos estatísticos com tratamento robusto de erros.
 import numpy as np
 import pandas as pd
 from typing import Union, Callable, Dict
+from scipy import stats
 
 from .data_types import ArrayLike, StatisticResult, StatisticsCalculator
 from .exceptions import StatisticsCalculationError, UnsupportedOperationError
@@ -23,8 +24,24 @@ class SafeStatisticsCalculator(StatisticsCalculator):
             'mediana': np.median,
             'min': np.min,
             'max': np.max,
-            'std': np.std
+            'std': np.std,
+            'curtose': self._calculate_kurtosis,
+            'assimetria': self._calculate_skewness
         }
+    
+    def _calculate_kurtosis(self, data: np.ndarray) -> float:
+        """Calcula a curtose da distribuição."""
+        try:
+            return float(stats.kurtosis(data))
+        except Exception:
+            return 0.0
+    
+    def _calculate_skewness(self, data: np.ndarray) -> float:
+        """Calcula a assimetria da distribuição."""
+        try:
+            return float(stats.skew(data))
+        except Exception:
+            return 0.0
     
     def calculate(self, data: ArrayLike, operation: str = 'media') -> StatisticResult:
         """
