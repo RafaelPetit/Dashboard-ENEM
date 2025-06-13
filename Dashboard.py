@@ -6,7 +6,7 @@ from utils.mappings import get_mappings
 from tabs.geral import render_geral
 from tabs.aspectos_sociais import render_aspectos_sociais
 from tabs.desempenho import render_desempenho
-from utils.data_loader import load_data_for_tab, filter_data_by_states, agrupar_estados_em_regioes, release_memory
+from data.data_loader import load_data_for_tab, filter_data_by_states, agrupar_estados_em_regioes, release_memory
 
 # Configuração inicial da página
 st.set_page_config(
