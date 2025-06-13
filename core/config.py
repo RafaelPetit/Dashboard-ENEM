@@ -18,6 +18,10 @@ class UIConfig:
     LAYOUT: str = "wide"
     INITIAL_SIDEBAR_STATE: str = "expanded"
     
+    # Informações da aplicação
+    VERSION: str = "2.1.0"
+    LAST_UPDATE: str = "2025-06-13"
+    
     # Títulos e labels
     MAIN_TITLE: str = "📊 Dashboard de Análise do ENEM - 2023"
     SIDEBAR_HEADER: str = "Filtros"
