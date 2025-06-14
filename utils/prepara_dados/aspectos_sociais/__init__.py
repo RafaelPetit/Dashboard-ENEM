@@ -15,7 +15,8 @@ Classes principais:
 from .processors import (
     SocioeconomicAnalysisProcessor,
     SocialDistributionProcessor,
-    ComparativeSocialProcessor
+    ComparativeSocialProcessor,
+    SocialCorrelationProcessor
 )
 
 # Importar gerenciador de dados
@@ -23,8 +24,9 @@ from .data_manager import SocialDataManager, prepare_social_data
 
 __all__ = [
     'SocioeconomicAnalysisProcessor',
-    'SocialDistributionProcessor', 
+    'SocialDistributionProcessor',
     'ComparativeSocialProcessor',
+    'SocialCorrelationProcessor',
     'SocialDataManager',
     'prepare_social_data'
 ]

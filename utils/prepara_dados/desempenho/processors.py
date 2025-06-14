@@ -9,7 +9,7 @@ estabelecidos nas classes base.
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any, Union
-from ..base import BaseDataProcessor, CacheableProcessor, StateGroupedProcessor
+from ..base import BaseDataProcessor, CacheableProcessor, StateGroupedProcessor, ProcessingConfig
 from ..common_utils import MappingManager, StatisticalCalculator, DataAggregator, DataFilter
 from ...helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from data.data_loader import calcular_seguro, optimize_dtypes
@@ -19,12 +19,11 @@ class ComparativePerformanceProcessor(CacheableProcessor):
     """
     Processador para análise comparativa de desempenho por variável categórica.
     
-    Responsável por calcular médias de desempenho segmentadas por diferentes
-    características dos candidatos (sexo, tipo de escola, etc.).
+    Responsável por calcular médias de desempenho segmentadas por diferentes    características dos candidatos (sexo, tipo de escola, etc.).
     """
     
-    def __init__(self):
-        super().__init__("comparative_performance", ttl=1800)
+    def __init__(self, config: Optional[ProcessingConfig] = None):
+        super().__init__(config, cache_key_prefix="comparative_performance")
         self.mapping_manager = MappingManager()
         self.stats_calculator = StatisticalCalculator()
         self.data_filter = DataFilter()
@@ -50,15 +49,20 @@ class ComparativePerformanceProcessor(CacheableProcessor):
             
         Returns:
             DataFrame com médias por categoria e competência
-        """
-        # Validar dados de entrada
+        """        # Validar dados de entrada
+        # Verificar se colunas_notas é lista ou dicionário e converter se necessário
+        if isinstance(colunas_notas, dict):
+            colunas_notas = list(colunas_notas.keys())
+        elif not isinstance(colunas_notas, list):
+            colunas_notas = list(colunas_notas)
+            
         colunas_necessarias = [variavel_selecionada] + colunas_notas
         self._validate_input(data, required_columns=colunas_necessarias)
         
         # Filtrar dados válidos
-        df_trabalho = self.data_filter.filter_valid_data(
+        df_trabalho = self.data_filter.filter_valid_scores(
             data[colunas_necessarias].copy(),
-            required_columns=[variavel_selecionada]
+            score_columns=colunas_notas
         )
         
         # Determinar mapeamento para a variável
@@ -105,17 +109,25 @@ class ComparativePerformanceProcessor(CacheableProcessor):
         mapeamento: Optional[Dict[Any, str]] = None
     ) -> List[Dict[str, Any]]:
         """Calcula médias de desempenho por categoria e competência."""
-        resultados = []
+        resultados = []        # Obter categorias únicas
+        if coluna_categoria not in df.columns:
+            raise ValueError(f"Coluna '{coluna_categoria}' não encontrada no DataFrame")
         
-        # Obter categorias únicas
-        categorias_unicas = df[coluna_categoria].unique()
+        # Debug: verificar o tipo do resultado
+        coluna_data = df[coluna_categoria]
+        if isinstance(coluna_data, pd.DataFrame):
+            # Se for DataFrame, pegar a primeira coluna
+            categorias_unicas = coluna_data.iloc[:, 0].unique()
+        else:
+            # Se for Series, usar normalmente
+            categorias_unicas = coluna_data.unique()
+            
         total_categorias = len(categorias_unicas)
         
         # Verificar limites de processamento
         mappings = self.mapping_manager.get_mappings()
-        config = mappings['config_processamento']
-        
-        if total_categorias > config['max_categorias_alerta']:
+        config = mappings.get('config_processamento', {})
+        if total_categorias > config.get('max_categorias_alerta', 20):
             print(f"Alerta: {total_categorias} categorias. Isso pode afetar performance.")
         
         # Processamento eficiente com agrupamento
@@ -199,13 +211,11 @@ class ComparativePerformanceProcessor(CacheableProcessor):
 class PerformanceDistributionProcessor(CacheableProcessor):
     """
     Processador para análise de distribuição de desempenho.
-    
-    Responsável por preparar dados para gráficos de linha e
-    análises de distribuição de notas.
+      Responsável por preparar dados para gráficos de linha e    análises de distribuição de notas.
     """
     
-    def __init__(self):
-        super().__init__("performance_distribution", ttl=1800)
+    def __init__(self, config: Optional[ProcessingConfig] = None):
+        super().__init__(config, cache_key_prefix="performance_distribution")
         self.mapping_manager = MappingManager()
     
     def _process_internal(
@@ -285,13 +295,11 @@ class PerformanceDistributionProcessor(CacheableProcessor):
 class StatePerformanceProcessor(StateGroupedProcessor):
     """
     Processador para análise de desempenho por estado/região.
-    
-    Especializado em calcular médias de desempenho agrupadas
-    por unidade federativa ou região.
+      Especializado em calcular médias de desempenho agrupadas    por unidade federativa ou região.
     """
     
-    def __init__(self):
-        super().__init__("state_performance", ttl=3600)
+    def __init__(self, config: Optional[ProcessingConfig] = None):
+        super().__init__("state_performance", config)
         self.mapping_manager = MappingManager()
         self.stats_calculator = StatisticalCalculator()
     
@@ -399,10 +407,9 @@ class StatePerformanceProcessor(StateGroupedProcessor):
                     'Área': 'Média Geral',
                     'Média': round(sum(medias_estado) / len(medias_estado), 2)
                 })
-            
-            # Liberar memória periodicamente
-            config = self.mapping_manager.get_mappings()['config_processamento']
-            if (i+1) % config['tamanho_lote_estados'] == 0:
+              # Liberar memória periodicamente
+            config = self.mapping_manager.get_mappings().get('config_processamento', {})
+            if (i+1) % config.get('tamanho_lote_estados', 5) == 0:
                 release_memory()
         
         return resultados
@@ -465,12 +472,11 @@ class ScatterAnalysisProcessor(CacheableProcessor):
     """
     Processador para análise de correlação em gráficos de dispersão.
     
-    Especializado em filtrar e preparar dados para análises
-    de correlação entre diferentes competências.
+    Especializado em filtrar e preparar dados para análises    de correlação entre diferentes competências.
     """
     
-    def __init__(self):
-        super().__init__("scatter_analysis", ttl=1800)
+    def __init__(self, config: Optional[ProcessingConfig] = None):
+        super().__init__(config, cache_key_prefix="scatter_analysis")
         self.mapping_manager = MappingManager()
         self.data_filter = DataFilter()
     
@@ -507,13 +513,11 @@ class ScatterAnalysisProcessor(CacheableProcessor):
         # Validar entrada
         if data.empty or eixo_x not in data.columns or eixo_y not in data.columns:
             return pd.DataFrame(), 0
-        
-        # Obter configurações
+          # Obter configurações
         mappings = self.mapping_manager.get_mappings()
-        config = mappings['config_processamento']
-        
+        config = mappings.get('config_processamento', {})
         if max_amostras is None:
-            max_amostras = config['max_amostras_scatter']
+            max_amostras = config.get('max_amostras_scatter', 50000)
         
         # Determinar colunas necessárias
         colunas_necessarias = self._determinar_colunas_necessarias(

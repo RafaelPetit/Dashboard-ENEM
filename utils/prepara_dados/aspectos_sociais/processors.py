@@ -9,7 +9,7 @@ estabelecidos nas classes base.
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any, Union
-from ..base import BaseDataProcessor, CacheableProcessor, StateGroupedProcessor
+from ..base import BaseDataProcessor, CacheableProcessor, StateGroupedProcessor, ProcessingConfig
 from ..common_utils import MappingManager, StatisticalCalculator, DataAggregator, DataFilter
 from ...helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from data.data_loader import optimize_dtypes
@@ -18,13 +18,11 @@ from data.data_loader import optimize_dtypes
 class SocioeconomicAnalysisProcessor(CacheableProcessor):
     """
     Processador para análise de aspectos socioeconômicos dos candidatos.
-    
-    Responsável por preparar dados relacionados à escolaridade dos pais,
-    renda familiar, e outras características socioeconômicas.
+      Responsável por preparar dados relacionados à escolaridade dos pais,    renda familiar, e outras características socioeconômicas.
     """
     
-    def __init__(self):
-        super().__init__("socioeconomic_analysis", ttl=1800)
+    def __init__(self, config: Optional[ProcessingConfig] = None):
+        super().__init__(config, cache_key_prefix="socioeconomic_analysis")
         self.mapping_manager = MappingManager()
         self.stats_calculator = StatisticalCalculator()
         self.data_aggregator = DataAggregator()
@@ -60,7 +58,7 @@ class SocioeconomicAnalysisProcessor(CacheableProcessor):
         )
         
         # Filtrar dados válidos
-        df_trabalho = self.data_filter.filter_valid_data(
+        df_trabalho = self.data_filter.filter_valid_scores(
             data[colunas_necessarias].copy(),
             required_columns=[aspecto_social]
         )
@@ -109,50 +107,57 @@ class SocioeconomicAnalysisProcessor(CacheableProcessor):
     
     @memory_intensive_function
     def _preparar_dados_socioeconomicos(
-        self, 
-        df: pd.DataFrame, 
-        aspecto_social: str, 
-        mappings: Dict
+        self,
+        df: pd.DataFrame,
+        aspecto_social: str,
+        mappings: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
-        """Prepara dados socioeconômicos com cálculos estatísticos."""
+        """Prepara dados socioeconômicos para análise."""
         resultados = []
         
-        # Agrupar por estado para processamento eficiente
-        grupos_estado = df.groupby('SG_UF_PROVA', observed=True)
-        
-        for estado, dados_estado in grupos_estado:
-            if len(dados_estado) == 0:
-                continue
-                
-            # Calcular distribuição das categorias
-            distribuicao = dados_estado[aspecto_social].value_counts()
-            total_estado = len(dados_estado)
+        try:
+            # Agrupar e calcular estatísticas
+            agrupado = df.groupby(aspecto_social)
             
-            for categoria, quantidade in distribuicao.items():
-                percentual = (quantidade / total_estado * 100) if total_estado > 0 else 0
+            for categoria, grupo in agrupado:
+                stats = self.stats_calculator.calculate_basic_stats(grupo)
                 
-                resultados.append({
-                    'Estado': estado,
-                    'Aspecto': aspecto_social,
-                    'Categoria': categoria,
-                    'Quantidade': quantidade,
-                    'Percentual': round(percentual, 2),
-                    'Total_Estado': total_estado
-                })
+                resultado = {
+                    'categoria': categoria,
+                    'total': len(grupo),
+                    'percentual': round((len(grupo) / len(df)) * 100, 2),
+                    'media_idade': stats.mean if 'TP_FAIXA_ETARIA' in grupo.columns else None
+                }
+                
+                resultados.append(resultado)
+            
+            return resultados
+            
+        except Exception as e:
+            print(f"Erro ao preparar dados socioeconômicos: {e}")
+            return []
+    
+    def _validate_input(self, data: pd.DataFrame, required_columns: List[str]) -> bool:
+        """Valida dados de entrada."""
+        if data is None or data.empty:
+            print("Erro: DataFrame vazio ou nulo")
+            return False
         
-        return resultados
+        missing_columns = [col for col in required_columns if col not in data.columns]
+        if missing_columns:
+            print(f"Erro: Colunas ausentes: {missing_columns}")
+            return False
+        
+        return True
 
 
 class SocialDistributionProcessor(StateGroupedProcessor):
     """
     Processador para análise de distribuição de características sociais.
-    
-    Especializado em calcular distribuições percentuais de categorias
-    sociais por estado ou região.
+      Especializado em calcular distribuições percentuais de categorias    sociais por estado ou região.
     """
-    
-    def __init__(self):
-        super().__init__("social_distribution", ttl=1800)
+    def __init__(self, config: Optional[ProcessingConfig] = None):
+        super().__init__("social_distribution", config)
         self.mapping_manager = MappingManager()
         self.data_aggregator = DataAggregator()
     
@@ -287,13 +292,10 @@ class SocialDistributionProcessor(StateGroupedProcessor):
 class ComparativeSocialProcessor(CacheableProcessor):
     """
     Processador para análises comparativas entre diferentes grupos sociais.
-    
-    Permite comparar características sociais entre diferentes segmentos
-    da população de candidatos.
+      Permite comparar características sociais entre diferentes segmentos    da população de candidatos.
     """
-    
-    def __init__(self):
-        super().__init__("comparative_social", ttl=1800)
+    def __init__(self, config: Optional[ProcessingConfig] = None):
+        super().__init__("comparative_social", config)
         self.mapping_manager = MappingManager()
         self.stats_calculator = StatisticalCalculator()
     
@@ -358,3 +360,88 @@ class ComparativeSocialProcessor(CacheableProcessor):
                 })
         
         return resultados
+
+
+class SocialCorrelationProcessor(CacheableProcessor[Tuple[pd.DataFrame, str, str]]):
+    """Processador para análise de correlação entre aspectos sociais."""
+    
+    def __init__(self, config: Optional[ProcessingConfig] = None):
+        super().__init__(config)
+        self.mapping_manager = MappingManager()
+        self.data_filter = DataFilter()
+    
+    def process(
+        self, 
+        data: pd.DataFrame, 
+        var_x: str, 
+        var_y: str,
+        variaveis_sociais: Dict[str, Dict[str, Any]]
+    ) -> Tuple[pd.DataFrame, str, str]:
+        """
+        Prepara dados para análise de correlação entre duas variáveis sociais.
+        
+        Args:
+            data: DataFrame com microdados
+            var_x: Primeira variável para correlação
+            var_y: Segunda variável para correlação
+            variaveis_sociais: Dicionário com mapeamentos
+            
+        Returns:
+            Tuple com (DataFrame processado, nome var_x, nome var_y)
+        """
+        # Validar entrada
+        required_columns = [var_x, var_y]
+        if not self.validate_input(data, required_columns):
+            return pd.DataFrame(), var_x, var_y
+        
+        try:
+            # Selecionar apenas colunas necessárias
+            df_trabalho = data[required_columns].copy()
+            
+            # Remover registros com valores inválidos
+            df_trabalho = df_trabalho.dropna(subset=required_columns)
+            
+            # Aplicar mapeamentos
+            var_x_plot = self._aplicar_mapeamento(df_trabalho, var_x, variaveis_sociais)
+            var_y_plot = self._aplicar_mapeamento(df_trabalho, var_y, variaveis_sociais)
+            
+            # Otimizar tipos de dados
+            df_otimizado = self.optimize_dataframe(df_trabalho)
+            
+            return df_otimizado, var_x_plot, var_y_plot
+            
+        except Exception as e:
+            print(f"Erro ao preparar correlação social: {e}")
+            return pd.DataFrame(), var_x, var_y
+    
+    def _aplicar_mapeamento(
+        self, 
+        df: pd.DataFrame, 
+        variavel: str, 
+        variaveis_sociais: Dict[str, Dict[str, Any]]
+    ) -> str:
+        """Aplica mapeamento a uma variável se necessário."""
+        if variavel not in df.columns or variavel not in variaveis_sociais:
+            return variavel
+        
+        # Verificar se há mapeamento disponível
+        mapeamento_info = variaveis_sociais.get(variavel, {})
+        mapeamento = mapeamento_info.get('mapeamento')
+        
+        if mapeamento and df[variavel].dtype != 'object':
+            coluna_nome = f'{variavel}_NOME'
+            
+            try:
+                df[coluna_nome] = df[variavel].map(mapeamento)
+                
+                # Converter para categoria para economizar memória
+                categorias = list(mapeamento.values())
+                df[coluna_nome] = pd.Categorical(df[coluna_nome], categories=categorias)
+                
+                return coluna_nome
+                
+            except Exception as e:
+                print(f"Erro ao aplicar mapeamento para '{variavel}': {e}")
+                return variavel
+        
+        return variavel

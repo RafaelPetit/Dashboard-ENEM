@@ -441,8 +441,7 @@ def _mostrar_comparacao_competencias(
     _exibir_estatistica("", comparacao_var, prefixo="")
 
 
-def _gerar_comparacao_medias(
-    media_x: float, 
+def _gerar_comparacao_medias(    media_x: float, 
     media_y: float, 
     nome_x: str, 
     nome_y: str
@@ -450,7 +449,17 @@ def _gerar_comparacao_medias(
     """
     Gera texto comparativo para médias de duas competências.
     """
-    diff_percent = ((media_x - media_y) / media_y * 100) if media_y != 0 else 0
+    # Verificar se os valores são válidos e finitos
+    if not (np.isfinite(media_x) and np.isfinite(media_y)) or media_y == 0:
+        return "Não foi possível comparar as médias devido a valores inválidos."
+    
+    # Calcular diferença percentual com proteção contra overflow
+    try:
+        diff_percent = ((media_x - media_y) / media_y * 100)
+        if not np.isfinite(diff_percent):
+            return "Não foi possível calcular a diferença percentual."
+    except (ZeroDivisionError, OverflowError):
+        return "Não foi possível comparar as médias devido a valores extremos."
     
     if abs(diff_percent) < 1:
         return f"As médias de desempenho são praticamente iguais (diferença de apenas {abs(diff_percent):.2f}%)."
@@ -459,11 +468,15 @@ def _gerar_comparacao_medias(
         comp_menor = nome_y if media_x > media_y else nome_x
         diff_abs = abs(media_x - media_y)
         diff_perc = abs(diff_percent)
-        return f"A média em {comp_maior} é {diff_perc:.2f}% maior que em {comp_menor} (diferença de {diff_abs:.2f} pontos)."
+        
+        # Verificar se os valores são finitos antes de formatar
+        if np.isfinite(diff_abs) and np.isfinite(diff_perc):
+            return f"A média em {comp_maior} é {diff_perc:.2f}% maior que em {comp_menor} (diferença de {diff_abs:.2f} pontos)."
+        else:
+            return "Há uma diferença significativa entre as médias, mas os valores são muito extremos para calcular precisamente."
 
 
-def _gerar_comparacao_variabilidade(
-    var_x: float, 
+def _gerar_comparacao_variabilidade(    var_x: float, 
     var_y: float, 
     nome_x: str, 
     nome_y: str
@@ -471,7 +484,18 @@ def _gerar_comparacao_variabilidade(
     """
     Gera texto comparativo para variabilidade de duas competências.
     """
-    if abs(var_x - var_y) < 5:
+    # Verificar se os valores são válidos e finitos
+    if not (np.isfinite(var_x) and np.isfinite(var_y)):
+        return "Não foi possível comparar a variabilidade devido a valores inválidos."
+    
+    try:
+        diff_var = abs(var_x - var_y)
+        if not np.isfinite(diff_var):
+            return "Não foi possível calcular a diferença de variabilidade."
+    except (OverflowError, ValueError):
+        return "Não foi possível comparar a variabilidade devido a valores extremos."
+    
+    if diff_var < 5:
         return "Ambas as competências apresentam níveis similares de variabilidade nos resultados."
     else:
         comp_mais_var = nome_x if var_x > var_y else nome_y

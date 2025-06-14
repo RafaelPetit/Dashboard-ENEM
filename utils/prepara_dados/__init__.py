@@ -38,18 +38,18 @@ from .common_utils import (
 )
 
 # Importar gerenciadores de cada domínio
-from .geral.data_manager import GeneralDataManager
+from .geral.data_manager import GeralDataManager
 from .aspectos_sociais.data_manager import SocialDataManager  
 from .desempenho.data_manager import PerformanceDataManager
 
 # Importar funções de compatibilidade principais - Geral
 from .geral.data_manager import (
-    prepare_general_data,
     preparar_dados_histograma,
-    preparar_dados_presenca,
+    preparar_dados_grafico_faltas,
     preparar_dados_metricas_principais,
-    preparar_dados_media_estados,
-    preparar_dados_analise_comparativa
+    preparar_dados_media_geral_estados,
+    preparar_dados_evasao,
+    preparar_dados_comparativo_areas
 )
 
 # Importar funções de compatibilidade - Aspectos Sociais
@@ -57,7 +57,8 @@ from .aspectos_sociais.data_manager import (
     prepare_social_data,
     preparar_dados_aspecto_social,
     preparar_dados_comparacao_social,
-    obter_estatisticas_aspecto_social
+    obter_estatisticas_aspecto_social,
+    preparar_dados_correlacao
 )
 
 # Importar funções de compatibilidade - Desempenho
@@ -92,19 +93,20 @@ except ImportError:
     # Fallback caso os arquivos antigos não existam
     pass
 
+# Comentado temporariamente durante refatoração
+# Importações diretas do arquivo original para manter compatibilidade temporária
 try:
     from .aspectos_sociais.prepara_dados_aspectos_sociais import (
-        preparar_dados_correlacao,
         preparar_dados_distribuicao,
         contar_candidatos_por_categoria,
         ordenar_categorias,
+        preparar_dados_grafico_aspectos_por_estado,
         preparar_dados_heatmap,
         preparar_dados_barras_empilhadas,
-        preparar_dados_sankey,
-        preparar_dados_grafico_aspectos_por_estado
+        preparar_dados_sankey
     )
 except ImportError:
-    # Fallback caso os arquivos antigos não existam
+    # Fallback caso haja algum problema
     pass
 
 __all__ = [
@@ -119,25 +121,28 @@ __all__ = [
     'StatisticalCalculator',
     'DataAggregator',
     'DataFilter',
-    
-    # Gerenciadores de domínio
-    'GeneralDataManager',
+      # Gerenciadores de domínio
+    'GeralDataManager',
     'SocialDataManager',
     'PerformanceDataManager',
-    
-    # Funções de compatibilidade - Geral
-    'prepare_general_data',
+      # Funções de compatibilidade - Geral
     'preparar_dados_histograma',
-    'preparar_dados_presenca', 
+    'preparar_dados_grafico_faltas', 
     'preparar_dados_metricas_principais',
-    'preparar_dados_media_estados',
-    'preparar_dados_analise_comparativa',
-    
-    # Funções de compatibilidade - Aspectos Sociais
+    'preparar_dados_media_geral_estados',
+    'preparar_dados_evasao',
+    'preparar_dados_comparativo_areas',
+      # Funções de compatibilidade - Aspectos Sociais
     'prepare_social_data',
-    'preparar_dados_aspecto_social',
-    'preparar_dados_comparacao_social',
+    'preparar_dados_aspecto_social',    'preparar_dados_comparacao_social',
     'obter_estatisticas_aspecto_social',
+    'preparar_dados_correlacao',    'preparar_dados_distribuicao',
+    'contar_candidatos_por_categoria', 
+    'ordenar_categorias',
+    'preparar_dados_grafico_aspectos_por_estado',
+    'preparar_dados_heatmap',
+    'preparar_dados_barras_empilhadas',
+    'preparar_dados_sankey',
     
     # Funções de compatibilidade - Desempenho
     'prepare_performance_data',

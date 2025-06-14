@@ -309,15 +309,14 @@ def preparar_dados_heatmap(
     --------
     DataFrame
         DataFrame normalizado para heatmap
-    """
-    # Verificar se temos dados válidos
+    """    # Verificar se temos dados válidos
     if df_correlacao.empty or var_x_plot not in df_correlacao.columns or var_y_plot not in df_correlacao.columns:
         print(f"Aviso: Dados insuficientes para criar heatmap")
         return pd.DataFrame()
     
     try:
         # Contar ocorrências para cada combinação (método otimizado)
-        contagem = df_correlacao.groupby([var_x_plot, var_y_plot]).size().reset_index(name='Contagem')
+        contagem = df_correlacao.groupby([var_x_plot, var_y_plot], observed=False).size().reset_index(name='Contagem')
         
         # Verificar se temos contagens para trabalhar
         if contagem.empty:
@@ -372,11 +371,10 @@ def preparar_dados_barras_empilhadas(
     # Verificar se temos dados válidos
     if df_correlacao.empty or var_x_plot not in df_correlacao.columns or var_y_plot not in df_correlacao.columns:
         print(f"Aviso: Dados insuficientes para criar barras empilhadas")
-        return pd.DataFrame()
-    
+        return pd.DataFrame()    
     try:
         # Contar ocorrências para cada combinação (método otimizado)
-        contagem = df_correlacao.groupby([var_x_plot, var_y_plot]).size().reset_index(name='Contagem')
+        contagem = df_correlacao.groupby([var_x_plot, var_y_plot], observed=False).size().reset_index(name='Contagem')
         
         # Verificar se temos contagens para trabalhar
         if contagem.empty:
@@ -433,11 +431,10 @@ def preparar_dados_sankey(
     # Verificar se temos dados válidos
     if df_correlacao.empty or var_x_plot not in df_correlacao.columns or var_y_plot not in df_correlacao.columns:
         print(f"Aviso: Dados insuficientes para criar diagrama Sankey")
-        return [], [], [], []
-    
+        return [], [], [], []    
     try:
         # Contar ocorrências para cada combinação (método otimizado)
-        contagem = df_correlacao.groupby([var_x_plot, var_y_plot]).size().reset_index(name='Contagem')
+        contagem = df_correlacao.groupby([var_x_plot, var_y_plot], observed=False).size().reset_index(name='Contagem')
         
         # Verificar se temos contagens para trabalhar
         if contagem.empty:

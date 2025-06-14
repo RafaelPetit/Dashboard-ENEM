@@ -33,6 +33,23 @@ class MappingManager:
         """Inicializa com mapeamentos globais."""
         self._mappings = get_mappings()
     
+    def get_mappings(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Retorna os mapeamentos globais.
+        
+        Returns:
+            Dicionário com mapeamentos de variáveis
+        """
+        # Adicionar configurações padrão se não existirem
+        if 'config_processamento' not in self._mappings:
+            self._mappings['config_processamento'] = {
+                'max_amostras_scatter': 50000,
+                'max_categorias_alerta': 20,
+                'tamanho_lote_estados': 5
+            }
+        
+        return self._mappings
+    
     def apply_mapping(self, df: pd.DataFrame, variable: str, 
                      mappings_dict: Dict[str, Dict[str, Any]]) -> Tuple[pd.DataFrame, str]:
         """

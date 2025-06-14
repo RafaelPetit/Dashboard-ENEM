@@ -8,7 +8,8 @@ from .processors import (
     AttendanceAnalysisProcessor,
     MainMetricsProcessor,
     StateAverageProcessor,
-    ComparativeAnalysisProcessor
+    ComparativeAnalysisProcessor,
+    CorrelationAnalysisProcessor
 )
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     'AttendanceAnalysisProcessor', 
     'MainMetricsProcessor',
     'StateAverageProcessor',
-    'ComparativeAnalysisProcessor'
+    'ComparativeAnalysisProcessor',
+    'CorrelationAnalysisProcessor'
 ]

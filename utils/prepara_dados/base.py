@@ -154,11 +154,10 @@ class BaseDataProcessor(ABC, Generic[T]):
                     if unique_values < total_values * 0.5:  # Menos de 50% de valores únicos
                         df_optimized[col] = pd.Categorical(df_optimized[col])
                 except Exception as e:
-                    print(f"Aviso: Erro ao categorizar coluna {col}: {e}")
-                    
+                    print(f"Aviso: Erro ao categorizar coluna {col}: {e}")                    
         return df_optimized
     
-    def process_in_batches(self, data: DataFrameType, 
+    def process_in_batches(self, data: DataFrameType,
                           batch_processor: callable, 
                           **kwargs) -> List[Any]:
         """
@@ -182,9 +181,13 @@ class BaseDataProcessor(ABC, Generic[T]):
             batch = data.iloc[i:i + batch_size]
             
             try:
-                with ContextTimer(performance_monitor, f"batch_process_{i//batch_size}"):
-                    result = batch_processor(batch, **kwargs)
-                    results.append(result)
+                result = batch_processor(batch, **kwargs)
+                results.append(result)
+                
+                # Liberar memória a cada 10 lotes
+                if (i // batch_size + 1) % 10 == 0:
+                    release_memory()
+                    
             except Exception as e:
                 print(f"Erro no lote {i//batch_size}: {e}")
                 continue
@@ -205,59 +208,63 @@ class CacheableProcessor(BaseDataProcessor[T]):
         
         Args:
             config: Configurações de processamento
-            cache_key_prefix: Prefixo para chaves de cache
-        """
+            cache_key_prefix: Prefixo para chaves de cache        """
         super().__init__(config)
         self.cache_prefix = cache_key_prefix
     
-    def _generate_cache_key(self, data: DataFrameType, **kwargs) -> str:
+    def _process_internal(self, data: DataFrameType, **kwargs) -> T:
         """
-        Gera chave única para cache baseada nos dados e parâmetros.
-        
-        Args:
-            data: DataFrame de entrada
-            **kwargs: Parâmetros adicionais
-            
-        Returns:
-            Chave de cache única
-        """
-        # Usar hash do shape, colunas e parâmetros
-        data_hash = hash((
-            data.shape,
-            tuple(data.columns),
-            tuple(sorted(kwargs.items()))
-        ))
-        
-        return f"{self.cache_prefix}_{abs(data_hash)}"
-    
-    def cached_process(self, data: DataFrameType, **kwargs) -> T:
-        """
-        Processa com cache automático.
+        Método interno de processamento que deve ser implementado pelas subclasses.
         
         Args:
             data: DataFrame a processar
             **kwargs: Argumentos específicos
             
         Returns:
-            Resultado processado (do cache ou novo)
+            Resultado processado
         """
-        cache_key = self._generate_cache_key(data, **kwargs)
+        raise NotImplementedError("Subclasses devem implementar _process_internal")
+    
+    def process(self, data: DataFrameType, **kwargs) -> T:
+        """
+        Implementa o método abstrato da classe base com cache.
         
-        # Tentar obter do cache
-        cached_result = cache_manager.get(cache_key)
-        if cached_result is not None:
-            performance_monitor.record_cache_hit()
-            return cached_result
-        
-        # Processar e armazenar no cache
-        performance_monitor.record_cache_miss()
-        
-        with ContextTimer(performance_monitor, "data_processing"):
-            result = self.process(data, **kwargs)
+        Args:
+            data: DataFrame a processar
+            **kwargs: Argumentos específicos
             
-        cache_manager.set(cache_key, result, ttl=self.config.cache_ttl)
+        Returns:
+            Resultado processado (com cache)
+        """
+        return self._process_internal(data, **kwargs)
+    
+    def _validate_input(self, data: DataFrameType, required_columns: List[str]) -> None:
+        """
+        Valida dados de entrada com tratamento de exceções.
         
-        return result
+        Args:
+            data: DataFrame a validar
+            required_columns: Colunas obrigatórias
+            
+        Raises:
+            ValueError: Se dados são inválidos
+        """
+        if not self.validate_input(data, required_columns):
+            raise ValueError(f"Dados inválidos para processador {self.cache_prefix}")
+    
+    @optimized_cache(ttl=1800)
+    def cached_process(self, data: DataFrameType, **kwargs) -> T:
+        """
+        Processa com cache automático usando o decorator optimized_cache.
+        
+        Args:
+            data: DataFrame a processar
+            **kwargs: Argumentos específicos
+            
+        Returns:
+            Resultado processado
+        """
+        return self.process(data, **kwargs)
 
 
 class StateGroupedProcessor(CacheableProcessor[T]):
@@ -266,10 +273,23 @@ class StateGroupedProcessor(CacheableProcessor[T]):
     Implementa Strategy Pattern para diferentes tipos de agrupamento.
     """
     
-    def __init__(self, config: Optional[ProcessingConfig] = None):
+    def __init__(self, cache_key_prefix: str, config: Optional[ProcessingConfig] = None):
         """Inicializa processador de estados."""
-        super().__init__(config, "state_processor")
+        super().__init__(config, cache_key_prefix)
         self.state_column = "SG_UF_PROVA"
+    
+    def process(self, data: DataFrameType, **kwargs) -> T:
+        """
+        Implementa processamento com agrupamento por estados.
+        
+        Args:
+            data: DataFrame a processar
+            **kwargs: Argumentos específicos
+            
+        Returns:
+            Resultado processado
+        """
+        return self._process_internal(data, **kwargs)
     
     def group_by_states(self, data: DataFrameType, 
                        states: List[str]) -> pd.core.groupby.DataFrameGroupBy:
@@ -309,13 +329,15 @@ class StateGroupedProcessor(CacheableProcessor[T]):
             grouped = self.group_by_states(data, states)
             results = []
             
-            for state in states:
+            for i, state in enumerate(states):
                 try:
                     state_data = grouped.get_group(state)
+                    result = state_processor(state_data, state=state, **kwargs)
+                    results.append(result)
                     
-                    with ContextTimer(performance_monitor, f"process_state_{state}"):
-                        result = state_processor(state_data, state=state, **kwargs)
-                        results.append(result)
+                    # Liberar memória a cada 5 estados processados
+                    if (i + 1) % 5 == 0:
+                        release_memory()
                         
                 except KeyError:
                     # Estado não encontrado, continuar
@@ -389,20 +411,20 @@ class DataProcessorFactory:
     """Factory para criar diferentes tipos de processadores."""
     
     @staticmethod
-    def create_basic_processor(config: Optional[ProcessingConfig] = None) -> BaseDataProcessor:
+    def create_basic_processor(cache_key: str = "basic", config: Optional[ProcessingConfig] = None) -> CacheableProcessor:
         """Cria processador básico."""
-        return CacheableProcessor(config)
+        return CacheableProcessor(config=config, cache_key_prefix=cache_key)
     
     @staticmethod
-    def create_state_processor(config: Optional[ProcessingConfig] = None) -> StateGroupedProcessor:
+    def create_state_processor(cache_key: str = "state", config: Optional[ProcessingConfig] = None) -> StateGroupedProcessor:
         """Cria processador de estados."""
-        return StateGroupedProcessor(config)
+        return StateGroupedProcessor(config=config, cache_key_prefix=cache_key)
     
     @staticmethod
-    def create_custom_processor(processor_class: type, 
+    def create_custom_processor(processor_class: type, cache_key: str, 
                               config: Optional[ProcessingConfig] = None) -> BaseDataProcessor:
         """Cria processador customizado."""
-        return processor_class(config)
+        return processor_class(cache_key, config=config)
 
 
 # Alias para compatibilidade

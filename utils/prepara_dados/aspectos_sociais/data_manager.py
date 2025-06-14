@@ -11,7 +11,8 @@ from typing import Dict, List, Optional, Any, Union, Tuple
 from .processors import (
     SocioeconomicAnalysisProcessor,
     SocialDistributionProcessor,
-    ComparativeSocialProcessor
+    ComparativeSocialProcessor,
+    SocialCorrelationProcessor
 )
 from ..common_utils import MappingManager, DataFilter
 from ...helpers.cache_utils import optimized_cache
@@ -21,14 +22,14 @@ class SocialDataManager:
     """
     Gerenciador centralizado para preparação de dados de aspectos sociais.
     
-    Esta classe atua como um Facade, fornecendo uma interface simples
-    para todas as operações relacionadas aos aspectos sociais.
+    Esta classe atua como um Facade, fornecendo uma interface simples    para todas as operações relacionadas aos aspectos sociais.
     """
     
     def __init__(self):
         self.socioeconomic_processor = SocioeconomicAnalysisProcessor()
         self.distribution_processor = SocialDistributionProcessor()
         self.comparative_processor = ComparativeSocialProcessor()
+        self.correlation_processor = SocialCorrelationProcessor()
         self.mapping_manager = MappingManager()
         self.data_filter = DataFilter()
     
@@ -230,3 +231,33 @@ def obter_estatisticas_aspecto_social(
         'categoria_mais_frequente': distribuicao_percentual.idxmax(),
         'categoria_menos_frequente': distribuicao_percentual.idxmin()
     }
+
+
+@optimized_cache(ttl=1800)
+def preparar_dados_correlacao(
+    microdados: pd.DataFrame, 
+    var_x: str, 
+    var_y: str, 
+    variaveis_sociais: Dict[str, Dict[str, Any]]
+) -> Tuple[pd.DataFrame, str, str]:
+    """
+    Função de compatibilidade para preparar dados de correlação.
+    
+    Mantém a mesma interface da função original mas usa o novo
+    SocialCorrelationProcessor internamente.
+    
+    Args:
+        microdados: DataFrame com microdados
+        var_x: Nome da primeira variável
+        var_y: Nome da segunda variável
+        variaveis_sociais: Dicionário com mapeamentos das variáveis
+        
+    Returns:
+        Tuple com (DataFrame preparado, nome da coluna X, nome da coluna Y)
+    """
+    return _social_data_manager.correlation_processor.process(
+        data=microdados,
+        var_x=var_x,
+        var_y=var_y,
+        variaveis_sociais=variaveis_sociais
+    )

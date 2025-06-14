@@ -39,8 +39,7 @@ class GeralDataManager:
         self.metrics_processor = MainMetricsProcessor(self.config)
         self.state_average_processor = StateAverageProcessor(self.config)
         self.comparative_processor = ComparativeAnalysisProcessor(self.config)
-        
-        # Obter mapeamentos
+          # Obter mapeamentos
         mappings = get_mappings()
         self.competencia_mapping = mappings['competencia_mapping']
         self.colunas_notas = mappings['colunas_notas']
@@ -57,7 +56,7 @@ class GeralDataManager:
         Returns:
             Tuple com (DataFrame filtrado, nome da coluna, nome da área)
         """
-        return self.histogram_processor.cached_process(df, coluna=coluna)
+        return self.histogram_processor.process(df, coluna=coluna)
     
     def preparar_dados_grafico_faltas(self, microdados_estados: pd.DataFrame, 
                                     estados_selecionados: List[str]) -> pd.DataFrame:
@@ -67,12 +66,11 @@ class GeralDataManager:
         
         Args:
             microdados_estados: DataFrame com microdados dos candidatos
-            estados_selecionados: Lista de estados selecionados para análise
-            
+            estados_selecionados: Lista de estados selecionados para análise            
         Returns:
             DataFrame com dados de faltas por estado
         """
-        return self.attendance_processor.cached_process(
+        return self.attendance_processor.process(
             microdados_estados, 
             estados_selecionados=estados_selecionados
         )
@@ -90,7 +88,7 @@ class GeralDataManager:
         Returns:
             Dicionário com métricas calculadas
         """
-        return self.metrics_processor.cached_process(
+        return self.metrics_processor.process(
             microdados_estados,
             estados_selecionados=estados_selecionados,
             colunas_notas=self.colunas_notas
@@ -111,7 +109,7 @@ class GeralDataManager:
         Returns:
             DataFrame com dados de média geral por estado ou região
         """
-        return self.state_average_processor.cached_process(
+        return self.state_average_processor.process(
             microdados_estados,
             estados_selecionados=estados_selecionados,
             colunas_notas=self.colunas_notas,
@@ -132,7 +130,7 @@ class GeralDataManager:
             DataFrame com dados de evasão por estado
         """
         # Reusar o processador de presença com formato diferente
-        attendance_data = self.attendance_processor.cached_process(
+        attendance_data = self.attendance_processor.process(
             microdados_estados,
             estados_selecionados=estados_selecionados
         )
@@ -212,7 +210,7 @@ class GeralDataManager:
         Returns:
             DataFrame com dados de desempenho médio por área
         """
-        return self.comparative_processor.cached_process(
+        return self.comparative_processor.process(
             microdados_estados,
             estados_selecionados=estados_selecionados,
             colunas_notas=self.colunas_notas

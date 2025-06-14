@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple, Optional, Any, Union
 import pandas as pd
 import numpy as np
 
-from ..base import StateGroupedProcessor, ProcessingConfig
+from ..base import StateGroupedProcessor, CacheableProcessor, ProcessingConfig
 from ..common_utils import (
     mapping_manager, statistical_calculator, 
     data_aggregator, data_filter, StatisticalSummary
@@ -202,83 +202,102 @@ class MainMetricsProcessor(StateGroupedProcessor[Dict[str, Any]]):
     
     def _calculate_attendance_metrics(self, data: pd.DataFrame) -> Dict[str, Any]:
         """Calcula métricas de presença."""
+        total_candidates = len(data)
+        
         if self.attendance_column not in data.columns:
             return {'faltas_totais': 0, 'percentual_faltas': 0}
         
-        total_candidates = len(data)
-        absent_both_days = len(data[data[self.attendance_column] == 0])
+        # Candidatos que faltaram nos dois dias (código 0)
+        faltas_totais = len(data[data[self.attendance_column] == 0])
+        percentual_faltas = (faltas_totais / total_candidates * 100) if total_candidates > 0 else 0
         
         return {
-            'faltas_totais': absent_both_days,
-            'percentual_faltas': (absent_both_days / total_candidates * 100) if total_candidates > 0 else 0
+            'faltas_totais': faltas_totais,
+            'percentual_faltas': round(percentual_faltas, 2)
         }
     
-    def _calculate_score_metrics(self, data: pd.DataFrame, 
-                                score_columns: List[str]) -> Dict[str, Any]:
-        """Calcula métricas de notas."""
-        score_means = {}
+    def _calculate_score_metrics(self, data: pd.DataFrame, colunas_notas: List[str]) -> Dict[str, Any]:
+        """Calcula métricas de desempenho."""
+        from data.data_loader import calcular_seguro
         
-        for column in score_columns:
-            if column in data.columns:
-                valid_scores = data[data[column] > 0][column]
-                if not valid_scores.empty:
-                    score_means[column] = round(calcular_seguro(valid_scores, 'media'), 2)
+        medias = {}
+        for coluna in colunas_notas:
+            if coluna in data.columns:
+                # Filtrar notas válidas (> 0)
+                notas_validas = data[data[coluna] > 0][coluna]
+                if not notas_validas.empty:
+                    media = calcular_seguro(notas_validas, 'media')
+                    medias[coluna] = round(media, 2)
                 else:
-                    score_means[column] = 0
+                    medias[coluna] = None
             else:
-                score_means[column] = 0
+                medias[coluna] = None
         
         # Calcular média geral
-        valid_means = [v for v in score_means.values() if v > 0]
-        overall_mean = round(sum(valid_means) / len(valid_means), 2) if valid_means else 0
+        medias_validas = [v for v in medias.values() if v is not None]
+        media_geral = round(sum(medias_validas) / len(medias_validas), 2) if medias_validas else 0
         
         return {
-            'medias_por_area': score_means,
-            'media_geral': overall_mean
+            'medias': medias,
+            'media_geral': media_geral
         }
     
     def _calculate_regional_performance(self, data: pd.DataFrame, 
-                                      states: List[str], 
-                                      score_columns: List[str]) -> Dict[str, Dict[str, float]]:
-        """Calcula desempenho por região."""
-        if data.empty or self.state_column not in data.columns:
-            return {}
+                                      estados: List[str], 
+                                      colunas_notas: List[str]) -> Dict[str, Any]:
+        """Calcula desempenho por regiões."""
+        from data.data_loader import calcular_seguro
         
-        # Adicionar coluna de região
-        data_with_region = data.copy()
-        data_with_region['REGIAO'] = data_with_region[self.state_column].apply(obter_regiao_do_estado)
+        regional_data = {}
         
-        # Calcular médias por região
-        regional_performance = {}
-        
-        for region in data_with_region['REGIAO'].unique():
-            if not region:
+        # Agrupar por região usando função helper
+        for estado in estados:
+            estado_data = data[data[self.state_column] == estado]
+            
+            if estado_data.empty:
                 continue
             
-            region_data = data_with_region[data_with_region['REGIAO'] == region]
-            region_scores = {}
+            # Obter região do estado
+            regiao = obter_regiao_do_estado(estado)
             
-            for column in score_columns:
-                if column in region_data.columns:
-                    valid_scores = region_data[region_data[column] > 0][column]
-                    if not valid_scores.empty:
-                        region_scores[column] = round(calcular_seguro(valid_scores, 'media'), 2)
-                    else:
-                        region_scores[column] = 0
-                else:
-                    region_scores[column] = 0
+            if regiao not in regional_data:
+                regional_data[regiao] = {
+                    'estados': [],
+                    'total_candidatos': 0,
+                    'medias': {coluna: [] for coluna in colunas_notas}
+                }
             
-            regional_performance[region] = region_scores
+            regional_data[regiao]['estados'].append(estado)
+            regional_data[regiao]['total_candidatos'] += len(estado_data)
+            
+            # Calcular médias por competência para este estado
+            for coluna in colunas_notas:
+                if coluna in estado_data.columns:
+                    notas_validas = estado_data[estado_data[coluna] > 0][coluna]
+                    if not notas_validas.empty:
+                        media = calcular_seguro(notas_validas, 'media')
+                        regional_data[regiao]['medias'][coluna].append(media)
         
-        return regional_performance
+        # Calcular médias regionais finais
+        for regiao_info in regional_data.values():
+            for coluna in colunas_notas:
+                medias_coluna = regiao_info['medias'][coluna]
+                if medias_coluna:
+                    regiao_info['medias'][coluna] = round(
+                        sum(medias_coluna) / len(medias_coluna), 2
+                    )
+                else:
+                    regiao_info['medias'][coluna] = None
+        
+        return regional_data
     
-    def _generate_empty_metrics(self, score_columns: List[str]) -> Dict[str, Any]:
-        """Gera estrutura vazia de métricas."""
+    def _generate_empty_metrics(self, colunas_notas: List[str]) -> Dict[str, Any]:
+        """Gera métricas vazias quando não há dados."""
         return {
             'total_candidatos': 0,
             'faltas_totais': 0,
             'percentual_faltas': 0,
-            'medias_por_area': {col: 0 for col in score_columns},
+            'medias': {coluna: None for coluna in colunas_notas},
             'media_geral': 0,
             'desempenho_regioes': {}
         }
@@ -442,3 +461,62 @@ class ComparativeAnalysisProcessor(StateGroupedProcessor[pd.DataFrame]):
         except Exception as e:
             print(f"Erro na análise comparativa: {e}")
             return pd.DataFrame(columns=['Area', 'Media', 'DesvioPadrao', 'Mediana'])
+
+
+class CorrelationAnalysisProcessor(CacheableProcessor[pd.DataFrame]):
+    """Processador para análise de correlação entre competências."""
+    
+    def __init__(self, config: Optional[ProcessingConfig] = None):
+        super().__init__(config)
+        self._competencia_mapping = get_mappings()['competencia_mapping']
+    
+    def process(self, data: pd.DataFrame, colunas_notas: List[str]) -> pd.DataFrame:
+        """
+        Calcula matriz de correlação entre competências.
+        
+        Args:
+            data: DataFrame com microdados
+            colunas_notas: Colunas com notas para correlação
+            
+        Returns:
+            DataFrame com matriz de correlação formatada
+        """
+        if not self.validate_input(data, colunas_notas):
+            # Retornar matriz vazia mas válida
+            return pd.DataFrame(
+                index=[self._competencia_mapping.get(col, col) for col in colunas_notas],
+                columns=[self._competencia_mapping.get(col, col) for col in colunas_notas],
+                data=0.0
+            )
+        
+        try:
+            # Filtrar apenas notas válidas (> 0)
+            df_valid = data_filter.filter_valid_scores(data, colunas_notas)
+            
+            if df_valid.empty:
+                return self._generate_empty_correlation_matrix(colunas_notas)
+            
+            # Calcular correlação
+            correlation_matrix = df_valid[colunas_notas].corr()
+            
+            # Renomear índices e colunas para nomes amigáveis
+            friendly_names = {col: self._competencia_mapping.get(col, col) for col in colunas_notas}
+            correlation_matrix = correlation_matrix.rename(index=friendly_names, columns=friendly_names)
+            
+            # Arredondar valores
+            correlation_matrix = correlation_matrix.round(3)
+            
+            return correlation_matrix
+            
+        except Exception as e:
+            print(f"Erro ao calcular correlação: {e}")
+            return self._generate_empty_correlation_matrix(colunas_notas)
+    
+    def _generate_empty_correlation_matrix(self, colunas_notas: List[str]) -> pd.DataFrame:
+        """Gera matriz de correlação vazia."""
+        friendly_names = [self._competencia_mapping.get(col, col) for col in colunas_notas]
+        return pd.DataFrame(
+            index=friendly_names,
+            columns=friendly_names,
+            data=0.0
+        )
