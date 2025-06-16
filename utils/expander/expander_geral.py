@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from typing import Dict, List, Any, Optional, Union, Tuple
 from utils.helpers.regiao_utils import obter_regiao_do_estado, obter_todas_regioes
-from utils.estatisticas.analise_geral import (
+from utils.estatisticas.geral.analise_geral import (
     analisar_distribuicao_notas, 
     analisar_faltas,
     analisar_desempenho_por_faixa_nota,

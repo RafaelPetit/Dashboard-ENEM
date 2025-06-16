@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from typing import Dict, List, Any, Optional, Union, Tuple
-from utils.estatisticas.analise_aspectos_sociais import (
+from utils.estatisticas.aspectos_sociais.analise_aspectos_sociais import (
     calcular_estatisticas_distribuicao,
     analisar_correlacao_categorias,
     analisar_distribuicao_regional,
