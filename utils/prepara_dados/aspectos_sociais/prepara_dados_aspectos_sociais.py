@@ -1,7 +1,20 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any, Union, Set
-from data.data_loader import calcular_seguro, optimize_dtypes
+
+try:
+    from data.data_loader import calcular_seguro, optimize_dtypes
+except ImportError:
+    try:
+        from data import calcular_seguro, optimize_dtypes
+    except ImportError:
+        # Fallback functions
+        def calcular_seguro(data, operation='safe'):
+            return data
+        
+        def optimize_dtypes(df):
+            return df
+
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from utils.prepara_dados.validacao_dados import validar_completude_dados
 from utils.helpers.regiao_utils import obter_regiao_do_estado

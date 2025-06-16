@@ -110,6 +110,25 @@ class SafeStatisticsCalculator(StatisticsCalculator):
         
         return clean_array
     
+    def calculate_safe(self, data: ArrayLike, operation: str) -> float:
+        """
+        Método genérico para cálculos seguros de estatísticas.
+        
+        Args:
+            data: Array ou Series com os dados
+            operation: Tipo de operação ('media', 'mediana', 'desvio', 'curtose', 'assimetria', etc.)
+            
+        Returns:
+            Resultado da operação ou 0.0 se erro
+        """
+        try:
+            # Usar o método calculate existente
+            result = self.calculate(data, operation)
+            return float(result)
+        except Exception as e:
+            logger.error(f"Erro no cálculo seguro de {operation}: {e}")
+            return 0.0
+
     def calculate_multiple(self, data: ArrayLike, 
                           operations: list) -> Dict[str, StatisticResult]:
         """

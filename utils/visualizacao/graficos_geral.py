@@ -220,16 +220,18 @@ def criar_grafico_media_por_estado(
             
         if destacar_menor and len(df_plot) > 1:
             cores[-1] = '#FF7F0E'  # Laranja para o menor
-        
-        # Criar gráfico de barras
+          # Criar gráfico de barras
         fig = go.Figure()
+        
+        # Formatar valores para exibição
+        valores_formatados = [f"{valor:.1f}" for valor in df_plot['Média Geral']]
         
         fig.add_trace(
             go.Bar(
                 x=df_plot['Local'],
                 y=df_plot['Média Geral'],
                 marker_color=cores,
-                text=df_plot['Média Geral'].round(1),
+                text=valores_formatados,
                 textposition='auto'
             )
         )

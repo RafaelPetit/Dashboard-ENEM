@@ -52,6 +52,56 @@ class BaseDataLoader(ABC, DataLoader):
         """
         if not file_path.exists():
             raise DataLoadError(str(file_path), "Arquivo não encontrado")
+    
+    def _apply_enem_corrections(self, df: DataFrameType) -> DataFrameType:
+        """
+        Aplica correções específicas para dados do ENEM.
+        
+        Args:
+            df: DataFrame original
+            
+        Returns:
+            DataFrame com tipos corrigidos
+        """
+        try:
+            if df is None or df.empty:
+                return df
+                
+            df_corrigido = df.copy()
+            
+            # Identificar e corrigir colunas de notas
+            colunas_notas = [col for col in df.columns if 'NOTA' in col.upper()]
+            
+            if colunas_notas:
+                logger.info(f"Aplicando correções a {len(colunas_notas)} colunas de notas")
+                
+                for col in colunas_notas:
+                    # Converter tipos de baixa precisão para float64
+                    if df_corrigido[col].dtype in ['float16', 'int16']:
+                        logger.debug(f"Convertendo {col} de {df_corrigido[col].dtype} para float64")
+                        df_corrigido[col] = df_corrigido[col].astype('float64')
+                    
+                    # Limpar valores extremos (outliers absurdos)
+                    import numpy as np
+                    serie = df_corrigido[col]
+                    mask_extremos = (serie > 2000) | (serie < -100)
+                    
+                    if mask_extremos.any():
+                        num_extremos = mask_extremos.sum()
+                        logger.warning(f"Removendo {num_extremos} valores extremos de {col}")
+                        df_corrigido.loc[mask_extremos, col] = np.nan
+            
+            # Verificar e corrigir outras colunas numéricas se necessário
+            for col in df_corrigido.select_dtypes(include=['float16']).columns:
+                if col not in colunas_notas:
+                    logger.debug(f"Convertendo {col} de float16 para float32")
+                    df_corrigido[col] = df_corrigido[col].astype('float32')
+            
+            return df_corrigido
+            
+        except Exception as e:
+            logger.error(f"Erro ao aplicar correções ENEM: {e}")
+            return df
 
 
 class ParquetLoader(BaseDataLoader):
@@ -76,8 +126,7 @@ class ParquetLoader(BaseDataLoader):
         file_path = self._get_file_path(filename)
         
         try:
-            self._validate_file_exists(file_path)
-            
+            self._validate_file_exists(file_path)            
             logger.info(f"Carregando arquivo Parquet: {filename}")
             
             # Carregar com pyarrow para melhor performance
@@ -89,6 +138,9 @@ class ParquetLoader(BaseDataLoader):
             df = pd.read_parquet(file_path, **load_params)
             
             logger.info(f"Arquivo carregado. Shape: {df.shape}")
+            
+            # Aplicar correções específicas para dados ENEM
+            df = self._apply_enem_corrections(df)
             
             # Otimizar memória se solicitado
             if optimize_memory:

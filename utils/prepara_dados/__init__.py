@@ -1,28 +1,28 @@
 """
-Pacote de preparação de dados do ENEM Dashboard.
+Pacote de preparação de dados do ENEM Dashboard - Versão Refatorada com SOLID.
 
-Este pacote contém toda a lógica de preparação e processamento de dados
-para as diferentes análises do dashboard do ENEM. Foi refatorado seguindo
-princípios SOLID e Clean Code para melhor manutenibilidade e performance.
+Este pacote foi completamente refatorado seguindo princípios SOLID, Clean Code 
+e padrões de arquitetura modernos para garantir máxima eficiência com grandes 
+volumes de dados (4+ milhões de registros) e adequação aos limites de memória do Streamlit.
 
-Estrutura:
-- base: Classes base e interfaces comuns
-- common_utils: Utilitários compartilhados entre módulos
-- geral: Processadores para análises gerais
-- aspectos_sociais: Processadores para aspectos socioeconômicos
-- desempenho: Processadores para análises de desempenho
+ARQUITETURA IMPLEMENTADA:
+- Single Responsibility Principle (SRP)
+- Open/Closed Principle (OCP) 
+- Liskov Substitution Principle (LSP)
+- Interface Segregation Principle (ISP)
+- Dependency Inversion Principle (DIP)
+- Factory Pattern para criação de objetos
+- Strategy Pattern para algoritmos intercambiáveis
+- Singleton Pattern para configurações globais
+- Facade Pattern para interfaces simplificadas
 
-Classes principais:
-- BaseDataProcessor: Classe base para todos os processadores
-- CacheableProcessor: Processador com cache automático
-- StateGroupedProcessor: Processador para análises por estado
-- MappingManager: Gerenciador de mapeamentos
-- StatisticalCalculator: Calculadora de estatísticas
-- DataAggregator: Agregador de dados
-- DataFilter: Filtro de dados
+USO RECOMENDADO:
+- Para NOVOS desenvolvimentos: use funções *_otimizado
+- Para código EXISTENTE: mantenha funções de compatibilidade
+- Para operações COMPLEXAS: use DataProcessingOrchestrator
 """
 
-# Importar classes base e utilitários
+# ========== CLASSES BASE ==========
 from .base import (
     BaseDataProcessor,
     CacheableProcessor, 
@@ -30,19 +30,60 @@ from .base import (
     ProcessorFactory
 )
 
+# ========== INTERFACES SOLID ==========
+from .interfaces import (
+    DataValidator,
+    MemoryManager,
+    StatisticsCalculator,
+    StateProcessor,
+    RegionAggregator,
+    DataFormatter,
+    DataFilterStrategy,
+    ProcessingOrchestrator
+)
+
+# ========== IMPLEMENTAÇÕES ==========
+from .implementations import (
+    DefaultDataValidator,
+    DefaultMemoryManager,
+    SafeStatisticsCalculator,
+    DefaultRegionAggregator,
+    VisualizationDataFormatter,
+    ScoreFilterStrategy,
+    DemographicFilterStrategy
+)
+
+# ========== FACTORIES ==========
+from .factories import (
+    ComponentFactory,
+    FilterStrategyFactory,
+    StateProcessorFactory,
+    DataProcessingOrchestrator
+)
+
+# ========== CONFIGURAÇÃO ==========
+from .config import (
+    get_config,
+    get_legacy_config,
+    update_config
+)
+
+# ========== UTILITÁRIOS ==========
 from .common_utils import (
     MappingManager,
     StatisticalCalculator,
     DataAggregator,
-    DataFilter
+    DataFilter,
+    corrigir_tipos_notas_enem,
+    preparar_dados_para_calculo
 )
 
-# Importar gerenciadores de cada domínio
+# ========== GERENCIADORES DE DOMÍNIO ==========
 from .geral.data_manager import GeralDataManager
 from .aspectos_sociais.data_manager import SocialDataManager  
 from .desempenho.data_manager import PerformanceDataManager
 
-# Importar funções de compatibilidade principais - Geral
+# ========== FUNÇÕES DE COMPATIBILIDADE - GERAL ==========
 from .geral.data_manager import (
     preparar_dados_histograma,
     preparar_dados_grafico_faltas,
@@ -52,16 +93,24 @@ from .geral.data_manager import (
     preparar_dados_comparativo_areas
 )
 
-# Importar funções de compatibilidade - Aspectos Sociais
+# ========== FUNÇÕES DE COMPATIBILIDADE - ASPECTOS SOCIAIS ==========
 from .aspectos_sociais.data_manager import (
     prepare_social_data,
     preparar_dados_aspecto_social,
     preparar_dados_comparacao_social,
-    obter_estatisticas_aspecto_social,
-    preparar_dados_correlacao
+    obter_estatisticas_aspecto_social
 )
 
-# Importar funções de compatibilidade - Desempenho
+# Funções adicionais de aspectos sociais
+from .aspectos_sociais.prepara_dados_aspectos_sociais import (
+    preparar_dados_distribuicao,
+    contar_candidatos_por_categoria,
+    ordenar_categorias,
+    preparar_dados_grafico_aspectos_por_estado,
+    preparar_dados_heatmap
+)
+
+# ========== FUNÇÕES DE COMPATIBILIDADE - DESEMPENHO ==========
 from .desempenho.data_manager import (
     prepare_performance_data,
     preparar_dados_comparativo,
@@ -73,76 +122,89 @@ from .desempenho.data_manager import (
     calcular_estatisticas_desempenho
 )
 
-# Importar validação de dados (mantido para compatibilidade)
+# ========== VALIDAÇÃO DE DADOS ==========
 from .validacao_dados import (
     validar_completude_dados,
     verificar_outliers,
     validar_distribuicao_dados
 )
 
-# Importações legadas mantidas para compatibilidade (DEPRECATED)
-# Estas funções ainda estão disponíveis mas recomenda-se usar as novas APIs
-try:
-    from .geral.prepara_dados_geral import (
-        preparar_dados_grafico_faltas,
-        preparar_dados_media_geral_estados,
-        preparar_dados_comparativo_areas,
-        preparar_dados_evasao
-    )
-except ImportError:
-    # Fallback caso os arquivos antigos não existam
-    pass
+# ========== FUNÇÕES OTIMIZADAS (RECOMENDADAS) ==========
+from .compatibility import (
+    preparar_dados_comparativo_otimizado,
+    preparar_dados_aspecto_social_otimizado,
+    preparar_dados_desempenho_estados_otimizado,
+    aplicar_filtros_inteligentes,
+    exemplo_uso_nova_arquitetura
+)
 
-# Comentado temporariamente durante refatoração
-# Importações diretas do arquivo original para manter compatibilidade temporária
-try:
-    from .aspectos_sociais.prepara_dados_aspectos_sociais import (
-        preparar_dados_distribuicao,
-        contar_candidatos_por_categoria,
-        ordenar_categorias,
-        preparar_dados_grafico_aspectos_por_estado,
-        preparar_dados_heatmap,
-        preparar_dados_barras_empilhadas,
-        preparar_dados_sankey
-    )
-except ImportError:
-    # Fallback caso haja algum problema
-    pass
-
+# ========== EXPORTS PÚBLICOS ==========
 __all__ = [
     # Classes base
     'BaseDataProcessor',
-    'CacheableProcessor',
-    'StateGroupedProcessor', 
+    'CacheableProcessor', 
+    'StateGroupedProcessor',
     'ProcessorFactory',
     
-    # Utilitários comuns
+    # Interfaces SOLID
+    'DataValidator',
+    'MemoryManager',
+    'StatisticsCalculator',
+    'StateProcessor',
+    'RegionAggregator',
+    'DataFormatter',
+    'DataFilterStrategy',
+    'ProcessingOrchestrator',
+    
+    # Implementações
+    'DefaultDataValidator',
+    'DefaultMemoryManager',
+    'SafeStatisticsCalculator',
+    'DefaultRegionAggregator',
+    'VisualizationDataFormatter',
+    'ScoreFilterStrategy',
+    'DemographicFilterStrategy',
+    
+    # Factories
+    'ComponentFactory',
+    'FilterStrategyFactory',
+    'StateProcessorFactory',
+    'DataProcessingOrchestrator',
+    
+    # Configuração
+    'get_config',
+    'get_legacy_config',
+    'update_config',
+    
+    # Utilitários
     'MappingManager',
     'StatisticalCalculator',
     'DataAggregator',
     'DataFilter',
-      # Gerenciadores de domínio
+    'corrigir_tipos_notas_enem',
+    'preparar_dados_para_calculo',
+    
+    # Gerenciadores de domínio
     'GeralDataManager',
     'SocialDataManager',
     'PerformanceDataManager',
-      # Funções de compatibilidade - Geral
+    
+    # Funções de compatibilidade - Geral
     'preparar_dados_histograma',
-    'preparar_dados_grafico_faltas', 
+    'preparar_dados_grafico_faltas',
     'preparar_dados_metricas_principais',
     'preparar_dados_media_geral_estados',
     'preparar_dados_evasao',
     'preparar_dados_comparativo_areas',
       # Funções de compatibilidade - Aspectos Sociais
     'prepare_social_data',
-    'preparar_dados_aspecto_social',    'preparar_dados_comparacao_social',
-    'obter_estatisticas_aspecto_social',
-    'preparar_dados_correlacao',    'preparar_dados_distribuicao',
-    'contar_candidatos_por_categoria', 
+    'preparar_dados_aspecto_social',
+    'preparar_dados_comparacao_social',
+    'obter_estatisticas_aspecto_social',    'preparar_dados_distribuicao',
+    'contar_candidatos_por_categoria',
     'ordenar_categorias',
     'preparar_dados_grafico_aspectos_por_estado',
     'preparar_dados_heatmap',
-    'preparar_dados_barras_empilhadas',
-    'preparar_dados_sankey',
     
     # Funções de compatibilidade - Desempenho
     'prepare_performance_data',
@@ -154,8 +216,28 @@ __all__ = [
     'obter_ordem_categorias',
     'calcular_estatisticas_desempenho',
     
+    # Funções otimizadas (RECOMENDADAS para novos desenvolvimentos)
+    'preparar_dados_comparativo_otimizado',
+    'preparar_dados_aspecto_social_otimizado', 
+    'preparar_dados_desempenho_estados_otimizado',
+    'aplicar_filtros_inteligentes',
+    'exemplo_uso_nova_arquitetura',
+    
     # Validação de dados
     'validar_completude_dados',
     'verificar_outliers',
     'validar_distribuicao_dados'
 ]
+
+# ========== IMPORTAÇÕES ADICIONAIS PARA COMPATIBILIDADE ==========
+try:
+    from .aspectos_sociais.prepara_dados_aspectos_sociais import preparar_dados_correlacao
+    __all__.append('preparar_dados_correlacao')
+except ImportError:
+    pass
+
+# ========== MENSAGEM INFORMATIVA ==========
+print("✅ Módulo prepara_dados refatorado com arquitetura SOLID carregado!")
+print("🚀 Para novos desenvolvimentos, use as funções *_otimizado")
+print("🔧 Para código existente, mantenha as funções de compatibilidade")
+print("📚 Leia o README.md para documentação completa da nova arquitetura")

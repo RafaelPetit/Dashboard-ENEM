@@ -1,10 +1,140 @@
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Tuple, Optional, Any, Union, Set
-from data.data_loader import calcular_seguro
+
+try:
+    from data.data_loader import calcular_seguro
+except ImportError:
+    try:
+        from data import calcular_seguro
+    except ImportError:        # Fallback function robusta
+        def calcular_seguro(data, operation='safe'):
+            import warnings
+            
+            try:
+                # Converter para array numpy
+                if hasattr(data, 'values'):
+                    arr = data.values
+                else:
+                    arr = np.asarray(data)
+                
+                # Converter para dtype mais preciso se necessário
+                if arr.dtype in [np.float16, np.int8, np.int16]:
+                    arr = arr.astype(np.float64)
+                
+                # Filtrar valores válidos para notas ENEM
+                mask = np.isfinite(arr) & (arr >= -1) & (arr <= 2000)
+                if not np.any(mask):
+                    return 0.0
+                    
+                valid_data = arr[mask]
+                
+                # Para cálculos estatísticos, usar apenas valores >= 0
+                if operation in ['media', 'std']:
+                    valid_data = valid_data[valid_data >= 0]
+                    if len(valid_data) == 0:
+                        return 0.0
+                
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    
+                    if operation in ['safe', 'media']:
+                        # Para datasets grandes, calcular em chunks
+                        if len(valid_data) > 1000000:
+                            chunk_size = 100000
+                            chunks = [valid_data[i:i+chunk_size] for i in range(0, len(valid_data), chunk_size)]
+                            chunk_means = [np.mean(chunk.astype(np.float64)) for chunk in chunks]
+                            chunk_sizes = [len(chunk) for chunk in chunks]
+                            result = np.average(chunk_means, weights=chunk_sizes)
+                        else:
+                            result = np.mean(valid_data.astype(np.float64))
+                        return float(result) if np.isfinite(result) else 0.0
+                        
+                    elif operation == 'mediana':
+                        if len(valid_data) > 1000000:
+                            sample_size = min(100000, len(valid_data))
+                            sample_data = np.random.choice(valid_data, size=sample_size, replace=False)
+                            result = np.median(sample_data)
+                        else:
+                            result = np.median(valid_data)
+                        return float(result) if np.isfinite(result) else 0.0
+                        
+                    elif operation == 'std':
+                        if len(valid_data) < 2:
+                            return 0.0
+                        result = np.std(valid_data.astype(np.float64), ddof=1)
+                        return float(result) if np.isfinite(result) else 0.0
+                        
+                    elif operation == 'min':
+                        result = np.min(valid_data)
+                        return float(result) if np.isfinite(result) else 0.0
+                        
+                    elif operation == 'max':
+                        result = np.max(valid_data)
+                        return float(result) if np.isfinite(result) else 0.0
+                        
+                    elif operation == 'curtose':
+                        try:
+                            from scipy import stats
+                            if len(valid_data) > 3:
+                                result = stats.kurtosis(valid_data.astype(np.float64), nan_policy='omit')
+                                return float(result) if np.isfinite(result) else 0.0
+                        except:
+                            pass
+                        return 0.0
+                        
+                    elif operation == 'assimetria':
+                        try:
+                            from scipy import stats
+                            if len(valid_data) > 2:
+                                result = stats.skew(valid_data.astype(np.float64), nan_policy='omit')
+                                return float(result) if np.isfinite(result) else 0.0
+                        except:
+                            pass
+                        return 0.0
+                        
+                    return 0.0
+                    
+            except Exception as e:
+                print(f"Erro no cálculo seguro: {e}")
+                return 0.0
+
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from utils.helpers.regiao_utils import obter_regiao_do_estado
 from utils.mappings import get_mappings
+
+
+def safe_float(value, default=0.0):
+    """Converte valor para float seguro, tratando inf e nan mas preservando valores válidos."""
+    try:
+        # Primeiro tenta converter diretamente
+        result = float(value)
+        
+        # Só substitui se for realmente inválido
+        if np.isnan(result) or np.isinf(result):
+            return default
+        
+        # Se é um número válido, retorna ele
+        return result
+    except (ValueError, TypeError):
+        # Se não conseguir converter, usa o padrão
+        return default
+
+
+def format_number(value, decimals=2):
+    """Formata número de forma segura para exibição, preservando valores válidos."""
+    try:
+        # Primeiro tenta converter
+        float_val = float(value)
+        
+        # Se for inf ou nan, retorna 0
+        if np.isnan(float_val) or np.isinf(float_val):
+            return round(0.0, decimals)
+        
+        # Se é válido, formata normalmente
+        return round(float_val, decimals)
+    except (ValueError, TypeError):
+        return round(0.0, decimals)
 
 # Obter mapeamentos e constantes
 mappings = get_mappings()
@@ -290,12 +420,11 @@ def analisar_distribuicao_notas(
     try:
         # Dados apenas para notas válidas (maiores que zero)
         df_valido = df_dados[df_dados[coluna] > 0]
-        
-        # Verificar se temos dados suficientes após filtragem
+          # Verificar se temos dados suficientes após filtragem
         if df_valido.empty:
             return _criar_analise_distribuicao_vazia()
         
-        # Calcular estatísticas básicas
+        # Calcular estatísticas básicas - usar calcular_seguro diretamente
         media = calcular_seguro(df_valido[coluna], 'media')
         mediana = calcular_seguro(df_valido[coluna], 'mediana')
         min_valor = calcular_seguro(df_valido[coluna], 'min')
@@ -316,27 +445,32 @@ def analisar_distribuicao_notas(
         
         # Calcular intervalo de confiança para a média (95%)
         intervalo_confianca = _calcular_intervalo_confianca(df_valido[coluna])
-        
-        # Calcular coeficiente de variação (%)
+          # Calcular coeficiente de variação (%)
         coef_variacao = (desvio_padrao / media * 100) if media > 0 else 0
         
-        # Retornar análise completa
+        # Função auxiliar para formatação segura apenas quando necessário
+        def safe_round(val, decimals=2):
+            if np.isnan(val) or np.isinf(val):
+                return 0.0
+            return round(float(val), decimals)
+        
+        # Retornar análise completa com formatação mínima
         return {
             'total_valido': total_valido,
             'total_invalido': len(df_dados) - total_valido,
-            'media': round(media, 2),
-            'mediana': round(mediana, 2),
-            'min_valor': round(min_valor, 2),
-            'max_valor': round(max_valor, 2),
-            'desvio_padrao': round(desvio_padrao, 2),
-            'curtose': round(curtose, 4),
-            'assimetria': round(assimetria, 4),
-            'percentis': {k: round(v, 2) for k, v in percentis.items()},
-            'faixas': {k: round(v, 2) for k, v in faixas.items()},
-            'conceitos': {k: round(v, 2) for k, v in conceitos.items()},
-            'intervalo_confianca': [round(intervalo_confianca[0], 2), round(intervalo_confianca[1], 2)],
-            'coef_variacao': round(coef_variacao, 2),
-            'amplitude': round(max_valor - min_valor, 2)
+            'media': safe_round(media, 2),
+            'mediana': safe_round(mediana, 2),
+            'min_valor': safe_round(min_valor, 2),
+            'max_valor': safe_round(max_valor, 2),
+            'desvio_padrao': safe_round(desvio_padrao, 2),
+            'curtose': safe_round(curtose, 4),
+            'assimetria': safe_round(assimetria, 4),
+            'percentis': {k: safe_round(v, 2) for k, v in percentis.items()},
+            'faixas': {k: safe_round(v, 2) for k, v in faixas.items()},
+            'conceitos': {k: safe_round(v, 2) for k, v in conceitos.items()},
+            'intervalo_confianca': [safe_round(intervalo_confianca[0], 2), safe_round(intervalo_confianca[1], 2)],
+            'coef_variacao': safe_round(coef_variacao, 2),
+            'amplitude': safe_round(max_valor - min_valor, 2)
         }
     except Exception as e:
         print(f"Erro ao analisar distribuição de notas: {e}")
@@ -397,8 +531,24 @@ def _calcular_percentis_seguros(serie: pd.Series, pontos_percentis: List[int]) -
     --------
     Dict[int, float]: Dicionário com percentis calculados
     """
-    try:
-        return {p: np.percentile(serie, p) for p in pontos_percentis}
+    try:        # Filtrar valores válidos
+        serie_valida = serie.dropna()
+        if serie_valida.empty:
+            return {p: 0.0 for p in pontos_percentis}
+        
+        result = {}
+        for p in pontos_percentis:
+            try:
+                percentil = np.percentile(serie_valida, p)
+                # Só aplica safe_float se realmente precisar
+                if np.isnan(percentil) or np.isinf(percentil):
+                    result[p] = 0.0
+                else:
+                    result[p] = float(percentil)
+            except:
+                result[p] = 0.0
+        
+        return result
     except Exception as e:
         print(f"Erro ao calcular percentis: {e}")
         return {p: 0.0 for p in pontos_percentis}

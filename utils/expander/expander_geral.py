@@ -16,6 +16,22 @@ from utils.explicacao.explicacao_geral import (
 )
 from utils.mappings import get_mappings
 
+
+def safe_format(value, decimals=2, default=0.0):
+    """Formata valores de forma segura, tratando apenas inf e nan reais."""
+    try:
+        # Tenta converter para float primeiro
+        float_val = float(value)
+        
+        # Só substitui se for realmente inválido
+        if np.isnan(float_val) or np.isinf(float_val):
+            return f"{default:.{decimals}f}"
+        
+        # Se é válido, formata normalmente
+        return f"{float_val:.{decimals}f}"
+    except (ValueError, TypeError):
+        return f"{default:.{decimals}f}"
+
 # Obter mapeamentos e constantes
 mappings = get_mappings()
 LIMIARES_ESTATISTICOS = mappings.get('limiares_estatisticos', {})
@@ -316,26 +332,28 @@ def _mostrar_estatisticas_descritivas(estatisticas: Dict[str, Any]) -> None:
     st.write(f"- **Candidatos com notas válidas:** {estatisticas.get('total_valido', 0):,}")
     st.write(f"- **Candidatos sem nota:** {estatisticas.get('total_invalido', 0):,}")
     
-    # Estatísticas de tendência central
-    st.write(f"- **Média:** {estatisticas.get('media', 0):.2f}")
-    st.write(f"- **Mediana:** {estatisticas.get('mediana', 0):.2f}")
-    st.write(f"- **Desvio padrão:** {estatisticas.get('desvio_padrao', 0):.2f}")
+    # Estatísticas de tendência central (com formatação segura)
+    st.write(f"- **Média:** {safe_format(estatisticas.get('media', 0), 2)}")
+    st.write(f"- **Mediana:** {safe_format(estatisticas.get('mediana', 0), 2)}")
+    st.write(f"- **Desvio padrão:** {safe_format(estatisticas.get('desvio_padrao', 0), 2)}")
     
-    # Estatísticas de forma
-    st.write(f"- **Assimetria:** {estatisticas.get('assimetria', 0):.2f}")
-    st.write(f"- **Curtose:** {estatisticas.get('curtose', 0):.2f}")
+    # Estatísticas de forma (com formatação segura)
+    st.write(f"- **Assimetria:** {safe_format(estatisticas.get('assimetria', 0), 4)}")
+    st.write(f"- **Curtose:** {safe_format(estatisticas.get('curtose', 0), 4)}")
     
-    # Estatísticas de amplitude
-    st.write(f"- **Mínimo:** {estatisticas.get('min_valor', 0):.2f}")
-    st.write(f"- **Máximo:** {estatisticas.get('max_valor', 0):.2f}")
-    st.write(f"- **Amplitude:** {estatisticas.get('amplitude', 0):.2f}")
+    # Estatísticas de amplitude (com formatação segura)
+    st.write(f"- **Mínimo:** {safe_format(estatisticas.get('min_valor', 0), 2)}")
+    st.write(f"- **Máximo:** {safe_format(estatisticas.get('max_valor', 0), 2)}")
+    st.write(f"- **Amplitude:** {safe_format(estatisticas.get('amplitude', 0), 2)}")
     
-    # Coeficiente de variação
-    st.write(f"- **Coeficiente de variação:** {estatisticas.get('coef_variacao', 0):.2f}%")
+    # Coeficiente de variação (com formatação segura)
+    st.write(f"- **Coeficiente de variação:** {safe_format(estatisticas.get('coef_variacao', 0), 2)}%")
     
-    # Intervalo de confiança
+    # Intervalo de confiança (com formatação segura)
     ic = estatisticas.get('intervalo_confianca', [0, 0])
-    st.write(f"- **Intervalo de confiança (95%):** [{ic[0]:.2f}, {ic[1]:.2f}]")
+    ic_low = safe_format(ic[0] if len(ic) > 0 else 0, 2)
+    ic_high = safe_format(ic[1] if len(ic) > 1 else 0, 2)
+    st.write(f"- **Intervalo de confiança (95%):** [{ic_low}, {ic_high}]")
 
 
 def _mostrar_percentis_detalhados(estatisticas: Dict[str, Any]) -> None:
@@ -359,15 +377,15 @@ def _mostrar_percentis_detalhados(estatisticas: Dict[str, Any]) -> None:
     # Mostrar percentis organizados
     percentis_ordenados = sorted(percentis.items())
     for p, valor in percentis_ordenados:
-        st.write(f"- **Percentil {p}:** {valor:.2f}")
+        st.write(f"- **Percentil {p}:** {safe_format(valor, 2)}")
     
     # Criar tabela com quartis e interpretação
     quartis_df = pd.DataFrame({
         'Quartil': ['Q1 (25%)', 'Q2 (50%)', 'Q3 (75%)'],
         'Valor': [
-            percentis.get(25, 0),
-            percentis.get(50, 0),
-            percentis.get(75, 0)
+            safe_format(percentis.get(25, 0), 2),
+            safe_format(percentis.get(50, 0), 2),
+            safe_format(percentis.get(75, 0), 2)
         ],
         'Interpretação': [
             '25% dos candidatos obtiveram nota abaixo deste valor',
@@ -1770,15 +1788,15 @@ def _mostrar_percentis_detalhados(estatisticas: Dict[str, Any]) -> None:
     # Mostrar percentis organizados
     percentis_ordenados = sorted(percentis.items())
     for p, valor in percentis_ordenados:
-        st.write(f"- **Percentil {p}:** {valor:.2f}")
+        st.write(f"- **Percentil {p}:** {safe_format(valor, 2)}")
     
     # Criar tabela com quartis e interpretação
     quartis_df = pd.DataFrame({
         'Quartil': ['Q1 (25%)', 'Q2 (50%)', 'Q3 (75%)'],
         'Valor': [
-            percentis.get(25, 0),
-            percentis.get(50, 0),
-            percentis.get(75, 0)
+            safe_format(percentis.get(25, 0), 2),
+            safe_format(percentis.get(50, 0), 2),
+            safe_format(percentis.get(75, 0), 2)
         ],
         'Interpretação': [
             '25% dos candidatos obtiveram nota abaixo deste valor',

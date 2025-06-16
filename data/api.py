@@ -99,6 +99,87 @@ class DataAPI:
     
     def calcular_seguro(self, serie_dados, operacao: str = 'media') -> float:
         """
+        Calcula estatísticas de forma segura, evitando overflow.
+        
+        Args:
+            serie_dados: Array ou Series com os dados
+            operacao: Tipo de operação ('media', 'mediana', 'std', 'min', 'max')
+            
+        Returns:
+            Resultado da operação ou 0.0 se não puder calcular
+        """
+        try:
+            import numpy as np
+            import warnings
+            
+            # Converter para array numpy
+            if hasattr(serie_dados, 'values'):
+                arr = serie_dados.values
+            else:
+                arr = np.asarray(serie_dados)
+            
+            # Converter para dtype mais preciso se necessário
+            if arr.dtype in [np.float16, np.int8, np.int16]:
+                arr = arr.astype(np.float64)
+            
+            # Filtrar valores válidos para notas ENEM
+            mask = np.isfinite(arr) & (arr >= -1) & (arr <= 2000)
+            if not np.any(mask):
+                return 0.0
+                
+            valid_data = arr[mask]
+            
+            # Para cálculos estatísticos, usar apenas valores >= 0
+            if operacao in ['media', 'std']:
+                valid_data = valid_data[valid_data >= 0]
+                if len(valid_data) == 0:
+                    return 0.0
+            
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                
+                if operacao == 'media':
+                    # Para datasets grandes, calcular em chunks
+                    if len(valid_data) > 1000000:
+                        chunk_size = 100000
+                        chunks = [valid_data[i:i+chunk_size] for i in range(0, len(valid_data), chunk_size)]
+                        chunk_means = [np.mean(chunk.astype(np.float64)) for chunk in chunks]
+                        chunk_sizes = [len(chunk) for chunk in chunks]
+                        result = np.average(chunk_means, weights=chunk_sizes)
+                    else:
+                        result = np.mean(valid_data.astype(np.float64))
+                    return float(result) if np.isfinite(result) else 0.0
+                    
+                elif operacao == 'mediana':
+                    if len(valid_data) > 1000000:
+                        sample_size = min(100000, len(valid_data))
+                        sample_data = np.random.choice(valid_data, size=sample_size, replace=False)
+                        result = np.median(sample_data)
+                    else:
+                        result = np.median(valid_data)
+                    return float(result) if np.isfinite(result) else 0.0
+                    
+                elif operacao == 'std':
+                    if len(valid_data) < 2:
+                        return 0.0
+                    result = np.std(valid_data.astype(np.float64), ddof=1)
+                    return float(result) if np.isfinite(result) else 0.0
+                    
+                elif operacao == 'min':
+                    result = np.min(valid_data)
+                    return float(result) if np.isfinite(result) else 0.0
+                    
+                elif operacao == 'max':
+                    result = np.max(valid_data)
+                    return float(result) if np.isfinite(result) else 0.0
+                    
+                else:
+                    return statistics_calculator.calculate_safe(serie_dados, operacao)
+                    
+        except Exception as e:
+            logger.error(f"Erro no cálculo seguro de {operacao}: {e}")
+            return 0.0
+        """
         Calcula estatísticas de forma segura.
         
         Args:
