@@ -88,13 +88,18 @@ class DataFrameOptimizer:
                     df[col] = df[col].astype(np.int32)
         
         return df
-    
     def _optimize_floats(self, df: DataFrameType) -> DataFrameType:
-        """Otimiza colunas de ponto flutuante."""
+        """Otimiza colunas de ponto flutuante, preservando precisão das notas ENEM."""
         float_cols = df.select_dtypes(include=['float64']).columns
         
         for col in float_cols:
-            df[col] = df[col].astype(np.float32)
+            # Preservar precisão para colunas de notas ENEM
+            if 'NOTA' in col.upper() or 'DESEMPENHO' in col.upper():
+                # Manter float64 para evitar overflow em cálculos estatísticos
+                continue
+            else:
+                # Outras colunas podem usar float32
+                df[col] = df[col].astype(np.float32)
         
         return df
     
