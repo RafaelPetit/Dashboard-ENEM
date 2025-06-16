@@ -6,6 +6,7 @@ Implementa operações frequentemente utilizadas nas classes de preparação.
 from typing import Dict, List, Tuple, Optional, Any, Union
 import pandas as pd
 import numpy as np
+import gc
 from dataclasses import dataclass
 
 try:

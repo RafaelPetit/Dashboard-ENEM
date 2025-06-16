@@ -107,7 +107,9 @@ from .aspectos_sociais.prepara_dados_aspectos_sociais import (
     contar_candidatos_por_categoria,
     ordenar_categorias,
     preparar_dados_grafico_aspectos_por_estado,
-    preparar_dados_heatmap
+    preparar_dados_heatmap,
+    preparar_dados_barras_empilhadas,
+    preparar_dados_sankey
 )
 
 # ========== FUNÇÕES DE COMPATIBILIDADE - DESEMPENHO ==========
@@ -205,6 +207,8 @@ __all__ = [
     'ordenar_categorias',
     'preparar_dados_grafico_aspectos_por_estado',
     'preparar_dados_heatmap',
+    'preparar_dados_barras_empilhadas',
+    'preparar_dados_sankey',
     
     # Funções de compatibilidade - Desempenho
     'prepare_performance_data',
