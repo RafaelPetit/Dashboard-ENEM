@@ -201,32 +201,48 @@ def analisar_metricas_principais(
                 stats_por_competencia[coluna] = stats
                 if stats['mean'] > 0:  # Só incluir médias válidas
                     todas_medias.append(stats['mean'])
-        
-        # Calcular médias por estado usando análise regional
-        regional_analysis = regional_analyzer.analyze_by_region(microdados_estados, 'notas')
-        
-        # Extrair médias por estado
-        medias_estados = {}
-        for regiao, dados_regiao in regional_analysis.get('regional_data', {}).items():
-            # Aqui simplificamos assumindo que cada estado é uma "região"
-            # Na implementação real, seria necessário agrupar por estado
-            if 'estatisticas' in dados_regiao:
-                medias_estados[regiao] = dados_regiao['estatisticas'].get('mean', 0)
-        
-        # Calcular métricas principais
+          # Calcular médias por estado e competência
+        if 'SG_UF_PROVA' in microdados_estados.columns:
+            # Obter lista de estados únicos nos dados
+            estados_presentes = microdados_estados['SG_UF_PROVA'].unique().tolist()
+            
+            # Calcular médias por estado usando função específica
+            resultado_estados = _calcular_medias_estados_competencias(
+                microdados_estados, 
+                estados_presentes, 
+                colunas_notas
+            )
+            
+            medias_estados = resultado_estados.get('medias_por_estado', {})
+        else:
+            # Fallback usando análise regional
+            regional_analysis = regional_analyzer.analyze_by_region(microdados_estados, 'notas')
+            medias_estados = {}
+            for regiao, dados_regiao in regional_analysis.get('regional_data', {}).items():
+                if 'estatisticas' in dados_regiao:
+                    medias_estados[regiao] = dados_regiao['estatisticas'].get('mean', 0)
+          # Calcular métricas principais
         media_geral = np.mean(todas_medias) if todas_medias else 0.0
-        maior_media = np.max(todas_medias) if todas_medias else 0.0
-        menor_media = np.min([m for m in todas_medias if m > 0]) if todas_medias else 0.0
         
         # Estados com maior e menor média
         estado_maior_media = "N/A"
         estado_menor_media = "N/A"
         valor_maior_media_estado = 0.0
         valor_menor_media_estado = 0.0
+        maior_media = 0.0
+        menor_media = 0.0
         
         if medias_estados:
             estado_maior_media, valor_maior_media_estado = max(medias_estados.items(), key=lambda x: x[1])
             estado_menor_media, valor_menor_media_estado = min(medias_estados.items(), key=lambda x: x[1])
+            
+            # Corrigir: maior_media e menor_media devem ser baseadas nos estados, não nas competências
+            maior_media = valor_maior_media_estado
+            menor_media = valor_menor_media_estado
+        else:
+            # Fallback: usar médias das competências se não houver dados por estado
+            maior_media = np.max(todas_medias) if todas_medias else 0.0
+            menor_media = np.min([m for m in todas_medias if m > 0]) if todas_medias else 0.0
         
         # Total de candidatos
         total_candidatos = len(microdados_estados)
@@ -409,14 +425,15 @@ def _calcular_totais_por_regiao(df: pd.DataFrame) -> Dict[str, int]:
     # Verificar se temos dados válidos
     if df is None or df.empty or 'SG_UF_PROVA' not in df.columns:
         return {}
-    
     try:
-        # Criar coluna temporária com a região de cada estado
-        df_temp = df.copy()
-        df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].apply(obter_regiao_do_estado)
-        
-        # Contar candidatos por região
-        contagem = df_temp['REGIAO'].value_counts().to_dict()
+        # Usar coluna REGIAO já existente no DataFrame (agora criada no pré-processamento)
+        if 'REGIAO' in df.columns:
+            contagem = df['REGIAO'].value_counts().to_dict()
+        else:
+            # Fallback para criação em runtime se não existir (compatibilidade)
+            df_temp = df.copy()
+            df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].apply(obter_regiao_do_estado)
+            contagem = df_temp['REGIAO'].value_counts().to_dict()
         
         # Remover região vazia se existir
         if '' in contagem:
@@ -1126,14 +1143,15 @@ def analisar_metricas_por_regiao(
     # Verificar se temos dados válidos
     if df is None or df.empty or 'SG_UF_PROVA' not in df.columns:
         return {}
-    
     try:
-        # Criar coluna temporária com a região
-        df_temp = df.copy()
-        df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].apply(obter_regiao_do_estado)
-        
-        # Remover valores vazios ou nulos na coluna de região
-        df_temp = df_temp[df_temp['REGIAO'] != '']
+        # Usar coluna REGIAO já existente no DataFrame (agora criada no pré-processamento)
+        if 'REGIAO' in df.columns:
+            df_temp = df[df['REGIAO'] != ''].copy() if '' in df['REGIAO'].values else df.copy()
+        else:
+            # Fallback para criação em runtime se não existir (compatibilidade)
+            df_temp = df.copy()
+            df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].apply(obter_regiao_do_estado)
+            df_temp = df_temp[df_temp['REGIAO'] != '']
         
         # Verificar se temos dados após filtragem
         if df_temp.empty:

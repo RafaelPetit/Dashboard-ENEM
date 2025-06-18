@@ -45,11 +45,25 @@ class DashboardCore:
             page_config.render()
             
             # Carregar mapeamentos
-            self.mappings = mapping_manager.get_all_mappings()
-            
-            # Carregar dados para filtros
+            self.mappings = mapping_manager.get_all_mappings()            # Carregar dados para filtros
             filter_data = data_manager.load_filter_data()
-            available_states = sorted(filter_data['SG_UF_PROVA'].unique())
+            
+            # Verificar se temos dados válidos e a coluna necessária
+            if filter_data is None or filter_data.empty:
+                raise ValueError("Dados de filtro não disponíveis")
+            
+            if 'SG_UF_PROVA' not in filter_data.columns:
+                raise ValueError("Coluna SG_UF_PROVA não encontrada nos dados de filtro")
+            
+            # Obter estados únicos de forma segura
+            # Garantir que estamos trabalhando com uma Series
+            sg_uf_series = filter_data['SG_UF_PROVA']
+            if hasattr(sg_uf_series, 'unique'):
+                available_states = sorted(sg_uf_series.dropna().unique().tolist())
+            else:
+                # Fallback se por algum motivo não for uma Series
+                available_states = sorted(filter_data['SG_UF_PROVA'].values.flatten())
+                available_states = list(set([x for x in available_states if x is not None]))
             
             # Criar filtro de estados
             self.state_filter = FilterFactory.create_state_filter(

@@ -5,6 +5,7 @@ Implementa carregamento, filtragem e gerenciamento de memória para as abas.
 
 import streamlit as st
 import gc
+import logging
 from typing import Dict, Any, Optional
 
 from .core_types import DataManager, DataFrameType, StateList, TabConfig
@@ -13,6 +14,8 @@ from .exceptions import DataLoadError, MemoryError
 from .cache_manager import cache_manager, CacheKey
 from .validators import DataValidator, safe_validate_data
 from .performance_monitor import performance_monitor, timed_operation
+
+logger = logging.getLogger(__name__)
 
 
 class DashboardDataManager(DataManager):
@@ -78,8 +81,7 @@ class DashboardDataManager(DataManager):
     def load_filter_data(self) -> DataFrameType:
         """
         Carrega dados básicos para construção de filtros.
-        
-        Returns:
+          Returns:
             DataFrame com dados básicos (SG_UF_PROVA, etc.)
             
         Raises:
@@ -100,13 +102,21 @@ class DashboardDataManager(DataManager):
             from data import load_data_for_tab
             
             # Usar dados da aba geral para filtros (mais leve)
+            logger.info("Carregando dados para filtros...")
             data = load_data_for_tab("geral")
+            
+            if data is None or data.empty:
+                raise DataLoadError("filter_data", "Dados carregados estão vazios")
+            
+            logger.info(f"Dados carregados: {len(data)} linhas, {len(data.columns)} colunas")
+            logger.debug(f"Colunas disponíveis: {list(data.columns)}")
             
             # Manter apenas colunas necessárias para filtros
             filter_columns = ['SG_UF_PROVA']
             available_columns = [col for col in filter_columns if col in data.columns]
             
             if not available_columns:
+                logger.error(f"Colunas de filtro não encontradas. Disponíveis: {list(data.columns)}")
                 raise DataLoadError("filter_data", "Nenhuma coluna de filtro encontrada")
             
             filter_data = data[available_columns].copy()
@@ -115,6 +125,7 @@ class DashboardDataManager(DataManager):
             if PERFORMANCE_CONFIG.ENABLE_CACHE:
                 cache_manager.memory_cache.set(cache_key, filter_data)
             
+            logger.info(f"Dados de filtro preparados: {len(filter_data)} linhas")
             return filter_data
             
         except Exception as e:
