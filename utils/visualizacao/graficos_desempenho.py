@@ -558,9 +558,15 @@ def _criar_scatter_base(
     --------
     Figure: Objeto de figura Plotly base
     """
+    print(f"[DEBUG] _criar_scatter_base: colorir_por_faixa={colorir_por_faixa}")
+    print(f"[DEBUG] _criar_scatter_base: colunas disponíveis={list(df_valido.columns)}")
+    print(f"[DEBUG] _criar_scatter_base: TP_FAIXA_SALARIAL presente={'TP_FAIXA_SALARIAL' in df_valido.columns}")
+    
     if colorir_por_faixa and 'TP_FAIXA_SALARIAL' in df_valido.columns:
+        print(f"[DEBUG] Criando gráfico colorido por faixa salarial")
         return _criar_scatter_colorido_por_faixa(df_valido, eixo_x, eixo_y, competencia_mapping)
     else:
+        print(f"[DEBUG] Criando gráfico simples (sem coloração)")
         return _criar_scatter_simples(df_valido, eixo_x, eixo_y, competencia_mapping)
 
 

@@ -471,15 +471,14 @@ class StatePerformanceProcessor(StateGroupedProcessor):
 class ScatterAnalysisProcessor(CacheableProcessor):
     """
     Processador para análise de correlação em gráficos de dispersão.
-    
-    Especializado em filtrar e preparar dados para análises    de correlação entre diferentes competências.
+      Especializado em filtrar e preparar dados para análises de correlação entre diferentes competências.
     """
     
     def __init__(self, config: Optional[ProcessingConfig] = None):
         super().__init__(config, cache_key_prefix="scatter_analysis")
         self.mapping_manager = MappingManager()
         self.data_filter = DataFilter()
-    
+
     def _process_internal(
         self,
         data: pd.DataFrame,
@@ -510,39 +509,64 @@ class ScatterAnalysisProcessor(CacheableProcessor):
         Returns:
             Tuple com DataFrame filtrado e registros removidos
         """
+        print("[DEBUG] === _process_internal ScatterAnalysisProcessor ===")
+        print(f"[DEBUG] Data shape: {data.shape if data is not None else 'None'}")
+        print(f"[DEBUG] Eixos: x={eixo_x}, y={eixo_y}")
+        print(f"[DEBUG] Filtros: sexo={filtro_sexo}, escola={filtro_tipo_escola}, raca={filtro_raca}, faixa_salarial={filtro_faixa_salarial}")
+        
         # Validar entrada
         if data.empty or eixo_x not in data.columns or eixo_y not in data.columns:
+            print(f"[DEBUG] Dados inválidos: empty={data.empty}, eixo_x_existe={eixo_x in data.columns if not data.empty else False}, eixo_y_existe={eixo_y in data.columns if not data.empty else False}")
             return pd.DataFrame(), 0
-          # Obter configurações
+        
+        print("[DEBUG] Validação inicial passou")
+        
+        # Obter configurações
         mappings = self.mapping_manager.get_mappings()
         config = mappings.get('config_processamento', {})
         if max_amostras is None:
             max_amostras = config.get('max_amostras_scatter', 50000)
         
+        print(f"[DEBUG] Max amostras: {max_amostras}")
+        
         # Determinar colunas necessárias
+        print("[DEBUG] Determinando colunas necessárias...")
         colunas_necessarias = self._determinar_colunas_necessarias(
             eixo_x, eixo_y, filtro_sexo, filtro_tipo_escola, 
             filtro_raca, filtro_faixa_salarial, data.columns
         )
         
-        # Criar cópia dos dados
+        print(f"[DEBUG] Colunas necessárias: {colunas_necessarias}")
+          # Criar cópia dos dados
         df = data[colunas_necessarias].copy()
         tamanho_inicial = len(df)
         
+        print(f"[DEBUG] DataFrame copiado, tamanho inicial: {tamanho_inicial}")
+        
         # Aplicar filtros
+        print("[DEBUG] Aplicando filtros...")
         df = self._aplicar_filtros(
             df, eixo_x, eixo_y, filtro_sexo, filtro_tipo_escola,
             filtro_raca, filtro_faixa_salarial, excluir_notas_zero
         )
         
+        print(f"[DEBUG] Após aplicar filtros: {len(df)} registros")
+        
         # Remover valores NaN
         df = df.dropna(subset=[eixo_x, eixo_y])
+        
+        print(f"[DEBUG] Após remover NaN: {len(df)} registros")
+        
+        # Calcular registros removidos até aqui
+        registros_removidos = tamanho_inicial - len(df)
         
         # Limitar amostras para performance
         if len(df) > max_amostras:
             df = df.sample(n=max_amostras, random_state=42)
+            print(f"[DEBUG] Amostragem aplicada: {len(df)} registros")          
+            registros_removidos = tamanho_inicial - len(df)
         
-        registros_removidos = tamanho_inicial - len(df)
+        print(f"[DEBUG] _process_internal concluído: {len(df)} registros finais, {registros_removidos} removidos")
         
         return df, registros_removidos
     
@@ -555,9 +579,14 @@ class ScatterAnalysisProcessor(CacheableProcessor):
         filtro_raca: Optional[str],
         filtro_faixa_salarial: Optional[int],
         colunas_disponiveis: pd.Index
-    ) -> List[str]:
+    ) -> List[str]:        
         """Determina quais colunas são necessárias."""
+        print(f"[DEBUG] _determinar_colunas_necessarias chamada")
+        print(f"[DEBUG] Filtros: sexo={filtro_sexo}, escola={filtro_tipo_escola}, raca={filtro_raca}, faixa_salarial={filtro_faixa_salarial}")
+        print(f"[DEBUG] Colunas disponíveis: {list(colunas_disponiveis)}")
+        
         colunas_necessarias = [eixo_x, eixo_y]
+        print(f"[DEBUG] Colunas base: {colunas_necessarias}")
         
         filtros_colunas = [
             ('TP_SEXO', filtro_sexo),
@@ -569,7 +598,18 @@ class ScatterAnalysisProcessor(CacheableProcessor):
         for coluna, filtro in filtros_colunas:
             if filtro is not None and coluna in colunas_disponiveis:
                 colunas_necessarias.append(coluna)
+                print(f"[DEBUG] Adicionando coluna {coluna} por filtro {filtro}")
         
+        # Sempre incluir TP_FAIXA_SALARIAL se disponível (para coloração do gráfico)
+        if 'TP_FAIXA_SALARIAL' in colunas_disponiveis and 'TP_FAIXA_SALARIAL' not in colunas_necessarias:
+            colunas_necessarias.append('TP_FAIXA_SALARIAL')
+            print(f"[DEBUG] Adicionando TP_FAIXA_SALARIAL para coloração")
+        elif 'TP_FAIXA_SALARIAL' in colunas_necessarias:
+            print(f"[DEBUG] TP_FAIXA_SALARIAL já estava nas colunas necessárias")
+        else:
+            print(f"[DEBUG] TP_FAIXA_SALARIAL não disponível nas colunas")
+            
+        print(f"[DEBUG] Colunas necessárias finais: {colunas_necessarias}")
         return colunas_necessarias
     
     def _aplicar_filtros(
@@ -583,39 +623,50 @@ class ScatterAnalysisProcessor(CacheableProcessor):
         filtro_faixa_salarial: Optional[int],
         excluir_notas_zero: bool
     ) -> pd.DataFrame:
-        """Aplica todos os filtros de uma vez."""
-        filtros = []
+        """Aplica todos os filtros de uma vez usando método manual (mais robusto)."""
+        print(f"[DEBUG] _aplicar_filtros - shape inicial: {df.shape}")
+        print(f"[DEBUG] Filtros recebidos: sexo={filtro_sexo}, escola={filtro_tipo_escola}, raca={filtro_raca}, faixa_salarial={filtro_faixa_salarial}")
+        print(f"[DEBUG] excluir_notas_zero: {excluir_notas_zero}")
+        print(f"[DEBUG] Colunas disponíveis: {list(df.columns)}")
+        
+        df_filtrado = df.copy()
         
         # Filtros de notas válidas
-        if excluir_notas_zero:
-            filtros.append(f"{eixo_x} > 0")
-            filtros.append(f"{eixo_y} > 0")
+        if excluir_notas_zero and len(df_filtrado) > 0:
+            if eixo_x in df_filtrado.columns and eixo_y in df_filtrado.columns:
+                antes = len(df_filtrado)
+                df_filtrado = df_filtrado[(df_filtrado[eixo_x] > 0) & (df_filtrado[eixo_y] > 0)]
+                print(f"[DEBUG] Filtro notas zero: {antes} -> {len(df_filtrado)} registros")
+          # Filtros demográficos usando métodos manuais (mais robustos que query)
+        # Verificar se DataFrame não está vazio antes de cada filtro
+        if filtro_sexo and filtro_sexo != "Todos" and len(df_filtrado) > 0 and 'TP_SEXO' in df_filtrado.columns:
+            antes = len(df_filtrado)
+            print(f"[DEBUG] Valores únicos TP_SEXO: {df_filtrado['TP_SEXO'].unique()}")
+            df_filtrado = df_filtrado[df_filtrado['TP_SEXO'] == filtro_sexo]
+            print(f"[DEBUG] Filtro sexo ({filtro_sexo}): {antes} -> {len(df_filtrado)} registros")
         
-        # Filtros demográficos
-        if filtro_sexo and 'TP_SEXO' in df.columns:
-            filtros.append(f"TP_SEXO == '{filtro_sexo}'")
-        
-        if filtro_tipo_escola and 'TP_DEPENDENCIA_ADM_ESC' in df.columns:
+        if filtro_tipo_escola and filtro_tipo_escola != "Todos" and len(df_filtrado) > 0 and 'TP_DEPENDENCIA_ADM_ESC' in df_filtrado.columns:
+            antes = len(df_filtrado)
+            print(f"[DEBUG] Valores únicos TP_DEPENDENCIA_ADM_ESC: {df_filtrado['TP_DEPENDENCIA_ADM_ESC'].unique()}")
             if filtro_tipo_escola == 'Pública':
-                filtros.append("TP_DEPENDENCIA_ADM_ESC.isin(['1', '2', '3'])")
+                # Aceitar tanto strings quanto números para escolas públicas (códigos 1, 2, 3)
+                df_filtrado = df_filtrado[df_filtrado['TP_DEPENDENCIA_ADM_ESC'].isin([1, 2, 3, '1', '2', '3', 1.0, 2.0, 3.0])]
             elif filtro_tipo_escola == 'Privada':
-                filtros.append("TP_DEPENDENCIA_ADM_ESC == '4'")
+                # Aceitar tanto strings quanto números para escolas privadas (código 4)
+                df_filtrado = df_filtrado[df_filtrado['TP_DEPENDENCIA_ADM_ESC'].isin([4, '4', 4.0])]
+            print(f"[DEBUG] Filtro tipo escola ({filtro_tipo_escola}): {antes} -> {len(df_filtrado)} registros")
         
-        if filtro_raca and 'TP_COR_RACA' in df.columns:
-            filtros.append(f"TP_COR_RACA == {filtro_raca}")
+        if filtro_raca and len(df_filtrado) > 0 and 'TP_COR_RACA' in df_filtrado.columns:
+            antes = len(df_filtrado)
+            print(f"[DEBUG] Valores únicos TP_COR_RACA: {df_filtrado['TP_COR_RACA'].unique()}")
+            df_filtrado = df_filtrado[df_filtrado['TP_COR_RACA'] == filtro_raca]
+            print(f"[DEBUG] Filtro raça ({filtro_raca}): {antes} -> {len(df_filtrado)} registros")
         
-        if filtro_faixa_salarial is not None and 'TP_FAIXA_SALARIAL' in df.columns:
-            filtros.append(f"TP_FAIXA_SALARIAL == {filtro_faixa_salarial}")
+        if filtro_faixa_salarial is not None and len(df_filtrado) > 0 and 'TP_FAIXA_SALARIAL' in df_filtrado.columns:
+            antes = len(df_filtrado)
+            print(f"[DEBUG] Valores únicos TP_FAIXA_SALARIAL: {df_filtrado['TP_FAIXA_SALARIAL'].unique()}")
+            df_filtrado = df_filtrado[df_filtrado['TP_FAIXA_SALARIAL'] == filtro_faixa_salarial]
+            print(f"[DEBUG] Filtro faixa salarial ({filtro_faixa_salarial}): {antes} -> {len(df_filtrado)} registros")
         
-        # Aplicar filtros
-        if filtros:
-            query = " & ".join(filtros)
-            try:
-                df = df.query(query)
-            except Exception as e:
-                print(f"Erro ao aplicar filtro: {e}")
-                # Fallback manual
-                if excluir_notas_zero:
-                    df = df[(df[eixo_x] > 0) & (df[eixo_y] > 0)]
-        
-        return df
+        print(f"[DEBUG] _aplicar_filtros - shape final: {df_filtrado.shape}")
+        return df_filtrado

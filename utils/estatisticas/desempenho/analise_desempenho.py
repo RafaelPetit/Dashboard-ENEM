@@ -325,23 +325,79 @@ def analisar_desempenho_por_estado(
     1. Com área específica: analisar_desempenho_por_estado(df, "Média Geral")
     2. Com lista de estados: analisar_desempenho_por_estado(df, estados_list, colunas_list)
     """
+    print(f"[DEBUG] analisar_desempenho_por_estado chamada")
+    print(f"[DEBUG] df_notas shape: {df_notas.shape if df_notas is not None else 'None'}")
+    print(f"[DEBUG] df_notas columns: {list(df_notas.columns) if df_notas is not None else 'None'}")
+    print(f"[DEBUG] area_ou_estados: {area_ou_estados}")
+    print(f"[DEBUG] colunas_competencias: {colunas_competencias}")
+    
     # Se apenas 2 argumentos e o segundo é string (área de análise)
     if isinstance(area_ou_estados, str) and colunas_competencias is None:
         # Análise por área específica
         area_analise = area_ou_estados
+        print(f"[DEBUG] Análise por área específica: {area_analise}")
         
-        if 'SG_UF_RESIDENCIA' not in df_notas.columns:
+        # Verificar se temos a coluna de estado - tentar várias opções
+        coluna_estado = None
+        for col_possivel in ['SG_UF_RESIDENCIA', 'SG_UF_PROVA', 'Estado', 'UF']:
+            if col_possivel in df_notas.columns:
+                coluna_estado = col_possivel
+                break
+        if coluna_estado is None:
+            print(f"[DEBUG] Nenhuma coluna de estado encontrada")
             return _criar_resultado_analise_vazio()
         
-        if area_analise not in df_notas.columns:
+        print(f"[DEBUG] Usando coluna de estado: {coluna_estado}")
+        
+        # Verificar se temos a coluna da área - tentar várias opções
+        coluna_area = None
+        
+        # Debug: mostrar valores únicos na coluna Área
+        if 'Área' in df_notas.columns:
+            print(f"[DEBUG] Valores únicos na coluna 'Área': {sorted(df_notas['Área'].unique())}")
+        
+        if area_analise in df_notas.columns:
+            coluna_area = area_analise
+        elif area_analise == "Média Geral" and 'Media' in df_notas.columns:
+            coluna_area = 'Media'
+        elif area_analise == "Média Geral" and 'Média' in df_notas.columns:
+            coluna_area = 'Média'
+        elif area_analise == "Média Geral" and 'Área' in df_notas.columns:
+            # Para DataFrame agregado, precisa filtrar pela área "Média Geral"
+            df_area_filtrado = df_notas[df_notas['Área'] == 'Média Geral'].copy()
+            if not df_area_filtrado.empty:
+                print(f"[DEBUG] Filtrando para área 'Média Geral', registros encontrados: {len(df_area_filtrado)}")
+                # Usar a coluna 'Média' como valor
+                coluna_area = 'Média'
+                df_notas = df_area_filtrado
+            else:
+                print(f"[DEBUG] Nenhum registro encontrado para área 'Média Geral'")
+        elif 'Área' in df_notas.columns and area_analise in df_notas['Área'].unique():
+            # DataFrame agregado - filtrar pela área específica
+            df_area_filtrado = df_notas[df_notas['Área'] == area_analise].copy()
+            if not df_area_filtrado.empty:
+                print(f"[DEBUG] Filtrando para área '{area_analise}', registros encontrados: {len(df_area_filtrado)}")
+                coluna_area = 'Média'
+                df_notas = df_area_filtrado
+            else:
+                print(f"[DEBUG] Nenhum registro encontrado para área '{area_analise}'")
+        
+        if coluna_area is None:
+            print(f"[DEBUG] Coluna da área '{area_analise}' não encontrada")
             return _criar_resultado_analise_vazio()
+        
+        print(f"[DEBUG] Usando coluna de área: {coluna_area}")
         
         # Calcular estatísticas por estado para a área específica
-        estados_stats = df_notas.groupby('SG_UF_RESIDENCIA')[area_analise].agg([
+        estados_stats = df_notas.groupby(coluna_estado)[coluna_area].agg([
             'mean', 'median', 'std', 'count'
         ]).round(2)
         
+        print(f"[DEBUG] Estados stats shape: {estados_stats.shape}")
+        print(f"[DEBUG] Estados stats head: {estados_stats.head()}")
+        
         if estados_stats.empty:
+            print(f"[DEBUG] Estados stats vazio")
             return _criar_resultado_analise_vazio()
         
         # Encontrar melhor e pior estado
@@ -360,13 +416,22 @@ def analisar_desempenho_por_estado(
             'Mediana': estados_stats.loc[pior_idx, 'median']
         }
         
+        media_geral = round(estados_stats['mean'].mean(), 2)
+        desvio_padrao = round(estados_stats['mean'].std(), 2)
+        coef_variacao = round((desvio_padrao / media_geral * 100), 2) if media_geral > 0 else 0
+        
+        print(f"[DEBUG] Resultado calculado - média geral: {media_geral}, desvio: {desvio_padrao}")
+        
         return {
             'melhor_estado': melhor_estado,
             'pior_estado': pior_estado,
-            'desvio_padrao': round(estados_stats['mean'].std(), 2),
-            'media_nacional': round(estados_stats['mean'].mean(), 2),
+            'desvio_padrao': desvio_padrao,
+            'media_geral': media_geral,
+            'coef_variacao': coef_variacao,
+            'amplitude': round((estados_stats['mean'].max() - estados_stats['mean'].min()), 2),
             'estados_stats': estados_stats.to_dict('index'),
-            'area_analisada': area_analise
+            'area_analisada': area_analise,
+            'total_estados': len(estados_stats)
         }
     
     # Chamada tradicional com estados e competências

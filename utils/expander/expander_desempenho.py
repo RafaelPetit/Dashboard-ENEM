@@ -574,8 +574,12 @@ def _mostrar_comparativo_localidades(
     if analise.get('melhor_estado') is not None and analise.get('pior_estado') is not None:
         melhor = analise['melhor_estado']
         pior = analise['pior_estado']
-        
         if isinstance(melhor, pd.Series) and 'Estado' in melhor.index and 'Média' in melhor.index:
+            _exibir_estatistica(
+                "Melhor desempenho", 
+                f"{melhor['Estado']} ({melhor['Média']:.1f} pontos)"
+            )
+        elif isinstance(melhor, dict) and 'Estado' in melhor and 'Média' in melhor:
             _exibir_estatistica(
                 "Melhor desempenho", 
                 f"{melhor['Estado']} ({melhor['Média']:.1f} pontos)"
@@ -588,12 +592,19 @@ def _mostrar_comparativo_localidades(
                 "Pior desempenho", 
                 f"{pior['Estado']} ({pior['Média']:.1f} pontos)"
             )
+        elif isinstance(pior, dict) and 'Estado' in pior and 'Média' in pior:
+            _exibir_estatistica(
+                "Pior desempenho", 
+                f"{pior['Estado']} ({pior['Média']:.1f} pontos)"
+            )
         else:
             _exibir_estatistica("Pior desempenho", "Dados indisponíveis")
         
         # Calcular diferença apenas se ambos os valores estão disponíveis
-        if (isinstance(melhor, pd.Series) and isinstance(pior, pd.Series) and 
-            'Média' in melhor.index and 'Média' in pior.index):
+        if ((isinstance(melhor, pd.Series) and isinstance(pior, pd.Series) and 
+             'Média' in melhor.index and 'Média' in pior.index) or
+            (isinstance(melhor, dict) and isinstance(pior, dict) and 
+             'Média' in melhor and 'Média' in pior)):
             diferenca = melhor['Média'] - pior['Média']
             _exibir_estatistica("Diferença entre extremos", f"{diferenca:.1f} pontos")
     else:

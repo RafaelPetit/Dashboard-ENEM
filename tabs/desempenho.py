@@ -126,23 +126,27 @@ def render_desempenho(microdados, microdados_estados, estados_selecionados,
     st.info(mensagem)
     
     # Usamos um placeholder para microdados_full que só será carregado se necessário
-    microdados_full = None
-    
+    microdados_full = None    
     analise_selecionada = st.radio(
         "Selecione a análise desejada:",
         ["Análise Comparativa", "Relação entre Competências", "Médias por Estado"],
         horizontal=True
     )
     
+    print(f"[DEBUG] Análise selecionada: '{analise_selecionada}'")
+    
     if analise_selecionada == "Análise Comparativa":
+        print("[DEBUG] Executando Análise Comparativa")
         # Carrega microdados_full apenas quando necessário
         with st.spinner("Preparando dados para análise comparativa..."):
             microdados_full = preparar_dados_desempenho_geral(microdados_estados, colunas_notas, desempenho_mapping)
         render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_notas, competencia_mapping)
         release_memory(microdados_full)  # Libera memória após uso
     elif analise_selecionada == "Relação entre Competências":
+        print("[DEBUG] Executando Relação entre Competências")
         render_relacao_competencias(microdados_estados, colunas_notas, competencia_mapping, race_mapping)
     else:
+        print("[DEBUG] Executando Médias por Estado")
         render_desempenho_estados(microdados_estados, estados_selecionados, colunas_notas, competencia_mapping)
 
 
@@ -246,61 +250,91 @@ def render_relacao_competencias(microdados_estados, colunas_notas, competencia_m
     race_mapping : dict
         Mapeamento de códigos para raça/cor
     """
-    titulo_com_tooltip(
-        "Relação entre Competências", 
-        get_tooltip_relacao_competencias(), 
-        "relacao_competencias_tooltip"
-    )
+    print("[DEBUG] === INICIANDO render_relacao_competencias ===")
+    print(f"[DEBUG] Shape dados: {microdados_estados.shape if microdados_estados is not None else 'None'}")
+    print(f"[DEBUG] Colunas notas: {colunas_notas}")
+    print(f"[DEBUG] Competencia mapping keys: {list(competencia_mapping.keys()) if competencia_mapping else 'None'}")
     
-    # Configuração dos filtros
-    config_filtros = criar_filtros_dispersao(colunas_notas, competencia_mapping)
-    
-    # Filtragem e processamento dos dados
-    with st.spinner("Processando dados para o gráfico de dispersão..."):
-        dados_filtrados, registros_removidos = filtrar_dados_scatter(
-            microdados_estados, 
-            config_filtros['sexo'], 
-            config_filtros['tipo_escola'], 
-            config_filtros['eixo_x'], 
-            config_filtros['eixo_y'], 
-            config_filtros['excluir_notas_zero'], 
-            race_mapping,
-            config_filtros['faixa_salarial']
+    try:
+        titulo_com_tooltip(
+            "Relação entre Competências", 
+            get_tooltip_relacao_competencias(), 
+            "relacao_competencias_tooltip"
         )
+        print("[DEBUG] Título renderizado com sucesso")        
+        # Configuração dos filtros
+        print("[DEBUG] Criando filtros...")
+        config_filtros = criar_filtros_dispersao(colunas_notas, competencia_mapping)
+        print(f"[DEBUG] Filtros criados: {config_filtros}")
         
-        # Calcular correlação apenas uma vez e reutilizar
-        correlacao, interpretacao = calcular_correlacao_competencias(
-            dados_filtrados, 
-            config_filtros['eixo_x'], 
-            config_filtros['eixo_y']
-        )
-    
-    # Informações sobre registros removidos
-    if config_filtros['excluir_notas_zero'] and registros_removidos > 0:
-        st.info(f"Foram desconsiderados {registros_removidos:,} registros com nota zero.")
-    
-    # Exibição do gráfico de dispersão
-    with st.spinner("Gerando visualização de dispersão..."):
-        fig = criar_grafico_scatter(
-            dados_filtrados, 
-            config_filtros['eixo_x'], 
-            config_filtros['eixo_y'], 
-            competencia_mapping,
-            config_filtros['colorir_por_faixa']
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    
-    # Preparação da explicação
-    eixo_x_nome = competencia_mapping[config_filtros['eixo_x']]
-    eixo_y_nome = competencia_mapping[config_filtros['eixo_y']]
-    explicacao = get_explicacao_dispersao(eixo_x_nome, eixo_y_nome, correlacao)
-    
-    # Exibição da explicação e análise detalhada
-    st.info(explicacao)
-    criar_expander_relacao_competencias(dados_filtrados, config_filtros, competencia_mapping, correlacao, interpretacao)
-    
-    # Liberar memória
-    release_memory(dados_filtrados)
+        # Filtragem e processamento dos dados
+        with st.spinner("Processando dados para o gráfico de dispersão..."):
+            print("[DEBUG] Iniciando filtrar_dados_scatter...")
+            
+            dados_filtrados, registros_removidos = filtrar_dados_scatter(
+                microdados_estados, 
+                config_filtros['sexo'], 
+                config_filtros['tipo_escola'], 
+                config_filtros['eixo_x'], 
+                config_filtros['eixo_y'], 
+                config_filtros['excluir_notas_zero'], 
+                None,  # Não aplicar filtro de raça específico
+                None   # Não aplicar filtro de faixa salarial específico
+            )
+            
+            print(f"[DEBUG] Dados filtrados: shape={dados_filtrados.shape if dados_filtrados is not None else 'None'}")
+            print(f"[DEBUG] Registros removidos: {registros_removidos}")
+            
+            # Calcular correlação apenas uma vez e reutilizar
+            print("[DEBUG] Calculando correlação...")
+            correlacao, interpretacao = calcular_correlacao_competencias(
+                dados_filtrados, 
+                config_filtros['eixo_x'], 
+                config_filtros['eixo_y']
+            )
+            
+            print(f"[DEBUG] Correlação calculada: {correlacao}, interpretação: {interpretacao}")
+        
+        print("[DEBUG] Processamento de dados concluído")
+        
+        # Informações sobre registros removidos
+        if config_filtros['excluir_notas_zero'] and registros_removidos > 0:
+            st.info(f"Foram desconsiderados {registros_removidos:,} registros com nota zero.")
+        
+        # Exibição do gráfico de dispersão
+        print("[DEBUG] Criando gráfico de dispersão...")
+        with st.spinner("Gerando visualização de dispersão..."):
+            fig = criar_grafico_scatter(
+                dados_filtrados, 
+                config_filtros['eixo_x'], 
+                config_filtros['eixo_y'], 
+                competencia_mapping,
+                config_filtros['colorir_por_faixa']
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            print("[DEBUG] Gráfico exibido com sucesso")
+        
+        # Preparação da explicação
+        eixo_x_nome = competencia_mapping[config_filtros['eixo_x']]
+        eixo_y_nome = competencia_mapping[config_filtros['eixo_y']]
+        explicacao = get_explicacao_dispersao(eixo_x_nome, eixo_y_nome, correlacao)
+        
+        # Exibição da explicação e análise detalhada
+        st.info(explicacao)
+        print("[DEBUG] Criando expander...")
+        criar_expander_relacao_competencias(dados_filtrados, config_filtros, competencia_mapping, correlacao, interpretacao)
+        print("[DEBUG] Expander criado com sucesso")
+        
+        # Liberar memória
+        release_memory(dados_filtrados)
+        print("[DEBUG] === FIM render_relacao_competencias ===")
+        
+    except Exception as e:
+        print(f"[DEBUG] ERRO em render_relacao_competencias: {e}")
+        import traceback
+        traceback.print_exc()
+        st.error(f"Erro ao processar gráfico de relação entre competências: {e}")
+        return
 
 
 def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_notas, competencia_mapping):

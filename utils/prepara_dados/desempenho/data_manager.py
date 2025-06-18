@@ -143,21 +143,32 @@ class PerformanceDataManager:
             filtro_faixa_salarial: Filtro por faixa salarial
             excluir_notas_zero: Excluir notas zero
             max_amostras: Número máximo de amostras
-            
-        Returns:
+              Returns:
             Tuple com DataFrame filtrado e registros removidos
         """
-        return self.scatter_processor.process(
-            data=data,
-            eixo_x=eixo_x,
-            eixo_y=eixo_y,
-            filtro_sexo=filtro_sexo,
-            filtro_tipo_escola=filtro_tipo_escola,
-            filtro_raca=filtro_raca,
-            filtro_faixa_salarial=filtro_faixa_salarial,
-            excluir_notas_zero=excluir_notas_zero,
-            max_amostras=max_amostras
-        )
+        print("[DEBUG] === prepare_scatter_analysis chamado ===")
+        print(f"[DEBUG] Data shape: {data.shape if data is not None else 'None'}")
+        print(f"[DEBUG] Parametros: eixo_x={eixo_x}, eixo_y={eixo_y}")
+        
+        try:
+            resultado = self.scatter_processor.process(
+                data=data,
+                eixo_x=eixo_x,
+                eixo_y=eixo_y,
+                filtro_sexo=filtro_sexo,
+                filtro_tipo_escola=filtro_tipo_escola,
+                filtro_raca=filtro_raca,
+                filtro_faixa_salarial=filtro_faixa_salarial,
+                excluir_notas_zero=excluir_notas_zero,
+                max_amostras=max_amostras
+            )
+            print(f"[DEBUG] scatter_processor.process retornou: tipo={type(resultado)}")
+            return resultado
+        except Exception as e:
+            print(f"[DEBUG] ERRO em prepare_scatter_analysis: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
     
     def prepare_general_performance_data(
         self,
@@ -323,17 +334,37 @@ def filtrar_dados_scatter(
     
     Mantém compatibilidade com a função original.
     """
-    return _performance_data_manager.prepare_scatter_analysis(
-        data=dados,
-        eixo_x=eixo_x,
-        eixo_y=eixo_y,
-        filtro_sexo=filtro_sexo,
-        filtro_tipo_escola=filtro_tipo_escola,
-        filtro_raca=filtro_raca,
-        filtro_faixa_salarial=filtro_faixa_salarial,
-        excluir_notas_zero=excluir_notas_zero,
-        max_amostras=max_amostras
-    )
+    print("[DEBUG] === INICIANDO filtrar_dados_scatter ===")
+    print(f"[DEBUG] Dados input shape: {dados.shape if dados is not None else 'None'}")
+    print(f"[DEBUG] Filtros: sexo={filtro_sexo}, escola={filtro_tipo_escola}, raca={filtro_raca}, faixa_salarial={filtro_faixa_salarial}")
+    print(f"[DEBUG] Eixos: x={eixo_x}, y={eixo_y}")
+    print(f"[DEBUG] Excluir notas zero: {excluir_notas_zero}")
+    
+    try:
+        resultado = _performance_data_manager.prepare_scatter_analysis(
+            data=dados,
+            eixo_x=eixo_x,
+            eixo_y=eixo_y,
+            filtro_sexo=filtro_sexo,
+            filtro_tipo_escola=filtro_tipo_escola,
+            filtro_raca=filtro_raca,
+            filtro_faixa_salarial=filtro_faixa_salarial,
+            excluir_notas_zero=excluir_notas_zero,
+            max_amostras=max_amostras
+        )
+        print(f"[DEBUG] Resultado obtido: tipo={type(resultado)}")
+        if isinstance(resultado, tuple) and len(resultado) == 2:
+            df_result, removed = resultado
+            print(f"[DEBUG] DataFrame resultado shape: {df_result.shape if df_result is not None else 'None'}")
+            print(f"[DEBUG] Registros removidos: {removed}")
+        else:
+            print(f"[DEBUG] Resultado inesperado: {resultado}")
+        return resultado
+    except Exception as e:
+        print(f"[DEBUG] ERRO em filtrar_dados_scatter: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 def preparar_dados_grafico_linha_desempenho(

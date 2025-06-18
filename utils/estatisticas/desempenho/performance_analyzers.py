@@ -405,13 +405,12 @@ class StatePerformanceAnalyzer(IPerformanceAnalyzer):
                 }
         
         # Ajustar menor disparidade se não foi encontrada
-        if disparities['menor_disparidade']['diferenca'] == float('inf'):
-            disparities['menor_disparidade'] = {
+        if disparities['menor_disparidade']['diferenca'] == float('inf'):            disparities['menor_disparidade'] = {
                 'competencia': None, 'diferenca': 0, 'categoria_max': None, 'categoria_min': None
             }
         
         return disparities
-    
+
     def _process_competence_disparity(
         self, 
         df_comp: pd.DataFrame, 
@@ -434,13 +433,13 @@ class StatePerformanceAnalyzer(IPerformanceAnalyzer):
         
         diferenca = max_valor - min_valor
         diferenca_percentual = (diferenca / min_valor * 100) if min_valor > 0 else 0
-          # Calcular indicadores de desigualdade
+        
+        # Calcular indicadores de desigualdade
         try:
             # Usar VariabilityAnalyzer para calcular indicadores
             variability_analyzer = VariabilityAnalyzer()
-            indicadores = variability_analyzer.calculate(
-                df_comp, 
-                metric_column=value_column
+            indicadores = variability_analyzer.analyze_variability(
+                df_comp
             )
         except Exception as e:
             print(f"Erro ao calcular indicadores: {e}")
@@ -451,9 +450,10 @@ class StatePerformanceAnalyzer(IPerformanceAnalyzer):
             'diferenca_percentual': diferenca_percentual,
             'categoria_max': categoria_max,
             'categoria_min': categoria_min,
-            'valor_max': max_valor,            'valor_min': min_valor,
-            'razao_max_min': indicadores['razao_max_min'],
-            'coef_variacao': indicadores['coef_variacao']
+            'valor_max': max_valor,
+            'valor_min': min_valor,
+            'razao_max_min': indicadores.get('razao_max_min', 0),
+            'coef_variacao': indicadores.get('coef_variacao', 0)
         }
     
     def calculate_comparative_stats(
@@ -509,15 +509,14 @@ class StatePerformanceAnalyzer(IPerformanceAnalyzer):
                         comparative_results['menor_disparidade'] = {
                             'competencia': competencia,
                             'diferenca': diferenca,
-                            **comp_stats
-                        }
-              # Calcular indicadores globais
+                            **comp_stats                        }
+            
+            # Calcular indicadores globais
             try:
                 # Usar VariabilityAnalyzer para calcular indicadores
                 variability_analyzer = VariabilityAnalyzer()
-                indicadores_globais = variability_analyzer.calculate(
-                    df_resultados, 
-                    metric_column='Média'
+                indicadores_globais = variability_analyzer.analyze_variability(
+                    df_resultados
                 )
                 comparative_results['indicadores_globais'] = indicadores_globais
             except Exception as e:
