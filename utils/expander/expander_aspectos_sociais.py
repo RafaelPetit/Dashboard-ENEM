@@ -319,14 +319,17 @@ def _mostrar_resumo_associacao(
     """
     st.write("#### Resumo da associação:")
     
-    # Verificar se temos métricas válidas
-    if 'interpretacao' not in metricas or 'coeficiente' not in metricas:
-        st.warning("Dados insuficientes para análise de associação.")
+    # Verificar se temos métricas válidas (não zeradas)
+    coeficiente = metricas.get('coeficiente', 0)
+    interpretacao = metricas.get('interpretacao', '')
+    
+    if coeficiente == 0 or 'insuficient' in interpretacao.lower() or 'dados insuficientes' in interpretacao.lower():
+        st.info("Dados insuficientes para uma análise estatística robusta da associação entre essas variáveis.")
         return
     
     # Mostrar força da associação
-    st.write(f"• **Força da associação:** {metricas['interpretacao']}")
-    st.write(f"• **Coeficiente de contingência:** {metricas['coeficiente']:.4f}")
+    st.write(f"• **Força da associação:** {interpretacao}")
+    st.write(f"• **Coeficiente de contingência:** {coeficiente:.4f}")
     
     # Mostrar significância estatística
     if metricas.get('significativo', False):
@@ -337,7 +340,7 @@ def _mostrar_resumo_associacao(
         st.write(f"• **Valor p:** {metricas.get('valor_p', 1):.5f} (não significativo)")
     
     # Mostrar tamanho do efeito
-    if 'tamanho_efeito' in metricas and metricas['tamanho_efeito'] != 'indefinido':
+    if 'tamanho_efeito' in metricas and metricas['tamanho_efeito'] not in ['indefinido', 'indeterminado']:
         st.write(f"• **Tamanho do efeito:** {metricas['tamanho_efeito']}")
 
 
@@ -347,24 +350,28 @@ def _mostrar_metricas_estatisticas(metricas: Dict[str, Any]) -> None:
     """
     st.write("#### Métricas estatísticas:")
     
-    # Verificar se temos métricas válidas
-    if 'qui_quadrado' not in metricas or 'v_cramer' not in metricas:
-        st.warning("Dados insuficientes para métricas estatísticas detalhadas.")
+    # Verificar se temos métricas válidas (não zeradas)
+    qui_quadrado = metricas.get('qui_quadrado', 0)
+    v_cramer = metricas.get('v_cramer', 0)
+    interpretacao = metricas.get('interpretacao', '')
+    
+    if qui_quadrado == 0 and v_cramer == 0 or 'insuficient' in interpretacao.lower() or 'dados insuficientes' in interpretacao.lower():
+        st.info("Dados insuficientes para calcular métricas estatísticas detalhadas.")
         return
     
     # Qui-quadrado e graus de liberdade
-    st.write(f"• **Estatística qui-quadrado:** {metricas['qui_quadrado']:.2f}")
+    st.write(f"• **Estatística qui-quadrado:** {qui_quadrado:.2f}")
     st.write(f"• **Graus de liberdade:** {metricas.get('gl', 0)}")
     
     # V de Cramer
-    st.write(f"• **V de Cramer:** {metricas['v_cramer']:.4f}")
+    st.write(f"• **V de Cramer:** {v_cramer:.4f}")
     
     # Informação mútua
     if 'info_mutua_norm' in metricas:
         st.write(f"• **Informação mútua normalizada:** {metricas['info_mutua_norm']:.4f}")
     
     # Tamanho da amostra
-    if 'n_amostras' in metricas:
+    if 'n_amostras' in metricas and metricas['n_amostras'] > 0:
         st.write(f"• **Tamanho da amostra:** {metricas['n_amostras']:,}")
 
 
@@ -487,18 +494,23 @@ def _mostrar_analise_concentracao_equidade(
     st.write("### Análise de distribuição")
     
     # Verificar se temos estatísticas válidas
-    if estatisticas is None or 'indice_concentracao' not in estatisticas:
-        st.warning("Dados insuficientes para análise de concentração.")
+    indice_concentracao = estatisticas.get('indice_concentracao', 0)
+    
+    if indice_concentracao == 0 or 'total' not in estatisticas or estatisticas.get('total', 0) == 0:
+        st.info("Dados insuficientes para análise de concentração e equidade.")
         return
     
     # Índice de concentração
-    indice = estatisticas['indice_concentracao']
-    st.write(f"**Índice de concentração:** {indice:.4f}")
+    st.write(f"**Índice de concentração:** {indice_concentracao:.4f}")
     st.write(f"**Classificação:** {estatisticas.get('classificacao_concentracao', 'Não disponível')}")
     
     # Análise de concentração contextualizada
-    analise_concentracao = get_analise_concentracao(indice, nome_aspecto)
-    st.write(analise_concentracao)
+    try:
+        from utils.explicacao.explicacao_aspectos_sociais import get_analise_concentracao
+        analise_concentracao = get_analise_concentracao(indice_concentracao, nome_aspecto)
+        st.write(analise_concentracao)
+    except ImportError:
+        pass
     
     # Razão entre maior e menor categoria
     if (estatisticas.get('categoria_mais_frequente') is not None and 
@@ -615,23 +627,29 @@ def _mostrar_estatisticas_regionais(
     st.write(f"#### Estatísticas da categoria '{categoria_selecionada}'")
     
     # Verificar se temos análise válida
-    if analise is None or 'percentual_medio' not in analise:
-        st.warning("Dados insuficientes para análise regional.")
+    percentual_medio = analise.get('percentual_medio', 0)
+    desvio_padrao = analise.get('desvio_padrao', 0)
+    
+    if percentual_medio == 0 and desvio_padrao == 0:
+        st.info("Dados insuficientes para análise estatística regional detalhada.")
         return
     
     # Estatísticas principais em colunas
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("Média nacional", f"{analise['percentual_medio']:.1f}%")
-        st.metric("Desvio padrão", f"{analise['desvio_padrao']:.1f}%")
+        st.metric("Média nacional", f"{percentual_medio:.1f}%")
+        st.metric("Desvio padrão", f"{desvio_padrao:.1f}%")
     
     with col2:
-        st.metric("Valor máximo", f"{analise.get('amplitude', 0) + analise['percentual_medio']:.1f}%")
-        st.metric("Valor mínimo", f"{analise['percentual_medio'] - analise.get('amplitude', 0)/2:.1f}%")
+        amplitude = analise.get('amplitude', 0)
+        max_val = percentual_medio + amplitude/2 if amplitude > 0 else percentual_medio
+        min_val = percentual_medio - amplitude/2 if amplitude > 0 else percentual_medio
+        st.metric("Valor máximo", f"{max_val:.1f}%")
+        st.metric("Valor mínimo", f"{min_val:.1f}%")
     
     with col3:
-        st.metric("Amplitude", f"{analise.get('amplitude', 0):.1f}%")
+        st.metric("Amplitude", f"{amplitude:.1f}%")
         st.metric("Coef. variação", f"{analise.get('coef_variacao', 0):.1f}%")
     
     # Verificar estados com valores extremos
@@ -684,8 +702,10 @@ def _mostrar_variabilidade_regional(
     st.write("#### Análise de variabilidade regional:")
     
     # Verificar se temos dados para análise
-    if analise is None or 'coef_variacao' not in analise:
-        st.warning("Dados insuficientes para análise de variabilidade regional.")
+    coef_variacao = analise.get('coef_variacao', 0)
+    
+    if coef_variacao == 0:
+        st.info("Dados insuficientes para análise de variabilidade regional detalhada.")
         return
     
     # Exibir classificação de variabilidade
@@ -694,16 +714,26 @@ def _mostrar_variabilidade_regional(
     # Interpretar disparidade
     st.write(f"**Nível de disparidade regional:** {analise.get('disparidade', 'Indefinida')}")
     
-    # Usar a função de interpretação contextualizada
-    interpretacao = get_interpretacao_variabilidade_regional(
-        analise['coef_variacao'], 
-        nome_aspecto, 
-        categoria_selecionada
-    )
-    st.write(interpretacao)
+    # Usar a função de interpretação contextualizada se disponível
+    try:
+        from utils.explicacao.explicacao_aspectos_sociais import get_interpretacao_variabilidade_regional
+        interpretacao = get_interpretacao_variabilidade_regional(
+            coef_variacao, 
+            nome_aspecto, 
+            categoria_selecionada
+        )
+        st.write(interpretacao)
+    except ImportError:
+        # Interpretação básica se módulo não estiver disponível
+        if coef_variacao < LIMITE_VARIABILIDADE_BAIXA:
+            st.write(f"A distribuição de **{categoria_selecionada}** em {nome_aspecto} é relativamente uniforme entre as regiões.")
+        elif coef_variacao < LIMITE_VARIABILIDADE_MODERADA:
+            st.write(f"Há variação moderada na distribuição de **{categoria_selecionada}** em {nome_aspecto} entre as regiões.")
+        else:
+            st.write(f"Existe alta disparidade regional na distribuição de **{categoria_selecionada}** em {nome_aspecto}.")
     
     # Informação sobre índice de Gini
-    if 'indice_gini' in analise:
+    if 'indice_gini' in analise and analise['indice_gini'] > 0:
         st.write(f"**Índice de Gini regional:** {analise['indice_gini']:.4f}")
         st.write("*Valores mais próximos de 1 indicam maior desigualdade na distribuição regional*")
 

@@ -269,14 +269,14 @@ def render_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais):
         
         # Ordenar os dados
         contagem_aspecto = ordenar_categorias(contagem_aspecto, aspecto_social, variaveis_sociais)
-    
-    # Calcular estatísticas
+      # Calcular estatísticas
     with st.spinner("Calculando estatísticas..."):
         estatisticas = calcular_estatisticas_distribuicao(contagem_aspecto)
         
     # Obter informações para explicação
     total = estatisticas['total']
-    categoria_mais_frequente = estatisticas['categoria_mais_frequente']
+    # Ajustar para a nova estrutura do resultado
+    categoria_mais_frequente = estatisticas.get('categories_stats', {}).get('most_frequent', {})
     
     # Criar opções de visualização
     opcao_viz = st.radio(
