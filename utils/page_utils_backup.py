@@ -10,14 +10,8 @@ Este módulo fornece funcionalidades para:
 
 import streamlit as st
 import gc
-from typing import Optional, Dict, Any, List, Callable
-from utils.helpers.cache_utils import (
-    clear_all_cache, 
-    release_memory, 
-    deep_cleanup, 
-    check_memory_and_cleanup, 
-    clear_page_specific_cache
-)
+from typing import Optional, Dict, Any, List
+from utils.helpers.cache_utils import clear_all_cache, release_memory, deep_cleanup, check_memory_and_cleanup, clear_page_specific_cache
 
 class PageManager:
     """Gerenciador de páginas para otimização de memória e cache."""
@@ -40,8 +34,7 @@ class PageManager:
         else:
             st.session_state.previous_page = st.session_state.current_page
             st.session_state.current_page = page_name
-        
-        # Executar limpeza se mudou de página
+          # Executar limpeza se mudou de página
         if (st.session_state.previous_page and 
             st.session_state.previous_page != page_name):
             self.cleanup_previous_page()
@@ -76,7 +69,10 @@ class PageManager:
             try:
                 release_memory()
                 gc.collect()
-            except Exception:
+            except:
+                pass
+                gc.collect()
+            except:
                 pass
     
     def get_current_page(self) -> Optional[str]:
@@ -176,7 +172,48 @@ def render_page_debug_info() -> None:
         st.sidebar.json(info)
 
 
-def safe_page_execution(page_name: str, page_function: Callable, *args, **kwargs) -> Any:
+class PageDecorator:
+    """Decorator para automatizar gerenciamento de páginas."""
+    
+    def __init__(self, page_name: str):
+        self.page_name = page_name
+    
+    def __call__(self, func):
+        def wrapper(*args, **kwargs):
+            # Registrar navegação
+            register_page_navigation(self.page_name)
+            
+            try:
+                # Executar função da página
+                return func(*args, **kwargs)
+            finally:
+                # Cleanup adicional se necessário
+                pass
+                
+        return wrapper
+
+
+def page_wrapper(page_name: str):
+    """
+    Wrapper funcional para páginas.
+    
+    Args:
+        page_name: Nome da página
+        
+    Usage:
+        @page_wrapper("Análise Geral")
+        def main():
+            # código da página
+    """
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            register_page_navigation(page_name)
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def safe_page_execution(page_name: str, page_function, *args, **kwargs):
     """
     Executa função de página com tratamento seguro de erros e limpeza automática.
     
@@ -211,54 +248,24 @@ def safe_page_execution(page_name: str, page_function: Callable, *args, **kwargs
     finally:
         # Cleanup básico em caso de erro ou execução normal
         try:
-            # Verificar se precisa de limpeza adicional
-            check_memory_and_cleanup()
+            release_memory()
         except Exception as cleanup_error:
             print(f"[SAFE_PAGE_EXECUTION] Erro na limpeza: {str(cleanup_error)}")
-
-
-class PageDecorator:
-    """Decorator para automatizar gerenciamento de páginas."""
-    
-    def __init__(self, page_name: str):
-        self.page_name = page_name
-    
-    def __call__(self, func):
-        def wrapper(*args, **kwargs):
-            # Registrar navegação
-            register_page_navigation(self.page_name)
-            
-            try:
-                # Executar função da página
-                return func(*args, **kwargs)
-            finally:
-                # Cleanup adicional se necessário
-                check_memory_and_cleanup()
-                
-        return wrapper
-
-
-def page_wrapper(page_name: str):
-    """
-    Wrapper funcional para páginas.
     
     Args:
         page_name: Nome da página
-        
-    Usage:
-        @page_wrapper("Análise Geral")
-        def main():
-            # código da página
+        page_function: Função da página a ser executada
+        *args, **kwargs: Argumentos para a função
     """
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            register_page_navigation(page_name)
-            try:
-                return func(*args, **kwargs)
-            finally:
-                check_memory_and_cleanup()
-        return wrapper
-    return decorator
+    try:
+        register_page_navigation(page_name)
+        return page_function(*args, **kwargs)
+    except Exception as e:
+        st.error(f"Erro na página {page_name}: {str(e)}")
+        st.warning("Tente recarregar a página ou verificar os filtros aplicados.")
+    finally:
+        # Cleanup básico em caso de erro
+        release_memory()
 
 
 # Configurações específicas para diferentes tipos de página
@@ -292,23 +299,3 @@ def get_page_config(page_type: str = "dashboard") -> Dict[str, Any]:
         Configuração da página
     """
     return PAGE_CONFIGS.get(page_type, PAGE_CONFIGS["dashboard"])
-
-
-def force_page_cleanup(page_name: str = None) -> None:
-    """
-    Força limpeza de uma página específica ou da página atual.
-    
-    Args:
-        page_name: Nome da página para limpeza (opcional)
-    """
-    try:
-        if page_name:
-            clear_page_specific_cache(page_name)
-        
-        # Executar limpeza profunda
-        deep_cleanup()
-        
-        print(f"[FORCE_CLEANUP] Limpeza forçada executada para: {page_name or 'página atual'}")
-        
-    except Exception as e:
-        print(f"[FORCE_CLEANUP] Erro na limpeza forçada: {e}")

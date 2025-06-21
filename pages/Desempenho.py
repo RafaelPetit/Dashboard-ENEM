@@ -16,7 +16,7 @@ from functools import partial
 
 # Imports para carregamento de dados
 from data.api import data_api
-from utils.helpers.cache_utils import release_memory, clear_all_cache
+from utils.helpers.cache_utils import release_memory, clear_all_cache, check_memory_and_cleanup
 from utils.page_utils import register_page_navigation, safe_page_execution
 from utils.filters_utils import render_state_filters, render_data_info_sidebar
 from utils.mappings import get_mappings

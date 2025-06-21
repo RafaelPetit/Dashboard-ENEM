@@ -144,12 +144,92 @@ def clear_all_cache() -> None:
         # Limpar cache de recursos
         st.cache_resource.clear()
         
+        # Limpar session state desnecessário (manter apenas navegação e filtros essenciais)
+        keys_to_keep = {
+            'current_page', 'previous_page', 
+            'estados_selecionados', 'locais_selecionados',
+            'filtros_aplicados'
+        }
+        
+        # Identificar chaves a remover
+        keys_to_remove = [key for key in st.session_state.keys() if key not in keys_to_keep]
+        
+        # Remover chaves desnecessárias
+        for key in keys_to_remove:
+            try:
+                del st.session_state[key]
+            except KeyError:
+                pass
+        
         # Executar coleta de lixo
         gc.collect()
         
-        print("Cache limpo com sucesso")
+        print("[CACHE_UTILS] Cache e session state limpos com sucesso")
     except Exception as e:
-        print(f"Erro ao limpar cache: {e}")
+        print(f"[CACHE_UTILS] Erro ao limpar cache: {e}")
+
+
+def clear_page_specific_cache(page_name: str) -> None:
+    """
+    Limpa cache específico de uma página.
+    
+    Args:
+        page_name: Nome da página para limpeza específica
+    """
+    try:
+        # Identificar e remover chaves específicas da página
+        page_keys = [key for key in st.session_state.keys() 
+                    if key.startswith(f"{page_name.lower()}_") or 
+                       key.endswith(f"_{page_name.lower()}")]
+        
+        for key in page_keys:
+            try:
+                del st.session_state[key]
+            except KeyError:
+                pass
+        
+        # Executar coleta de lixo
+        gc.collect()
+        
+        print(f"[CACHE_UTILS] Cache específico da página '{page_name}' limpo")
+    except Exception as e:
+        print(f"[CACHE_UTILS] Erro ao limpar cache da página '{page_name}': {e}")
+
+
+def monitor_session_state_size() -> Dict[str, Any]:
+    """
+    Monitora o tamanho do session state.
+    
+    Returns:
+        Dict com informações sobre o session state
+    """
+    try:
+        import sys
+        
+        total_size = 0
+        key_sizes = {}
+        
+        for key, value in st.session_state.items():
+            try:
+                size = sys.getsizeof(value)
+                key_sizes[key] = size
+                total_size += size
+            except (TypeError, AttributeError):
+                key_sizes[key] = 0
+        
+        # Ordenar por tamanho
+        sorted_keys = sorted(key_sizes.items(), key=lambda x: x[1], reverse=True)
+        
+        return {
+            "total_size_bytes": total_size,
+            "total_size_mb": total_size / (1024 * 1024),
+            "num_keys": len(st.session_state),
+            "largest_keys": sorted_keys[:10],  # Top 10 maiores
+            "warning": total_size > 50 * 1024 * 1024  # Warning se > 50MB
+        }
+    except Exception as e:
+        print(f"[CACHE_UTILS] Erro ao monitorar session state: {e}")
+        return {"error": str(e)}
 
 
 def memory_intensive_function(func: Callable[..., T]) -> Callable[..., T]:
@@ -293,3 +373,117 @@ def monitor_memory_usage(func: Callable[..., T]) -> Callable[..., T]:
                 print(f"Função {func.__name__} alterou uso de memória em {memory_diff / (1024*1024):.1f}MB")
     
     return wrapper
+
+
+def deep_cleanup() -> None:
+    """
+    Executa limpeza profunda de memória e cache.
+    
+    Esta função deve ser chamada:
+    - Ao trocar de página
+    - Após operações pesadas
+    - Em caso de warnings de memória
+    """
+    try:
+        # 1. Limpar todos os caches do Streamlit
+        clear_all_cache()
+        
+        # 2. Monitorar session state
+        session_info = monitor_session_state_size()
+        if session_info.get("warning", False):
+            print(f"[DEEP_CLEANUP] Warning: Session state grande ({session_info['total_size_mb']:.1f}MB)")
+        
+        # 3. Forçar múltiplas coletas de lixo
+        for i in range(3):
+            collected = gc.collect()
+            if collected > 0:
+                print(f"[DEEP_CLEANUP] Coleta {i+1}: {collected} objetos removidos")
+        
+        # 4. Verificar uso de memória após limpeza
+        memory_info = get_memory_usage()
+        if memory_info.get("warning", False):
+            print(f"[DEEP_CLEANUP] Warning: Memória ainda alta ({memory_info['percentage']*100:.1f}%)")
+        
+        print("[DEEP_CLEANUP] Limpeza profunda concluída")
+        
+    except Exception as e:
+        print(f"[DEEP_CLEANUP] Erro na limpeza profunda: {e}")
+
+
+def emergency_cleanup() -> None:
+    """
+    Limpeza de emergência para situações críticas de memória.
+    
+    Esta função remove agressivamente dados do session state,
+    mantendo apenas o essencial para funcionamento básico.
+    """
+    try:
+        print("[EMERGENCY_CLEANUP] Iniciando limpeza de emergência...")
+        
+        # Chaves críticas que DEVEM ser mantidas
+        critical_keys = {
+            'current_page', 'previous_page'
+        }
+        
+        # Remover TUDO exceto chaves críticas
+        keys_to_remove = [key for key in st.session_state.keys() 
+                         if key not in critical_keys]
+        
+        removed_count = 0
+        for key in keys_to_remove:
+            try:
+                del st.session_state[key]
+                removed_count += 1
+            except KeyError:
+                pass
+        
+        # Limpar todos os caches
+        st.cache_data.clear()
+        st.cache_resource.clear()
+        
+        # Múltiplas coletas de lixo agressivas
+        for i in range(5):
+            gc.collect()
+        
+        print(f"[EMERGENCY_CLEANUP] Removidas {removed_count} chaves do session state")
+        print("[EMERGENCY_CLEANUP] Limpeza de emergência concluída")
+        
+        # Exibir aviso ao usuário
+        st.warning("⚠️ Limpeza de emergência executada devido ao alto uso de memória. Alguns filtros podem ter sido resetados.")
+        
+    except Exception as e:
+        print(f"[EMERGENCY_CLEANUP] Erro na limpeza de emergência: {e}")
+        st.error("Erro crítico de memória. Recarregue a página.")
+
+
+def check_memory_and_cleanup() -> bool:
+    """
+    Verifica uso de memória e executa limpeza se necessário.
+    
+    Returns:
+        True se limpeza foi executada, False caso contrário
+    """
+    try:
+        memory_info = get_memory_usage()
+        session_info = monitor_session_state_size()
+        
+        # Critérios para limpeza
+        memory_critical = memory_info.get("percentage", 0) > 0.9  # 90%
+        memory_warning = memory_info.get("percentage", 0) > 0.8   # 80%
+        session_large = session_info.get("total_size_mb", 0) > 100  # 100MB
+        
+        if memory_critical or session_large:
+            print(f"[AUTO_CLEANUP] Executando limpeza de emergência (Mem: {memory_info.get('percentage', 0)*100:.1f}%, Session: {session_info.get('total_size_mb', 0):.1f}MB)")
+            emergency_cleanup()
+            return True
+            
+        elif memory_warning:
+            print(f"[AUTO_CLEANUP] Executando limpeza profunda (Mem: {memory_info.get('percentage', 0)*100:.1f}%)")
+            deep_cleanup()
+            return True
+            
+        return False
+        
+    except Exception as e:
+        print(f"[AUTO_CLEANUP] Erro na verificação automática: {e}")
+        return False

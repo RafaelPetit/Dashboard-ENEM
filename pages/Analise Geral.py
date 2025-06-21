@@ -16,13 +16,13 @@ from typing import Dict, List, Any, Optional, Tuple, Union
 
 # Imports para carregamento de dados
 from data.api import data_api
-from utils.helpers.cache_utils import release_memory, clear_all_cache
+from utils.helpers.cache_utils import release_memory, clear_all_cache, check_memory_and_cleanup
 from utils.page_utils import register_page_navigation, safe_page_execution
 from utils.filters_utils import render_state_filters, render_data_info_sidebar
 from utils.mappings import get_mappings
 
-# Imports para tooltips e métricas
-from utils.tooltip import titulo_com_tooltip, custom_metric_with_tooltip
+# Imports para tooltips
+from utils.tooltip import titulo_com_tooltip
 
 # Imports para preparação de dados
 from utils.prepara_dados import (
@@ -44,14 +44,8 @@ from utils.visualizacao import (
 
 # Imports para explicações
 from utils.explicacao import (
-    get_tooltip_metricas_principais,
     get_tooltip_histograma,
     get_tooltip_faltas,
-    get_tooltip_media_geral,
-    get_tooltip_total_candidatos,
-    get_tooltip_maior_media,
-    get_tooltip_menor_media,
-    get_tooltip_estado_maior_media,
     get_tooltip_media_por_regiao,
     get_tooltip_comparativo_areas,
     get_tooltip_evasao,
@@ -64,7 +58,6 @@ from utils.explicacao import (
 
 # Imports para análises estatísticas
 from utils.estatisticas import (
-    analisar_metricas_principais,
     analisar_distribuicao_notas,
     analisar_faltas,
     analisar_desempenho_por_faixa_nota,
@@ -99,6 +92,9 @@ def load_data_and_filters() -> Tuple[pd.DataFrame, List[str], List[str], List[st
                        colunas_notas, competencia_mapping
     """
     try:
+        # Verificar uso de memória antes de carregar dados
+        check_memory_and_cleanup()
+        
         # Renderizar filtros laterais
         estados_selecionados, locais_selecionados = render_state_filters()
         render_data_info_sidebar()
@@ -109,7 +105,8 @@ def load_data_and_filters() -> Tuple[pd.DataFrame, List[str], List[str], List[st
         if microdados.empty:
             st.warning("Não foi possível carregar os dados.")
             return pd.DataFrame(), [], [], [], {}
-          # Filtrar dados por estados selecionados
+            
+        # Filtrar dados por estados selecionados
         microdados_estados = data_api.filter_data_by_states(microdados, estados_selecionados)
         
         # Carregar mapeamentos completos
@@ -119,64 +116,14 @@ def load_data_and_filters() -> Tuple[pd.DataFrame, List[str], List[str], List[st
         colunas_notas = mappings['colunas_notas']
         competencia_mapping = mappings['competencia_mapping']
         
+        # Liberar microdados original da memória
+        release_memory(microdados)
+        
         return microdados_estados, estados_selecionados, locais_selecionados, colunas_notas, competencia_mapping
         
     except Exception as e:
         st.error(f"Erro ao carregar dados: {str(e)}")
         return pd.DataFrame(), [], [], [], {}
-
-def exibir_metricas_principais(
-    microdados_estados: pd.DataFrame, 
-    estados_selecionados: List[str], 
-    colunas_notas: List[str]
-) -> Dict[str, Any]:
-    """
-    Calcula e exibe métricas principais em cards.
-    """
-    titulo_com_tooltip("Métricas Principais", get_tooltip_metricas_principais(), "metricas_tooltip")
-    
-    with st.spinner("Calculando métricas principais..."):
-        metricas = analisar_metricas_principais(microdados_estados, estados_selecionados, colunas_notas)
-    
-    col1, col2, col3, col4 = st.columns(4)
-
-    def formatar_numero_br(valor: float, casas_decimais: int = 2) -> str:
-        formatado = f"{valor:,.{casas_decimais}f}"
-        return formatado.replace(',', 'X').replace('.', ',').replace('X', '.')
-
-    with col1:
-        custom_metric_with_tooltip(
-            label="Candidatos Inscritos",
-            value=f"{metricas['total_candidatos']:,}".replace(',', '.'),
-            explicacao=get_tooltip_total_candidatos(),
-            key="metrica_candidatos_geral"
-        )
-    
-    with col2:
-        custom_metric_with_tooltip(
-            label="Média Geral",
-            value=formatar_numero_br(metricas['media_geral']),
-            explicacao=get_tooltip_media_geral(),
-            key="metrica_media_geral_geral"
-        )
-        
-    with col3:
-        custom_metric_with_tooltip(
-            label="Maior Média",
-            value=f"{formatar_numero_br(metricas['valor_maior_media_estado'])} ({metricas['estado_maior_media']})",
-            explicacao=get_tooltip_maior_media(),
-            key="metrica_maior_media_geral"
-        )
-    
-    with col4:
-        custom_metric_with_tooltip(
-            label="Menor Média",
-            value=f"{formatar_numero_br(metricas['valor_menor_media_estado'])} ({metricas['estado_menor_media']})",
-            explicacao=get_tooltip_menor_media(),
-            key="metrica_menor_media_geral"
-        )
-                
-    return metricas
 
 def exibir_histograma_notas(
     microdados_estados: pd.DataFrame, 
@@ -587,13 +534,9 @@ def _main_content() -> None:
     if not estados_selecionados:
         st.warning("Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
         return
-    
-    # Mostrar mensagem sobre os filtros aplicados
+      # Mostrar mensagem sobre os filtros aplicados
     mensagem = f"Analisando Dados Gerais para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
     st.info(mensagem)
-    
-    # Exibir métricas principais (sempre visíveis)
-    metricas = exibir_metricas_principais(microdados_estados, estados_selecionados, colunas_notas)
     
     # Permitir ao usuário selecionar a análise desejada
     analise_selecionada = st.radio(
@@ -617,7 +560,7 @@ def _main_content() -> None:
         st.warning("Tente selecionar outra visualização ou verificar os filtros aplicados.")
     finally:
         # Liberar memória dos dados carregados
-        release_memory([microdados_estados, metricas])
+        release_memory(microdados_estados)
 
 if __name__ == "__main__":
     main()
