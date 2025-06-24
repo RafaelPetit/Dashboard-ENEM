@@ -52,11 +52,27 @@ def criar_grafico_comparativo_barras(
     """
     # Verificar dados de entrada
     if df_resultados is None or df_resultados.empty:
+        print("Erro: DataFrame de resultados vazio para gráfico comparativo")
         return _criar_grafico_vazio("Sem dados disponíveis para visualização")
+    
+    # Verificar estrutura mínima do DataFrame
+    colunas_necessarias = ['Categoria', 'Competência', 'Média']
+    colunas_faltantes = [col for col in colunas_necessarias if col not in df_resultados.columns]
+    if colunas_faltantes:
+        print(f"Erro: Colunas faltantes no DataFrame: {colunas_faltantes}")
+        return _criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
     
     # Verificar se a variável selecionada existe no dicionário
     if variavel_selecionada not in variaveis_categoricas:
+        print(f"Erro: Variável '{variavel_selecionada}' não encontrada nos metadados")
         return _criar_grafico_vazio(f"Variável '{variavel_selecionada}' não encontrada nos metadados")
+    
+    # Verificar se temos dados suficientes
+    if len(df_resultados) == 0:
+        print("Erro: DataFrame não contém nenhuma linha de dados")
+        return _criar_grafico_vazio("Nenhum dado encontrado após filtros aplicados")
+    
+    print(f"Criando gráfico comparativo com {len(df_resultados)} linhas de dados")
     
     try:
         # Determinar título e componentes do texto
@@ -121,16 +137,38 @@ def criar_grafico_linha_desempenho(
     Figure: Objeto de figura Plotly com o gráfico de linha
     """
     # Validação de dados de entrada
-    if df_linha is None or df_linha.empty:
+    if df_linha is None:
+        print("[ERRO] criar_grafico_linha_desempenho: df_linha é None")
+        return _criar_grafico_vazio("Erro: dados não fornecidos")
+        
+    if df_linha.empty:
+        print("[WARN] criar_grafico_linha_desempenho: df_linha está vazio")
         return _criar_grafico_vazio("Sem dados disponíveis para visualização")
     
+    # Verificar se as colunas necessárias existem
+    colunas_necessarias = ['Categoria', 'Competência', 'Média']
+    colunas_faltantes = [col for col in colunas_necessarias if col not in df_linha.columns]
+    if colunas_faltantes:
+        print(f"[ERRO] criar_grafico_linha_desempenho: colunas faltantes: {colunas_faltantes}")
+        return _criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
+    
     if variavel_selecionada not in variaveis_categoricas:
+        print(f"[ERRO] criar_grafico_linha_desempenho: variável '{variavel_selecionada}' não encontrada")
         return _criar_grafico_vazio(f"Variável '{variavel_selecionada}' não encontrada nos metadados")
     
     try:
         # Determinar título adequado
         ordenacao_texto = " (ordenado por valor decrescente)" if ordenar_decrescente else ""
-        filtro_texto = f" - {competencia_filtro}" if competencia_filtro and len(df_linha['Competência'].unique()) == 1 else ""
+        
+        # Verificar competências disponíveis de forma segura
+        competencias_unicas = []
+        try:
+            competencias_unicas = df_linha['Competência'].unique()
+        except Exception as e:
+            print(f"[ERRO] ao acessar competências: {e}")
+            return _criar_grafico_vazio("Erro ao processar competências dos dados")
+        
+        filtro_texto = f" - {competencia_filtro}" if competencia_filtro and len(competencias_unicas) == 1 else ""
         titulo = f"Desempenho por {variaveis_categoricas[variavel_selecionada]['nome']}{filtro_texto}{ordenacao_texto}"
         
         fig = px.line(

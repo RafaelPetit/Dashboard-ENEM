@@ -21,6 +21,12 @@ def get_mappings():
         -1: 'Não Respondeu'
     }
     
+    tipo_escola_mapping = {
+        1: 'Não informado',
+        2: 'Pública',
+        3: 'Privada'
+    }
+    
     sexo_mapping = {
         'M': 'Masculino',
         'F': 'Feminino'
@@ -152,6 +158,12 @@ def get_mappings():
             "nome": "Situação do Ensino Médio",
             "mapeamento": conclusao_ensino_medio_mapping,
             "ordem": list(conclusao_ensino_medio_mapping.values())
+        },
+        
+        "TP_ESCOLA": {
+            "nome": "Tipo de Escola",
+            "mapeamento": tipo_escola_mapping,
+            "ordem": list(tipo_escola_mapping.values())
         }
     }
     # Variáveis sociais para a aba de Aspectos Sociais
@@ -291,6 +303,7 @@ def get_mappings():
         'race_mapping': race_mapping,
         'sexo_mapping': sexo_mapping,
         'dependencia_escola_mapping': dependencia_escola_mapping,
+        'tipo_escola_mapping': tipo_escola_mapping,
         'variaveis_sociais': variaveis_sociais,
         'acesso_internet_mapping': acesso_internet_mapping,
         'conclusao_ensino_medio_mapping': conclusao_ensino_medio_mapping,

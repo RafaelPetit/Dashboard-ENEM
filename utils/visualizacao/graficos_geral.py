@@ -122,12 +122,23 @@ def criar_grafico_faltas(
     """
     # Verificar se temos dados válidos
     if df_faltas is None or df_faltas.empty:
+        print("Erro: DataFrame de faltas vazio")
         return _criar_grafico_vazio("Sem dados disponíveis para análise de faltas")
     
     # Verificar estrutura mínima necessária
     colunas_necessarias = ['Estado', 'Tipo de Falta', 'Percentual de Faltas']
-    if not all(col in df_faltas.columns for col in colunas_necessarias):
-        return _criar_grafico_vazio("Estrutura de dados incorreta para análise de faltas")
+    colunas_faltantes = [col for col in colunas_necessarias if col not in df_faltas.columns]
+    if colunas_faltantes:
+        print(f"Erro: Colunas faltantes no DataFrame de faltas: {colunas_faltantes}")
+        print(f"Colunas disponíveis: {list(df_faltas.columns)}")
+        return _criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
+    
+    # Verificar se temos dados suficientes
+    if len(df_faltas) == 0:
+        print("Erro: DataFrame de faltas não contém nenhuma linha")
+        return _criar_grafico_vazio("Nenhum dado de faltas encontrado")
+    
+    print(f"Criando gráfico de faltas com {len(df_faltas)} linhas de dados")
     
     try:
         # Criar uma cópia para não modificar o DataFrame original

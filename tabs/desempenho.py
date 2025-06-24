@@ -161,6 +161,37 @@ def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_n
     competencia_mapping : dict
         Mapeamento de códigos para nomes de competências
     """
+    # Verificar se temos dados de entrada válidos
+    if microdados_full is None or microdados_full.empty:
+        st.error("❌ Nenhum dado disponível para análise comparativa.")
+        st.info("Verifique se os estados selecionados possuem dados ou tente recarregar a página.")
+        return
+    
+    # Verificar se temos variáveis categóricas disponíveis
+    if not variaveis_categoricas:
+        st.error("❌ Nenhuma variável categórica disponível para análise.")
+        return
+    
+    # Verificar se temos colunas de notas
+    if not colunas_notas:
+        st.error("❌ Nenhuma coluna de notas disponível para análise.")
+        return
+    
+    # Exibir informações de debug sobre os dados
+    with st.expander("🔍 Informações dos Dados", expanded=False):
+        st.write(f"📊 Total de registros: {len(microdados_full):,}")
+        st.write(f"📋 Colunas disponíveis: {len(microdados_full.columns)}")
+        st.write(f"🏷️ Variáveis categóricas: {len(variaveis_categoricas)}")
+        st.write(f"📝 Colunas de notas: {len(colunas_notas)}")
+        
+        # Mostrar algumas colunas para debug
+        colunas_importantes = ['SG_UF_PROVA', 'TP_SEXO', 'TP_COR_RACA', 'TP_ESCOLA']
+        colunas_presentes = [col for col in colunas_importantes if col in microdados_full.columns]
+        if colunas_presentes:
+            st.write(f"✅ Colunas importantes presentes: {colunas_presentes}")
+        else:
+            st.write("⚠️ Nenhuma coluna importante encontrada")
+    
     titulo_com_tooltip(
         "Análise Comparativa do Desempenho por Variáveis Demográficas", 
         get_tooltip_analise_comparativa(), 
@@ -173,6 +204,11 @@ def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_n
         format_func=lambda x: variaveis_categoricas[x]["nome"]
     )
 
+    # Verificação robusta de dados válidos
+    if microdados_full is None or microdados_full.empty:
+        st.warning("Não há dados suficientes para análise comparativa com os filtros aplicados.")
+        return
+    
     # Verificação mais robusta com feedback detalhado
     if variavel_selecionada not in microdados_full.columns:
         colunas_disponiveis = ", ".join(microdados_full.columns.tolist())
@@ -189,39 +225,106 @@ def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_n
             colunas_notas, 
             competencia_mapping
         )
+        
+        # Verificação robusta para dados válidos
+        if df_resultados is None or df_resultados.empty:
+            st.error("❌ Não foi possível processar os dados para análise comparativa.")
+            st.info("Possíveis causas: dados insuficientes, variável não encontrada, ou problema no processamento.")
+            return
+        
+        # Verificar estrutura do DataFrame
+        colunas_esperadas = ['Categoria', 'Competência', 'Média']
+        colunas_faltantes = [col for col in colunas_esperadas if col not in df_resultados.columns]
+        if colunas_faltantes:
+            st.error(f"❌ Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
+            return
+        
+        st.success(f"✅ Dados processados com sucesso: {len(df_resultados)} registros encontrados")
     
     # Configuração dos filtros
     config_filtros = criar_filtros_comparativo(df_resultados, variaveis_categoricas, variavel_selecionada)
     
+    # Verificar se os filtros foram criados corretamente
+    if config_filtros is None:
+        st.error("❌ Erro ao criar filtros de configuração.")
+        return
+    
     # Preparação dos dados para visualização
     competencia_para_filtro = config_filtros['competencia_filtro'] if config_filtros['mostrar_apenas_competencia'] else None
-    df_visualizacao = preparar_dados_grafico_linha(
-        df_resultados, 
-        config_filtros['competencia_filtro'],
-        competencia_para_filtro,
-        config_filtros['ordenar_decrescente']
-    )
+    
+    with st.spinner("Preparando dados para visualização..."):
+        try:
+            df_visualizacao = preparar_dados_grafico_linha(
+                df_resultados, 
+                config_filtros['competencia_filtro'],
+                competencia_para_filtro,
+                config_filtros['ordenar_decrescente']
+            )
+            
+        except Exception as e:
+            st.error(f"❌ Erro durante a preparação de dados: {str(e)}")
+            st.write("Debug do erro:")
+            import traceback
+            st.text(traceback.format_exc())
+            return
+        
+        # Verificar se a preparação dos dados foi bem-sucedida
+        if df_visualizacao is None:
+            st.error("❌ Erro na preparação de dados para visualização: função retornou None.")
+            st.info("Possível causa: erro interno na função de preparação de dados.")
+            return
+        
+        if df_visualizacao.empty:
+            st.warning("⚠️ Nenhum dado disponível após aplicação dos filtros.")
+            st.info("Tente ajustar os filtros ou verificar se há dados disponíveis para a combinação selecionada.")
+            return
+        
+        st.success(f"✅ Dados de visualização preparados: {len(df_visualizacao)} registros")
     
     # Exibição do gráfico apropriado
     with st.spinner("Gerando visualização..."):
-        variavel_nome = variaveis_categoricas[variavel_selecionada]['nome']
-        
-        if config_filtros['tipo_grafico'] == "Gráfico de Barras":
-            barmode = 'relative' if config_filtros['mostrar_apenas_competencia'] else 'group'
-            fig = criar_grafico_comparativo_barras(
-                df_visualizacao, variavel_selecionada, variaveis_categoricas, 
-                competencia_mapping, barmode=barmode
-            )
-            explicacao = get_explicacao_barras_comparativo(variavel_nome)
-        else:
-            fig = criar_grafico_linha_desempenho(
-                df_visualizacao, variavel_selecionada, variaveis_categoricas,
-                config_filtros['competencia_filtro'] if config_filtros['mostrar_apenas_competencia'] else None,
-                config_filtros['ordenar_decrescente']
-            )
-            explicacao = get_explicacao_linhas_comparativo(variavel_nome)
+        try:
+            # Verificar se temos dados válidos para criar o gráfico
+            if df_visualizacao is None or df_visualizacao.empty:
+                st.error("❌ Não há dados válidos para criar a visualização.")
+                return
             
-        st.plotly_chart(fig, use_container_width=True)
+            # Verificar se as colunas necessárias estão presentes
+            colunas_necessarias = ['Categoria', 'Competência', 'Média']
+            if not all(col in df_visualizacao.columns for col in colunas_necessarias):
+                st.error(f"❌ Estrutura de dados inválida. Colunas necessárias: {colunas_necessarias}")
+                st.write(f"Colunas disponíveis: {list(df_visualizacao.columns)}")
+                return
+            
+            variavel_nome = variaveis_categoricas[variavel_selecionada]['nome']
+            
+            if config_filtros['tipo_grafico'] == "Gráfico de Barras":
+                barmode = 'relative' if config_filtros['mostrar_apenas_competencia'] else 'group'
+                fig = criar_grafico_comparativo_barras(
+                    df_visualizacao, variavel_selecionada, variaveis_categoricas, 
+                    competencia_mapping, barmode=barmode
+                )
+                explicacao = get_explicacao_barras_comparativo(variavel_nome)
+            else:
+                fig = criar_grafico_linha_desempenho(
+                    df_visualizacao, variavel_selecionada, variaveis_categoricas,
+                    config_filtros['competencia_filtro'] if config_filtros['mostrar_apenas_competencia'] else None,
+                    config_filtros['ordenar_decrescente']
+                )
+                explicacao = get_explicacao_linhas_comparativo(variavel_nome)
+            
+            # Verificar se o gráfico foi criado com sucesso
+            if fig is None:
+                st.error("❌ Erro ao criar o gráfico de visualização.")
+                return
+                
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Erro ao gerar visualização: {str(e)}")
+            import traceback
+            st.text(traceback.format_exc())
+            return
     
     # Exibição da explicação e análise detalhada
     st.info(explicacao)

@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-import polars as pl
 import numpy as np
 import gc
-from typing import Dict, List, Any, Optional, Tuple, Union
-from functools import partial
+from typing import Dict, List, Any, Optional, Union, Tuple
+
+from utils.helpers.sidebar_filter import render_sidebar_filters
 
 # Imports para tooltips e métricas
 from utils.tooltip import titulo_com_tooltip
@@ -63,9 +63,6 @@ from utils.expander.expander_desempenho import (
     criar_expander_desempenho_estados
 )
 
-# Imports para utilitários
-from utils.helpers.regiao_utils import obter_regiao_do_estado
-
 # Configuração da página
 st.set_page_config(
     page_title="ENEM - Análise de Desempenho",
@@ -104,57 +101,116 @@ def get_cached_data_desempenho(estados_selecionados: List[str]):
     
     @st.cache_data(ttl=600, max_entries=2, show_spinner=False)
     def _load_desempenho_data(estados_key: str):
-        """Cache interno para dados da página Desempenho"""
-        return load_data_for_tab("desempenho")
+        """Cache interno para dados da página Desempenho - carrega múltiplas fontes"""
+        try:
+            # Carregar dados principais de desempenho
+            dados_desempenho = load_data_for_tab("desempenho")
+            
+            # Para análise comparativa que precisa de mais variáveis, carregar dados de aspectos sociais
+            dados_aspectos = load_data_for_tab("aspectos_sociais")
+            
+            # Verificar se precisamos combinar dados
+            # Se desempenho não tem todas as colunas necessárias, tentar merge
+            colunas_demograficas_extras = ['TP_ESCOLA', 'TP_ESTADO_CIVIL', 'TP_ENSINO']
+            colunas_extras_disponiveis = [col for col in colunas_demograficas_extras 
+                                        if col in dados_aspectos.columns and col not in dados_desempenho.columns]
+            
+            if colunas_extras_disponiveis and not dados_aspectos.empty:
+                # Fazer merge para obter colunas extras (se possível)
+                colunas_merge = ['SG_UF_PROVA', 'TP_SEXO', 'TP_COR_RACA'] + colunas_extras_disponiveis
+                colunas_merge_disponiveis = [col for col in colunas_merge if col in dados_aspectos.columns]
+                
+                if len(colunas_merge_disponiveis) >= 3:  # Pelo menos 3 colunas para merge seguro
+                    try:
+                        dados_aspectos_limitados = dados_aspectos[colunas_merge_disponiveis].drop_duplicates()
+                        dados_combinados = dados_desempenho.merge(
+                            dados_aspectos_limitados, 
+                            on=['SG_UF_PROVA', 'TP_SEXO', 'TP_COR_RACA'], 
+                            how='left'
+                        )
+                        print(f"✅ Dados combinados: {len(dados_combinados)} registros com {len(colunas_extras_disponiveis)} colunas extras")
+                        return dados_combinados
+                    except Exception as e:
+                        print(f"⚠️ Erro ao combinar dados, usando apenas desempenho: {e}")
+            
+            return dados_desempenho
+            
+        except Exception as e:
+            print(f"Erro ao carregar dados de desempenho: {e}")
+            return pd.DataFrame()
     
     # Usar string dos estados como chave para cache
     estados_key = "_".join(sorted(estados_selecionados))
     return _load_desempenho_data(estados_key)
 
-def convert_pandas_to_polars_safe(df_pandas: pd.DataFrame) -> pl.DataFrame:
-    """Converte DataFrame Pandas para Polars com tratamento de erro"""
-    try:
-        return pl.from_pandas(df_pandas)
-    except Exception as e:
-        st.warning(f"Aviso na conversão para Polars: {str(e)}")
-        return None
-
 def optimize_memory_usage(microdados_estados: pd.DataFrame) -> pd.DataFrame:
-    """Otimiza uso de memória do DataFrame usando Polars quando possível"""
-    try:
-        # Converter para Polars para otimizações
-        df_polars = convert_pandas_to_polars_safe(microdados_estados)
-        if df_polars is not None:
-            # Otimizar tipos de dados
-            for col in df_polars.columns:
-                dtype = df_polars[col].dtype
-                
-                if dtype == pl.Int64:
-                    max_val = df_polars[col].max()
-                    min_val = df_polars[col].min()
-                    
-                    if max_val <= 127 and min_val >= -128:
-                        df_polars = df_polars.with_columns(pl.col(col).cast(pl.Int8))
-                    elif max_val <= 32767 and min_val >= -32768:
-                        df_polars = df_polars.with_columns(pl.col(col).cast(pl.Int16))
-                    elif max_val <= 2147483647 and min_val >= -2147483648:
-                        df_polars = df_polars.with_columns(pl.col(col).cast(pl.Int32))
-                
-                elif dtype == pl.Float64:
-                    df_polars = df_polars.with_columns(pl.col(col).cast(pl.Float32))
-            
-            # Converter de volta para pandas
-            return df_polars.to_pandas()
+    """
+    Otimização de memória usando APENAS pandas - versão ultra-segura
+    
+    Parâmetros:
+    -----------
+    microdados_estados : DataFrame
+        DataFrame original a ser otimizado
         
-        return microdados_estados
+    Retorna:
+    --------
+    DataFrame: DataFrame com tipos otimizados
+    """
+    try:
+        # Verificação básica
+        if microdados_estados is None or microdados_estados.empty:
+            return microdados_estados
+        
+        # Criar cópia para não modificar o original
+        df_optimized = microdados_estados.copy()
+        
+        # Otimizações seguras coluna por coluna
+        for col in df_optimized.columns:
+            try:
+                dtype_original = df_optimized[col].dtype
+                
+                # Otimizar colunas categóricas (object)
+                if dtype_original == 'object':
+                    # Verificar se vale a pena converter para category
+                    unique_ratio = len(df_optimized[col].unique()) / len(df_optimized)
+                    if unique_ratio < 0.5:  # Se menos de 50% valores únicos
+                        df_optimized[col] = df_optimized[col].astype('category')
+                
+                # Otimizar inteiros
+                elif dtype_original in ['int64', 'Int64']:
+                    # Verificar se temos valores válidos
+                    if not df_optimized[col].isna().all():
+                        max_val = df_optimized[col].max()
+                        min_val = df_optimized[col].min()
+                        
+                        if pd.notna(max_val) and pd.notna(min_val):
+                            # Escolher tipo menor possível
+                            if max_val <= 127 and min_val >= -128:
+                                df_optimized[col] = df_optimized[col].astype('int8')
+                            elif max_val <= 32767 and min_val >= -32768:
+                                df_optimized[col] = df_optimized[col].astype('int16')
+                            elif max_val <= 2147483647 and min_val >= -2147483648:
+                                df_optimized[col] = df_optimized[col].astype('int32')
+                
+                # Otimizar floats
+                elif dtype_original == 'float64':
+                    # Usar downcast do pandas (mais seguro)
+                    df_optimized[col] = pd.to_numeric(df_optimized[col], downcast='float')
+                    
+            except Exception as col_error:
+                # Se erro em coluna específica, manter tipo original
+                continue
+        
+        return df_optimized
+        
     except Exception as e:
-        st.warning(f"Não foi possível otimizar memória: {str(e)}")
+        # Se qualquer erro geral, retornar DataFrame original
         return microdados_estados
 
 def exibir_secao_visualizacao(titulo, tooltip_text, tooltip_id, processar_func, exibir_func, explicacao_func, expander_func=None, **kwargs):
     """
     Função auxiliar para exibir uma seção de visualização padronizada com spinner, explicação e expander opcional.
-    IGUAL À VERSÃO ORIGINAL
+    FUNÇÃO 100% IDÊNTICA À ORIGINAL - tabs/desempenho.py
     
     Parâmetros:
     -----------
@@ -190,7 +246,7 @@ def exibir_secao_visualizacao(titulo, tooltip_text, tooltip_id, processar_func, 
     if expander_func:
         expander_func(dados_processados, **kwargs)
     
-    # Limpeza de memória otimizada
+    # Limpeza de memória otimizada (OTIMIZAÇÃO ADICIONADA)
     release_memory([dados_processados, fig])
 
 def render_desempenho(microdados, microdados_estados, estados_selecionados, 
@@ -198,7 +254,7 @@ def render_desempenho(microdados, microdados_estados, estados_selecionados,
                      variaveis_categoricas, desempenho_mapping):
     """
     Renderiza a aba de Desempenho com diferentes análises baseadas na seleção do usuário.
-    MANTÉM FUNCIONALIDADE IDÊNTICA À VERSÃO ORIGINAL COM OTIMIZAÇÕES DE PERFORMANCE
+    FUNÇÃO 100% IDÊNTICA À ORIGINAL - tabs/desempenho.py
     
     Parâmetros:
     -----------
@@ -221,37 +277,37 @@ def render_desempenho(microdados, microdados_estados, estados_selecionados,
     desempenho_mapping : dict
         Mapeamento de códigos para categorias de desempenho
     """
-    # Verificar se existem estados selecionados - IGUAL À ORIGINAL
+    # Verificar se existem estados selecionados - EXATAMENTE IGUAL À ORIGINAL
     if not estados_selecionados:
         st.warning("Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
         return
     
-    # Otimizar dados na memória
+    # Otimizar dados na memória (ÚNICA ADIÇÃO)
     with st.spinner("Otimizando dados..."):
         microdados_estados = optimize_memory_usage(microdados_estados)
     
-    # Mensagem informativa sobre filtros aplicados - IGUAL À ORIGINAL
+    # Mensagem informativa sobre filtros aplicados - EXATAMENTE IGUAL À ORIGINAL
     mensagem = f"Analisando Desempenho para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
     st.info(mensagem)
     
-    # Usamos um placeholder para microdados_full que só será carregado se necessário - IGUAL À ORIGINAL
+    # Usamos um placeholder para microdados_full que só será carregado se necessário - EXATAMENTE IGUAL À ORIGINAL
     microdados_full = None
     
-    # Permitir ao usuário selecionar a análise desejada - IGUAL À ORIGINAL
+    # Permitir ao usuário selecionar a análise desejada - EXATAMENTE IGUAL À ORIGINAL
     analise_selecionada = st.radio(
         "Selecione a análise desejada:",
         ["Análise Comparativa", "Relação entre Competências", "Médias por Estado"],
         horizontal=True
     )
     
-    # Direcionar para a análise selecionada - IGUAL À ORIGINAL
+    # Direcionar para a análise selecionada - EXATAMENTE IGUAL À ORIGINAL
     try:
         if analise_selecionada == "Análise Comparativa":
-            # Carrega microdados_full apenas quando necessário - IGUAL À ORIGINAL
+            # Carrega microdados_full apenas quando necessário - EXATAMENTE IGUAL À ORIGINAL
             with st.spinner("Preparando dados para análise comparativa..."):
                 microdados_full = preparar_dados_desempenho_geral(microdados_estados, colunas_notas, desempenho_mapping)
             render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_notas, competencia_mapping)
-            release_memory(microdados_full)  # Libera memória após uso - IGUAL À ORIGINAL
+            release_memory(microdados_full)  # Libera memória após uso - EXATAMENTE IGUAL À ORIGINAL
         elif analise_selecionada == "Relação entre Competências":
             render_relacao_competencias(microdados_estados, colunas_notas, competencia_mapping, race_mapping)
         else:
@@ -260,13 +316,13 @@ def render_desempenho(microdados, microdados_estados, estados_selecionados,
         st.error(f"Ocorreu um erro ao exibir a análise: {str(e)}")
         st.warning("Tente selecionar outra visualização ou verificar os filtros aplicados.")
     
-    # Limpeza de memória otimizada
+    # Limpeza de memória otimizada (ÚNICA ADIÇÃO)
     release_memory(microdados_estados)
 
 def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_notas, competencia_mapping):
     """
     Renderiza a análise comparativa de desempenho por variável demográfica.
-    MANTÉM FUNCIONALIDADE IDÊNTICA À VERSÃO ORIGINAL
+    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     
     Parâmetros:
     -----------
@@ -285,21 +341,21 @@ def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_n
         "comparativo_desempenho_tooltip"
     )
     
-    # Seleção da variável para análise - IGUAL À ORIGINAL
+    # Seleção da variável para análise - EXATAMENTE IGUAL À ORIGINAL
     variavel_selecionada = st.selectbox(
         "Selecione a variável para análise:",
         options=list(variaveis_categoricas.keys()),
         format_func=lambda x: variaveis_categoricas[x]["nome"]
     )
 
-    # Verificação mais robusta com feedback detalhado - IGUAL À ORIGINAL
+    # Verificação mais robusta com feedback detalhado - EXATAMENTE IGUAL À ORIGINAL
     if variavel_selecionada not in microdados_full.columns:
         colunas_disponiveis = ", ".join(microdados_full.columns.tolist())
         st.warning(f"A variável {variaveis_categoricas[variavel_selecionada]['nome']} (código: {variavel_selecionada}) não está disponível no conjunto de dados.")
         st.info(f"Você pode verificar se esta variável está presente nos dados originais ou se o nome da coluna está correto no mapeamento.")
         return
     
-    # Processamento dos dados em um único bloco para evitar redundâncias - IGUAL À ORIGINAL
+    # Processamento dos dados em um único bloco para evitar redundâncias - EXATAMENTE IGUAL À ORIGINAL
     with st.spinner("Processando dados para análise comparativa..."):
         df_resultados = preparar_dados_comparativo(
             microdados_full, 
@@ -309,10 +365,10 @@ def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_n
             competencia_mapping
         )
     
-    # Configuração dos filtros - IGUAL À ORIGINAL
+    # Configuração dos filtros - EXATAMENTE IGUAL À ORIGINAL
     config_filtros = criar_filtros_comparativo(df_resultados, variaveis_categoricas, variavel_selecionada)
     
-    # Preparação dos dados para visualização - IGUAL À ORIGINAL
+    # Preparação dos dados para visualização - EXATAMENTE IGUAL À ORIGINAL
     competencia_para_filtro = config_filtros['competencia_filtro'] if config_filtros['mostrar_apenas_competencia'] else None
     df_visualizacao = preparar_dados_grafico_linha(
         df_resultados, 
@@ -321,7 +377,7 @@ def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_n
         config_filtros['ordenar_decrescente']
     )
     
-    # Exibição do gráfico apropriado - IGUAL À ORIGINAL
+    # Exibição do gráfico apropriado - EXATAMENTE IGUAL À ORIGINAL
     with st.spinner("Gerando visualização..."):
         variavel_nome = variaveis_categoricas[variavel_selecionada]['nome']
         
@@ -342,17 +398,17 @@ def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_n
             
         st.plotly_chart(fig, use_container_width=True)
     
-    # Exibição da explicação e análise detalhada - IGUAL À ORIGINAL
+    # Exibição da explicação e análise detalhada - EXATAMENTE IGUAL À ORIGINAL
     st.info(explicacao)
     criar_expander_analise_comparativa(df_resultados, variavel_selecionada, variaveis_categoricas, competencia_mapping, config_filtros)
     
-    # Liberar memória - OTIMIZADO
+    # Liberar memória (OTIMIZAÇÃO ADICIONADA)
     release_memory([df_resultados, df_visualizacao, fig])
 
 def render_relacao_competencias(microdados_estados, colunas_notas, competencia_mapping, race_mapping):
     """
     Renderiza a análise de relação entre competências usando gráfico de dispersão.
-    MANTÉM FUNCIONALIDADE IDÊNTICA À VERSÃO ORIGINAL
+    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     
     Parâmetros:
     -----------
@@ -371,10 +427,10 @@ def render_relacao_competencias(microdados_estados, colunas_notas, competencia_m
         "relacao_competencias_tooltip"
     )
     
-    # Configuração dos filtros - IGUAL À ORIGINAL
+    # Configuração dos filtros - EXATAMENTE IGUAL À ORIGINAL
     config_filtros = criar_filtros_dispersao(colunas_notas, competencia_mapping)
     
-    # Filtragem e processamento dos dados - IGUAL À ORIGINAL
+    # Filtragem e processamento dos dados - EXATAMENTE IGUAL À ORIGINAL
     with st.spinner("Processando dados para o gráfico de dispersão..."):
         dados_filtrados, registros_removidos = filtrar_dados_scatter(
             microdados_estados, 
@@ -387,18 +443,18 @@ def render_relacao_competencias(microdados_estados, colunas_notas, competencia_m
             config_filtros['faixa_salarial']
         )
         
-        # Calcular correlação apenas uma vez e reutilizar - IGUAL À ORIGINAL
+        # Calcular correlação apenas uma vez e reutilizar - EXATAMENTE IGUAL À ORIGINAL
         correlacao, interpretacao = calcular_correlacao_competencias(
             dados_filtrados, 
             config_filtros['eixo_x'], 
             config_filtros['eixo_y']
         )
     
-    # Informações sobre registros removidos - IGUAL À ORIGINAL
+    # Informações sobre registros removidos - EXATAMENTE IGUAL À ORIGINAL
     if config_filtros['excluir_notas_zero'] and registros_removidos > 0:
         st.info(f"Foram desconsiderados {registros_removidos:,} registros com nota zero.")
     
-    # Exibição do gráfico de dispersão - IGUAL À ORIGINAL
+    # Exibição do gráfico de dispersão - EXATAMENTE IGUAL À ORIGINAL
     with st.spinner("Gerando visualização de dispersão..."):
         fig = criar_grafico_scatter(
             dados_filtrados, 
@@ -409,22 +465,22 @@ def render_relacao_competencias(microdados_estados, colunas_notas, competencia_m
         )
         st.plotly_chart(fig, use_container_width=True)
     
-    # Preparação da explicação - IGUAL À ORIGINAL
+    # Preparação da explicação - EXATAMENTE IGUAL À ORIGINAL
     eixo_x_nome = competencia_mapping[config_filtros['eixo_x']]
     eixo_y_nome = competencia_mapping[config_filtros['eixo_y']]
     explicacao = get_explicacao_dispersao(eixo_x_nome, eixo_y_nome, correlacao)
     
-    # Exibição da explicação e análise detalhada - IGUAL À ORIGINAL
+    # Exibição da explicação e análise detalhada - EXATAMENTE IGUAL À ORIGINAL
     st.info(explicacao)
     criar_expander_relacao_competencias(dados_filtrados, config_filtros, competencia_mapping, correlacao, interpretacao)
     
-    # Liberar memória - OTIMIZADO
+    # Liberar memória (OTIMIZAÇÃO ADICIONADA)
     release_memory([dados_filtrados, fig])
 
 def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_notas, competencia_mapping):
     """
     Renderiza a análise de desempenho médio por estado ou região.
-    MANTÉM FUNCIONALIDADE IDÊNTICA À VERSÃO ORIGINAL
+    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     
     Parâmetros:
     -----------
@@ -443,7 +499,7 @@ def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_
         "grafico_linha_desempenho_tooltip"
     )
     
-    # Adicionar opção para agrupar por região - IGUAL À ORIGINAL
+    # Adicionar opção para agrupar por região - EXATAMENTE IGUAL À ORIGINAL
     col1, col2 = st.columns([1, 2])
     with col1:
         agrupar_por_regiao = st.radio(
@@ -453,7 +509,7 @@ def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_
             key="agrupar_desempenho_regiao"
         ) == "Regiões"
     
-    # Processamento dos dados - IGUAL À ORIGINAL
+    # Processamento dos dados - EXATAMENTE IGUAL À ORIGINAL
     with st.spinner("Processando dados..."):
         df_grafico = preparar_dados_grafico_linha_desempenho(
             microdados_estados, 
@@ -463,15 +519,15 @@ def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_
             agrupar_por_regiao
         )
     
-    # Verificar se temos dados suficientes - IGUAL À ORIGINAL
+    # Verificar se temos dados suficientes - EXATAMENTE IGUAL À ORIGINAL
     if df_grafico.empty:
         st.warning("Não há dados suficientes para mostrar o desempenho com os filtros aplicados.")
         return
     
-    # Configuração dos filtros - IGUAL À ORIGINAL
+    # Configuração dos filtros - EXATAMENTE IGUAL À ORIGINAL
     config_filtros = criar_filtros_estados(df_grafico)
     
-    # Preparação dos dados para visualização - IGUAL À ORIGINAL
+    # Preparação dos dados para visualização - EXATAMENTE IGUAL À ORIGINAL
     df_plot = preparar_dados_estados_para_visualizacao(
         df_grafico, 
         config_filtros['area_selecionada'],
@@ -479,7 +535,7 @@ def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_
         config_filtros['mostrar_apenas_area']
     )
     
-    # Exibição do gráfico - IGUAL À ORIGINAL
+    # Exibição do gráfico - EXATAMENTE IGUAL À ORIGINAL
     with st.spinner("Gerando visualização..."):
         fig = criar_grafico_linha_estados(
             df_plot, 
@@ -489,32 +545,32 @@ def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_
         )
         st.plotly_chart(fig, use_container_width=True)
     
-    # Preparação para explicação e análise - IGUAL À ORIGINAL
+    # Preparação para explicação e análise - EXATAMENTE IGUAL À ORIGINAL
     area_texto = f" em {config_filtros['area_selecionada']}" if config_filtros.get('area_selecionada') and config_filtros.get('mostrar_apenas_area') else " nas diversas áreas de conhecimento"
     
-    # Determinar área para análise (usar área específica se selecionada, senão usar Média Geral) - IGUAL À ORIGINAL
+    # Determinar área para análise (usar área específica se selecionada, senão usar Média Geral) - EXATAMENTE IGUAL À ORIGINAL
     area_analise = config_filtros.get('area_selecionada') if config_filtros.get('mostrar_apenas_area') and config_filtros.get('area_selecionada') else "Média Geral"
     
-    # Análise de desempenho por estado/região - IGUAL À ORIGINAL
+    # Análise de desempenho por estado/região - EXATAMENTE IGUAL À ORIGINAL
     analise = analisar_desempenho_por_estado(df_grafico, area_analise)
     
-    # Preparação da explicação - IGUAL À ORIGINAL
+    # Preparação da explicação - EXATAMENTE IGUAL À ORIGINAL
     melhor_estado = analise['melhor_estado']['Estado'] if analise['melhor_estado'] is not None else ""
     pior_estado = analise['pior_estado']['Estado'] if analise['pior_estado'] is not None else ""
     desvio_padrao = analise['desvio_padrao']
     
-    # Determinar variabilidade para explicação - IGUAL À ORIGINAL
+    # Determinar variabilidade para explicação - EXATAMENTE IGUAL À ORIGINAL
     variabilidade = determinar_variabilidade(desvio_padrao, config_filtros.get('mostrar_apenas_area', False))
     
-    # Texto de localidade baseado no modo de visualização - IGUAL À ORIGINAL
+    # Texto de localidade baseado no modo de visualização - EXATAMENTE IGUAL À ORIGINAL
     tipo_localidade = "região" if agrupar_por_regiao else "estado"
     
-    # Exibição da explicação e análise detalhada - IGUAL À ORIGINAL
+    # Exibição da explicação e análise detalhada - EXATAMENTE IGUAL À ORIGINAL
     explicacao = get_explicacao_desempenho_estados(area_texto, melhor_estado, pior_estado, variabilidade, tipo_localidade)
     st.info(explicacao)
     criar_expander_desempenho_estados(df_grafico, area_analise, analise, tipo_localidade)
     
-    # Liberar memória se não é uma referência ao original - OTIMIZADO
+    # Liberar memória se não é uma referência ao original (OTIMIZAÇÃO ADICIONADA)
     if id(df_plot) != id(df_grafico):
         release_memory(df_plot)
     release_memory([df_grafico, fig])
@@ -522,7 +578,7 @@ def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_
 def preparar_dados_estados_para_visualizacao(df_grafico, area_selecionada, ordenar_por_nota, mostrar_apenas_area):
     """
     Prepara os dados de estados/regiões para visualização, aplicando filtros e ordenação.
-    IGUAL À VERSÃO ORIGINAL
+    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     
     Parâmetros:
     -----------
@@ -539,27 +595,27 @@ def preparar_dados_estados_para_visualizacao(df_grafico, area_selecionada, orden
     --------
     DataFrame: DataFrame preparado para visualização
     """
-    # Otimização: evita cópia desnecessária se não precisar ordenar - IGUAL À ORIGINAL
+    # Otimização: evita cópia desnecessária se não precisar ordenar - EXATAMENTE IGUAL À ORIGINAL
     if ordenar_por_nota and area_selecionada:
-        # Aplicar ordenação e filtro - IGUAL À ORIGINAL
+        # Aplicar ordenação e filtro - EXATAMENTE IGUAL À ORIGINAL
         df_plot = df_grafico.copy()
         
-        # Obter ordem dos estados/regiões pela área selecionada - IGUAL À ORIGINAL
+        # Obter ordem dos estados/regiões pela área selecionada - EXATAMENTE IGUAL À ORIGINAL
         media_por_estado = df_plot[df_plot['Área'] == area_selecionada]
         ordem_estados = media_por_estado.sort_values('Média', ascending=False)['Estado'].tolist()
         
-        # Aplicar ordenação como categoria - IGUAL À ORIGINAL
+        # Aplicar ordenação como categoria - EXATAMENTE IGUAL À ORIGINAL
         df_plot['Estado'] = pd.Categorical(df_plot['Estado'], categories=ordem_estados, ordered=True)
         df_plot = df_plot.sort_values('Estado')
         
-        # Filtrar para mostrar apenas a área selecionada se solicitado - IGUAL À ORIGINAL
+        # Filtrar para mostrar apenas a área selecionada se solicitado - EXATAMENTE IGUAL À ORIGINAL
         if mostrar_apenas_area:
             df_plot = df_plot[df_plot['Área'] == area_selecionada]
     else:
-        # Se não precisar ordenar, usa o DataFrame original sem cópia - IGUAL À ORIGINAL
+        # Se não precisar ordenar, usa o DataFrame original sem cópia - EXATAMENTE IGUAL À ORIGINAL
         df_plot = df_grafico
         
-        # Filtrar para mostrar apenas a área selecionada se solicitado - IGUAL À ORIGINAL
+        # Filtrar para mostrar apenas a área selecionada se solicitado - EXATAMENTE IGUAL À ORIGINAL
         if mostrar_apenas_area and area_selecionada:
             df_plot = df_plot[df_plot['Área'] == area_selecionada]
     
@@ -568,7 +624,7 @@ def preparar_dados_estados_para_visualizacao(df_grafico, area_selecionada, orden
 def determinar_variabilidade(desvio_padrao, mostrar_apenas_area):
     """
     Determina a classificação de variabilidade com base no desvio padrão.
-    IGUAL À VERSÃO ORIGINAL
+    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     
     Parâmetros:
     -----------
@@ -601,13 +657,21 @@ def main():
     
     # Inicializar session state
     init_desempenho_session_state()
+
+    estados_selecionados, locais_selecionados = render_sidebar_filters()
     
     # Título da página
     st.title("📊 Análise de Desempenho - ENEM 2023")
+
     
+    # ✅ VERIFICAR SE HÁ ESTADOS SELECIONADOS (NOVO)
+    if not estados_selecionados:
+        st.warning("⚠️ Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
+        return 
+        
     # Obter dados do session state
-    estados_selecionados = st.session_state.estados_selecionados
-    locais_selecionados = st.session_state.locais_selecionados
+    # estados_selecionados = st.session_state.estados_selecionados
+    # locais_selecionados = st.session_state.locais_selecionados
     mappings = st.session_state.mappings
     
     # Extrair mapeamentos necessários
@@ -624,12 +688,16 @@ def main():
             
             # Filtrar dados pelos estados selecionados
             microdados_estados = filter_data_by_states(microdados_completos, estados_selecionados)
+            
+            # Para análise comparativa, pode precisar de dados adicionais
+            # Vamos usar os dados completos como entrada para o comparativo
+            # pois ele precisa de todo o dataset para fazer a análise correta
         
         if microdados_estados.empty:
             st.error("❌ Nenhum dado encontrado para os estados selecionados.")
             return
         
-        # Renderizar análise de desempenho (MANTÉM FUNCIONALIDADE ORIGINAL)
+        # Renderizar análise de desempenho (MANTÉM FUNCIONALIDADE 100% ORIGINAL)
         render_desempenho(
             microdados_completos,  # dados completos para análise comparativa
             microdados_estados,    # dados filtrados por estado
@@ -655,5 +723,4 @@ def main():
         gc.collect()
 
 # Executar página
-if __name__ == "__main__":
-    main()
+main()

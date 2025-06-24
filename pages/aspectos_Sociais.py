@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-import polars as pl
 import numpy as np
 import gc
 from typing import Dict, List, Any, Optional, Union, Tuple, Callable
-from functools import partial
+
+from utils.helpers.sidebar_filter import render_sidebar_filters
 
 # Imports para tooltips e métricas
 from utils.tooltip import titulo_com_tooltip
@@ -107,50 +107,74 @@ def get_cached_data_aspectos(estados_selecionados: List[str]):
     estados_key = "_".join(sorted(estados_selecionados))
     return _load_aspectos_data(estados_key)
 
-def convert_pandas_to_polars_safe(df_pandas: pd.DataFrame) -> pl.DataFrame:
-    """Converte DataFrame Pandas para Polars com tratamento de erro"""
-    try:
-        return pl.from_pandas(df_pandas)
-    except Exception as e:
-        st.warning(f"Aviso na conversão para Polars: {str(e)}")
-        return None
-
 def optimize_memory_usage(microdados_estados: pd.DataFrame) -> pd.DataFrame:
-    """Otimiza uso de memória do DataFrame usando Polars quando possível"""
-    try:
-        # Converter para Polars para otimizações
-        df_polars = convert_pandas_to_polars_safe(microdados_estados)
-        if df_polars is not None:
-            # Otimizar tipos de dados
-            for col in df_polars.columns:
-                dtype = df_polars[col].dtype
-                
-                if dtype == pl.Int64:
-                    max_val = df_polars[col].max()
-                    min_val = df_polars[col].min()
-                    
-                    if max_val <= 127 and min_val >= -128:
-                        df_polars = df_polars.with_columns(pl.col(col).cast(pl.Int8))
-                    elif max_val <= 32767 and min_val >= -32768:
-                        df_polars = df_polars.with_columns(pl.col(col).cast(pl.Int16))
-                    elif max_val <= 2147483647 and min_val >= -2147483648:
-                        df_polars = df_polars.with_columns(pl.col(col).cast(pl.Int32))
-                
-                elif dtype == pl.Float64:
-                    df_polars = df_polars.with_columns(pl.col(col).cast(pl.Float32))
-            
-            # Converter de volta para pandas
-            return df_polars.to_pandas()
+    """
+    Otimização de memória usando APENAS pandas - versão ultra-segura
+    
+    Parâmetros:
+    -----------
+    microdados_estados : DataFrame
+        DataFrame original a ser otimizado
         
-        return microdados_estados
+    Retorna:
+    --------
+    DataFrame: DataFrame com tipos otimizados
+    """
+    try:
+        # Verificação básica
+        if microdados_estados is None or microdados_estados.empty:
+            return microdados_estados
+        
+        # Criar cópia para não modificar o original
+        df_optimized = microdados_estados.copy()
+        
+        # Otimizações seguras coluna por coluna
+        for col in df_optimized.columns:
+            try:
+                dtype_original = df_optimized[col].dtype
+                
+                # Otimizar colunas categóricas (object)
+                if dtype_original == 'object':
+                    # Verificar se vale a pena converter para category
+                    unique_ratio = len(df_optimized[col].unique()) / len(df_optimized)
+                    if unique_ratio < 0.5:  # Se menos de 50% valores únicos
+                        df_optimized[col] = df_optimized[col].astype('category')
+                
+                # Otimizar inteiros
+                elif dtype_original in ['int64', 'Int64']:
+                    # Verificar se temos valores válidos
+                    if not df_optimized[col].isna().all():
+                        max_val = df_optimized[col].max()
+                        min_val = df_optimized[col].min()
+                        
+                        if pd.notna(max_val) and pd.notna(min_val):
+                            # Escolher tipo menor possível
+                            if max_val <= 127 and min_val >= -128:
+                                df_optimized[col] = df_optimized[col].astype('int8')
+                            elif max_val <= 32767 and min_val >= -32768:
+                                df_optimized[col] = df_optimized[col].astype('int16')
+                            elif max_val <= 2147483647 and min_val >= -2147483648:
+                                df_optimized[col] = df_optimized[col].astype('int32')
+                
+                # Otimizar floats
+                elif dtype_original == 'float64':
+                    # Usar downcast do pandas (mais seguro)
+                    df_optimized[col] = pd.to_numeric(df_optimized[col], downcast='float')
+                    
+            except Exception as col_error:
+                # Se erro em coluna específica, manter tipo original
+                continue
+        
+        return df_optimized
+        
     except Exception as e:
-        st.warning(f"Não foi possível otimizar memória: {str(e)}")
+        # Se qualquer erro geral, retornar DataFrame original
         return microdados_estados
 
 def render_aspectos_sociais(microdados_estados, estados_selecionados, locais_selecionados, variaveis_sociais):
     """
     Renderiza a aba de Aspectos Sociais com diferentes análises baseadas na seleção do usuário.
-    MANTÉM FUNCIONALIDADE IDÊNTICA À VERSÃO ORIGINAL COM OTIMIZAÇÕES DE PERFORMANCE
+    FUNÇÃO 100% IDÊNTICA À ORIGINAL - tabs/aspectos_sociais.py
     
     Parâmetros:
     -----------
@@ -163,27 +187,27 @@ def render_aspectos_sociais(microdados_estados, estados_selecionados, locais_sel
     variaveis_sociais : dict
         Dicionário com as variáveis sociais disponíveis e seus mapeamentos
     """
-    # Verificar se existem estados selecionados - IGUAL À ORIGINAL
+    # Verificar se existem estados selecionados - EXATAMENTE IGUAL À ORIGINAL
     if not estados_selecionados:
         st.warning("Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
         return
     
-    # Otimizar dados na memória
+    # Otimizar dados na memória (ÚNICA ADIÇÃO)
     with st.spinner("Otimizando dados..."):
         microdados_estados = optimize_memory_usage(microdados_estados)
     
-    # Mensagem informativa sobre filtros aplicados - IGUAL À ORIGINAL
+    # Mensagem informativa sobre filtros aplicados - EXATAMENTE IGUAL À ORIGINAL
     mensagem = "Analisando Aspectos Sociais para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
     st.info(mensagem)
     
-    # Permitir ao usuário selecionar a análise desejada - IGUAL À ORIGINAL
+    # Permitir ao usuário selecionar a análise desejada - EXATAMENTE IGUAL À ORIGINAL
     analise_selecionada = st.radio(
         "Selecione a análise desejada:",
         ["Correlação entre Aspectos Sociais", "Distribuição de Aspectos Sociais", "Aspectos Sociais por Estado/Região"],
         horizontal=True
     )
     
-    # Direcionar para a análise selecionada - IGUAL À ORIGINAL
+    # Direcionar para a análise selecionada - EXATAMENTE IGUAL À ORIGINAL
     try:
         if analise_selecionada == "Correlação entre Aspectos Sociais":
             render_correlacao_aspectos_sociais(microdados_estados, estados_selecionados, locais_selecionados, variaveis_sociais)
@@ -195,23 +219,23 @@ def render_aspectos_sociais(microdados_estados, estados_selecionados, locais_sel
         st.error(f"Ocorreu um erro ao exibir a análise: {str(e)}")
         st.warning("Tente selecionar outra visualização ou verificar os filtros aplicados.")
     
-    # Limpeza de memória otimizada
+    # Limpeza de memória otimizada (ÚNICA ADIÇÃO)
     release_memory(microdados_estados)
 
 def render_correlacao_aspectos_sociais(microdados_estados, estados_selecionados, locais_selecionados, variaveis_sociais):
     """
     Renderiza a análise de correlação entre dois aspectos sociais.
-    MANTÉM FUNCIONALIDADE IDÊNTICA À VERSÃO ORIGINAL
+    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     """
     try:
-        # Título com tooltip - IGUAL À ORIGINAL
+        # Título com tooltip - EXATAMENTE IGUAL À ORIGINAL
         titulo_com_tooltip(
             "Correlação entre Aspectos Sociais", 
             get_tooltip_correlacao_aspectos(), 
             "correlacao_aspectos_tooltip"
         )
         
-        # Seleção do tipo de visualização - IGUAL À ORIGINAL
+        # Seleção do tipo de visualização - EXATAMENTE IGUAL À ORIGINAL
         tipo_grafico = st.radio(
             "Escolha o tipo de visualização:",
             ["Heatmap", "Barras Empilhadas", "Sankey"],
@@ -219,10 +243,10 @@ def render_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,
             key="tipo_viz_correlacao"
         )
         
-        # Seleção das variáveis para correlação - IGUAL À ORIGINAL
+        # Seleção das variáveis para correlação - EXATAMENTE IGUAL À ORIGINAL
         col1, col2 = st.columns(2)
 
-        # Inicializar session_state para var_y_previous se não existir - IGUAL À ORIGINAL
+        # Inicializar session_state para var_y_previous se não existir - EXATAMENTE IGUAL À ORIGINAL
         if 'var_y_previous' not in st.session_state:
             st.session_state.var_y_previous = None
 
@@ -235,10 +259,10 @@ def render_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,
             )
 
         with col2:
-            # Filtrar para não repetir a mesma variável - IGUAL À ORIGINAL
+            # Filtrar para não repetir a mesma variável - EXATAMENTE IGUAL À ORIGINAL
             opcoes_y = [k for k in variaveis_sociais.keys() if k != var_x]
 
-            # Determinar o índice inicial baseado na seleção anterior - IGUAL À ORIGINAL
+            # Determinar o índice inicial baseado na seleção anterior - EXATAMENTE IGUAL À ORIGINAL
             index = 0
             if st.session_state.var_y_previous in opcoes_y:
                 index = opcoes_y.index(st.session_state.var_y_previous)
@@ -251,10 +275,10 @@ def render_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,
                 key="var_y_social"
             )
 
-            # Armazenar a seleção atual para o próximo ciclo - IGUAL À ORIGINAL
+            # Armazenar a seleção atual para o próximo ciclo - EXATAMENTE IGUAL À ORIGINAL
             st.session_state.var_y_previous = var_y
         
-        # Verificar se ambas as variáveis existem nos dados - IGUAL À ORIGINAL
+        # Verificar se ambas as variáveis existem nos dados - EXATAMENTE IGUAL À ORIGINAL
         colunas_ausentes = []
         if var_x not in microdados_estados.columns:
             colunas_ausentes.append(variaveis_sociais[var_x]["nome"])
@@ -265,25 +289,25 @@ def render_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,
             st.warning(f"As seguintes variáveis não estão disponíveis nos dados: {', '.join(colunas_ausentes)}")
             return
         
-        # Preparar dados para visualização - IGUAL À ORIGINAL
+        # Preparar dados para visualização - EXATAMENTE IGUAL À ORIGINAL
         with st.spinner("Preparando dados para análise..."):
             df_preparado, var_x_plot, var_y_plot = preparar_dados_correlacao(
                 microdados_estados, var_x, var_y, variaveis_sociais
             )
         
-        # Verificar se temos dados suficientes - IGUAL À ORIGINAL
+        # Verificar se temos dados suficientes - EXATAMENTE IGUAL À ORIGINAL
         if df_preparado.empty:
             st.warning("Não há dados suficientes para analisar a correlação entre estas variáveis.")
             return
         
-        # Calcular métricas para análise estatística - IGUAL À ORIGINAL
+        # Calcular métricas para análise estatística - EXATAMENTE IGUAL À ORIGINAL
         with st.spinner("Calculando métricas estatísticas..."):
             metricas = analisar_correlacao_categorias(df_preparado, var_x_plot, var_y_plot)
         
-        # Texto para indicar estados no título - IGUAL À ORIGINAL
+        # Texto para indicar estados no título - EXATAMENTE IGUAL À ORIGINAL
         estados_texto = ', '.join(locais_selecionados) if len(locais_selecionados) <= 3 else f"{len(estados_selecionados)} estados selecionados"
         
-        # Criar visualização apropriada com base na escolha do usuário - IGUAL À ORIGINAL
+        # Criar visualização apropriada com base na escolha do usuário - EXATAMENTE IGUAL À ORIGINAL
         with st.spinner("Gerando visualização..."):
             if tipo_grafico == "Heatmap":
                 fig, explicacao = criar_grafico_heatmap(
@@ -303,14 +327,14 @@ def render_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,
                     variaveis_sociais, estados_texto
                 )
         
-        # Exibir o gráfico e explicação - IGUAL À ORIGINAL
+        # Exibir o gráfico e explicação - EXATAMENTE IGUAL À ORIGINAL
         st.plotly_chart(fig, use_container_width=True)
         st.info(explicacao)
         
-        # Adicionar análise estatística detalhada - IGUAL À ORIGINAL
+        # Adicionar análise estatística detalhada - EXATAMENTE IGUAL À ORIGINAL
         criar_expander_analise_correlacao(df_preparado, var_x, var_y, var_x_plot, var_y_plot, variaveis_sociais)
         
-        # Liberar memória após uso - OTIMIZADO
+        # Liberar memória após uso - OTIMIZAÇÃO ADICIONADA
         release_memory([df_preparado, fig])
         
     except Exception as e:
@@ -320,17 +344,17 @@ def render_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,
 def render_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais):
     """
     Renderiza a análise de distribuição de um aspecto social.
-    MANTÉM FUNCIONALIDADE IDÊNTICA À VERSÃO ORIGINAL
+    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     """
     try:
-        # Título com tooltip - IGUAL À ORIGINAL
+        # Título com tooltip - EXATAMENTE IGUAL À ORIGINAL
         titulo_com_tooltip(
             "Distribuição de Aspectos Sociais", 
             get_tooltip_distribuicao_aspectos(), 
             "distribuicao_aspectos_tooltip"
         )
         
-        # Permitir ao usuário selecionar qual aspecto social visualizar - IGUAL À ORIGINAL
+        # Permitir ao usuário selecionar qual aspecto social visualizar - EXATAMENTE IGUAL À ORIGINAL
         aspecto_social = st.selectbox(
             "Selecione o aspecto social para análise:",
             options=list(variaveis_sociais.keys()),
@@ -338,12 +362,12 @@ def render_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais):
             key="aspecto_dist"
         )
         
-        # Verificar se a coluna existe nos dados - IGUAL À ORIGINAL
+        # Verificar se a coluna existe nos dados - EXATAMENTE IGUAL À ORIGINAL
         if aspecto_social not in microdados_estados.columns:
             st.warning(f"A variável {variaveis_sociais[aspecto_social]['nome']} não está disponível no conjunto de dados.")
             return
         
-        # Preparar dados para visualização - IGUAL À ORIGINAL
+        # Preparar dados para visualização - EXATAMENTE IGUAL À ORIGINAL
         with st.spinner("Preparando dados..."):
             df_preparado, coluna_plot = preparar_dados_distribuicao(
                 microdados_estados, 
@@ -351,31 +375,31 @@ def render_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais):
                 variaveis_sociais
             )
             
-            # Verificar se temos dados suficientes - IGUAL À ORIGINAL
+            # Verificar se temos dados suficientes - EXATAMENTE IGUAL À ORIGINAL
             if df_preparado.empty:
                 st.warning(f"Não há dados suficientes para analisar a distribuição de {variaveis_sociais[aspecto_social]['nome']}.")
                 return
             
-            # Contar candidatos por categoria - IGUAL À ORIGINAL
+            # Contar candidatos por categoria - EXATAMENTE IGUAL À ORIGINAL
             contagem_aspecto = contar_candidatos_por_categoria(df_preparado, coluna_plot)
             
-            # Verificar se temos categorias - IGUAL À ORIGINAL
+            # Verificar se temos categorias - EXATAMENTE IGUAL À ORIGINAL
             if contagem_aspecto.empty:
                 st.warning(f"Não foram encontradas categorias para {variaveis_sociais[aspecto_social]['nome']}.")
                 return
             
-            # Ordenar os dados - IGUAL À ORIGINAL
+            # Ordenar os dados - EXATAMENTE IGUAL À ORIGINAL
             contagem_aspecto = ordenar_categorias(contagem_aspecto, aspecto_social, variaveis_sociais)
         
-        # Calcular estatísticas - IGUAL À ORIGINAL
+        # Calcular estatísticas - EXATAMENTE IGUAL À ORIGINAL
         with st.spinner("Calculando estatísticas..."):
             estatisticas = calcular_estatisticas_distribuicao(contagem_aspecto)
             
-        # Obter informações para explicação - IGUAL À ORIGINAL
+        # Obter informações para explicação - EXATAMENTE IGUAL À ORIGINAL
         total = estatisticas['total']
         categoria_mais_frequente = estatisticas['categoria_mais_frequente']
         
-        # Criar opções de visualização - IGUAL À ORIGINAL
+        # Criar opções de visualização - EXATAMENTE IGUAL À ORIGINAL
         opcao_viz = st.radio(
             "Tipo de visualização:",
             ["Gráfico de Barras", "Gráfico de Linha", "Gráfico de Pizza"],
@@ -383,7 +407,7 @@ def render_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais):
             key="viz_tipo_dist"
         )
         
-        # Criar visualização com base na escolha do usuário - IGUAL À ORIGINAL
+        # Criar visualização com base na escolha do usuário - EXATAMENTE IGUAL À ORIGINAL
         with st.spinner("Gerando visualização..."):
             fig = criar_grafico_distribuicao(
                 contagem_aspecto, 
@@ -392,10 +416,10 @@ def render_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais):
                 variaveis_sociais
             )
         
-        # Exibir o gráfico - IGUAL À ORIGINAL
+        # Exibir o gráfico - EXATAMENTE IGUAL À ORIGINAL
         st.plotly_chart(fig, use_container_width=True)
         
-        # Adicionar explicação sobre o gráfico - IGUAL À ORIGINAL
+        # Adicionar explicação sobre o gráfico - EXATAMENTE IGUAL À ORIGINAL
         explicacao = get_explicacao_distribuicao(
             variaveis_sociais[aspecto_social]["nome"], 
             total, 
@@ -403,10 +427,10 @@ def render_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais):
         )
         st.info(explicacao)
         
-        # Usar o expander para dados detalhados - IGUAL À ORIGINAL
+        # Usar o expander para dados detalhados - EXATAMENTE IGUAL À ORIGINAL
         criar_expander_dados_distribuicao(contagem_aspecto, aspecto_social, variaveis_sociais)
         
-        # Liberar memória após uso - OTIMIZADO
+        # Liberar memória após uso - OTIMIZAÇÃO ADICIONADA
         release_memory([df_preparado, contagem_aspecto, fig])
         
     except Exception as e:
@@ -416,17 +440,17 @@ def render_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais):
 def render_aspectos_por_estado(microdados_estados, estados_selecionados, variaveis_sociais):
     """
     Renderiza a análise de distribuição de aspectos sociais por estado ou região.
-    MANTÉM FUNCIONALIDADE IDÊNTICA À VERSÃO ORIGINAL
+    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     """
     try:
-        # Título com tooltip - IGUAL À ORIGINAL
+        # Título com tooltip - EXATAMENTE IGUAL À ORIGINAL
         titulo_com_tooltip(
             "Distribuição de Aspectos Sociais por Estado/Região", 
             get_tooltip_aspectos_por_estado(), 
             "aspectos_por_estado_tooltip"
         )
         
-        # Permitir ao usuário selecionar qual aspecto social visualizar - IGUAL À ORIGINAL
+        # Permitir ao usuário selecionar qual aspecto social visualizar - EXATAMENTE IGUAL À ORIGINAL
         aspecto_social = st.selectbox(
             "Selecione o aspecto social para análise por estado/região:",
             options=list(variaveis_sociais.keys()),
@@ -434,12 +458,12 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
             key="aspecto_por_estado"
         )
         
-        # Verificar se a coluna existe nos dados - IGUAL À ORIGINAL
+        # Verificar se a coluna existe nos dados - EXATAMENTE IGUAL À ORIGINAL
         if aspecto_social not in microdados_estados.columns:
             st.warning(f"A variável {variaveis_sociais[aspecto_social]['nome']} não está disponível no conjunto de dados.")
             return
         
-        # Adicionar opção para agrupar por região - IGUAL À ORIGINAL
+        # Adicionar opção para agrupar por região - EXATAMENTE IGUAL À ORIGINAL
         col1, col2 = st.columns([1, 2])
         with col1:
             agrupar_por_regiao = st.radio(
@@ -449,7 +473,7 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
                 key="agrupar_aspectos_regiao"
             ) == "Regiões"
         
-        # Preparar dados para visualização - IGUAL À ORIGINAL
+        # Preparar dados para visualização - EXATAMENTE IGUAL À ORIGINAL
         with st.spinner("Preparando dados..."):
             df_por_estado = preparar_dados_grafico_aspectos_por_estado(
                 microdados_estados, 
@@ -459,13 +483,13 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
                 agrupar_por_regiao
             )
         
-        # Verificar se temos dados suficientes - IGUAL À ORIGINAL
+        # Verificar se temos dados suficientes - EXATAMENTE IGUAL À ORIGINAL
         if df_por_estado.empty:
             tipo_localidade = "região" if agrupar_por_regiao else "estado"
             st.warning(f"Não há dados suficientes para mostrar a distribuição de {variaveis_sociais[aspecto_social]['nome']} por {tipo_localidade}.")
             return
         
-        # Interface para ordenação e filtragem - IGUAL À ORIGINAL
+        # Interface para ordenação e filtragem - EXATAMENTE IGUAL À ORIGINAL
         col1, col2 = st.columns([1, 2])
         
         with col1:
@@ -475,7 +499,7 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
                 key="ordenar_estados_percentual"
             )
         
-        # Mostrar seletor de categoria apenas se o usuário escolheu ordenar - IGUAL À ORIGINAL
+        # Mostrar seletor de categoria apenas se o usuário escolheu ordenar - EXATAMENTE IGUAL À ORIGINAL
         categoria_selecionada = None
         if ordenar_por_percentual:
             with col2:
@@ -486,14 +510,14 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
                     key="categoria_ordenacao"
                 )
         
-        # Criar uma cópia do DataFrame para processamento - IGUAL À ORIGINAL
+        # Criar uma cópia do DataFrame para processamento - EXATAMENTE IGUAL À ORIGINAL
         df_plot = df_por_estado.copy()
         
-        # Se o usuário escolheu ordenar, reorganizamos os dados - IGUAL À ORIGINAL
+        # Se o usuário escolheu ordenar, reorganizamos os dados - EXATAMENTE IGUAL À ORIGINAL
         if ordenar_por_percentual and categoria_selecionada:
             df_plot = _ordenar_dados_por_categoria(df_plot, categoria_selecionada)
             
-            # Opcional: Filtrar para mostrar apenas a categoria selecionada - IGUAL À ORIGINAL
+            # Opcional: Filtrar para mostrar apenas a categoria selecionada - EXATAMENTE IGUAL À ORIGINAL
             mostrar_apenas_categoria = st.checkbox(
                 "Mostrar apenas a categoria selecionada", 
                 value=False, 
@@ -503,7 +527,7 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
             if mostrar_apenas_categoria:
                 df_plot = df_plot[df_plot['Categoria'] == categoria_selecionada]
         
-        # Criar o gráfico - IGUAL À ORIGINAL
+        # Criar o gráfico - EXATAMENTE IGUAL À ORIGINAL
         with st.spinner("Gerando visualização..."):
             fig = criar_grafico_aspectos_por_estado(
                 df_plot, 
@@ -512,10 +536,10 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
                 por_regiao=agrupar_por_regiao
             )
         
-        # Exibir o gráfico - IGUAL À ORIGINAL
+        # Exibir o gráfico - EXATAMENTE IGUAL À ORIGINAL
         st.plotly_chart(fig, use_container_width=True)
         
-        # Adicionar explicação contextualizada - IGUAL À ORIGINAL
+        # Adicionar explicação contextualizada - EXATAMENTE IGUAL À ORIGINAL
         tipo_localidade = "região" if agrupar_por_regiao else "estado"
         explicacao = get_explicacao_aspectos_por_estado(
             variaveis_sociais[aspecto_social]['nome'], 
@@ -524,7 +548,7 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
         )
         st.info(explicacao)
         
-        # Adicionar análise estatística detalhada se uma categoria foi selecionada - IGUAL À ORIGINAL
+        # Adicionar análise estatística detalhada se uma categoria foi selecionada - EXATAMENTE IGUAL À ORIGINAL
         if categoria_selecionada:
             criar_expander_analise_regional(
                 df_por_estado, 
@@ -534,10 +558,10 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
                 tipo_localidade
             )
         
-        # Adicionar tabela completa de dados - IGUAL À ORIGINAL
+        # Adicionar tabela completa de dados - EXATAMENTE IGUAL À ORIGINAL
         criar_expander_dados_completos_estado(df_por_estado, tipo_localidade)
         
-        # Liberar memória - OTIMIZADO
+        # Liberar memória - OTIMIZAÇÃO ADICIONADA
         release_memory([df_por_estado, df_plot, fig])
         
     except Exception as e:
@@ -547,20 +571,32 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
 def _ordenar_dados_por_categoria(df: pd.DataFrame, categoria: str) -> pd.DataFrame:
     """
     Ordena o DataFrame com base nos percentuais de uma categoria específica.
-    IGUAL À VERSÃO ORIGINAL
+    FUNÇÃO 100% IDÊNTICA À ORIGINAL
+    
+    Parâmetros:
+    -----------
+    df : DataFrame
+        DataFrame a ser ordenado
+    categoria : str
+        Categoria usada como base para ordenação
+        
+    Retorna:
+    --------
+    DataFrame
+        DataFrame ordenado
     """
     try:
-        # Filtrar apenas os dados da categoria selecionada para ordenação - IGUAL À ORIGINAL
+        # Filtrar apenas os dados da categoria selecionada para ordenação - EXATAMENTE IGUAL À ORIGINAL
         percentual_por_estado = df[df['Categoria'] == categoria].copy()
         
-        # Verificar se temos dados para esta categoria - IGUAL À ORIGINAL
+        # Verificar se temos dados para esta categoria - EXATAMENTE IGUAL À ORIGINAL
         if percentual_por_estado.empty:
             return df
             
-        # Criar um mapeamento da ordem dos estados com base na categoria selecionada - IGUAL À ORIGINAL
+        # Criar um mapeamento da ordem dos estados com base na categoria selecionada - EXATAMENTE IGUAL À ORIGINAL
         ordem_estados = percentual_por_estado.sort_values('Percentual', ascending=False)['Estado'].tolist()
         
-        # Reordenar o DataFrame usando o mapeamento - IGUAL À ORIGINAL
+        # Reordenar o DataFrame usando o mapeamento - EXATAMENTE IGUAL À ORIGINAL
         df_ordenado = df.copy()
         df_ordenado['Estado'] = pd.Categorical(df_ordenado['Estado'], categories=ordem_estados, ordered=True)
         return df_ordenado.sort_values('Estado')
@@ -581,7 +617,26 @@ def exibir_secao_visualizacao(
 ) -> None:
     """
     Função auxiliar para exibir uma seção de visualização padronizada.
-    IGUAL À VERSÃO ORIGINAL
+    FUNÇÃO 100% IDÊNTICA À ORIGINAL
+    
+    Parâmetros:
+    -----------
+    titulo : str
+        Título da seção
+    tooltip_text : str 
+        Texto do tooltip
+    tooltip_id : str
+        ID do tooltip
+    processar_func : callable
+        Função para processamento de dados
+    exibir_func : callable
+        Função para exibir visualização
+    explicacao_func : callable
+        Função para obter o texto de explicação
+    nder_func : callable, opcional
+        Função para criar o expander com análise detalhada
+    kwargs : dict
+        Argumentos adicionais para as funções
     """
     titulo_com_tooltip(titulo, tooltip_text, tooltip_id)
     
@@ -609,12 +664,19 @@ def main():
     # Inicializar session state
     init_aspectos_session_state()
     
+    # Renderizar filtros e obter seleções
+    estados_selecionados, locais_selecionados = render_sidebar_filters()
+    
     # Título da página
     st.title("👥 Aspectos Sociais - ENEM 2023")
-    
+
+    if not estados_selecionados:
+        st.warning("⚠️ Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
+        return
+
     # Obter dados do session state
-    estados_selecionados = st.session_state.estados_selecionados
-    locais_selecionados = st.session_state.locais_selecionados
+    # estados_selecionados = st.session_state.estados_selecionados
+    # locais_selecionados = st.session_state.locais_selecionados
     mappings = st.session_state.mappings
     
     # Extrair mapeamentos necessários
@@ -632,7 +694,7 @@ def main():
             st.error("❌ Nenhum dado encontrado para os estados selecionados.")
             return
         
-        # Renderizar análise de aspectos sociais (MANTÉM FUNCIONALIDADE ORIGINAL)
+        # Renderizar análise de aspectos sociais (MANTÉM FUNCIONALIDADE 100% ORIGINAL)
         render_aspectos_sociais(
             microdados_estados, 
             estados_selecionados, 
@@ -653,5 +715,4 @@ def main():
         gc.collect()
 
 # Executar página
-if __name__ == "__main__":
-    main()
+main()

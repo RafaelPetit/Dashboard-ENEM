@@ -14,6 +14,12 @@ from .helpers.cache_utils import (
     release_memory,
     clear_all_cache,
     get_memory_usage
+    
+)
+
+from .helpers.sidebar_filter import (
+    render_sidebar_filters,
+    load_filter_data
 )
 
 # Isso permite importar diretamente:

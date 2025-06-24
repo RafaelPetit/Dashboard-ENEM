@@ -13,3 +13,8 @@ from .regiao_utils import (
     obter_regiao_do_estado,
     obter_todas_regioes
 )
+
+from .sidebar_filter import (
+    render_sidebar_filters,
+    load_filter_data
+)

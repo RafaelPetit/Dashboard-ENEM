@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any, Union, Set
-from utils.data_loader import calcular_seguro, optimize_dtypes
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from utils.prepara_dados.validacao_dados import validar_completude_dados
 from utils.helpers.regiao_utils import obter_regiao_do_estado
@@ -69,7 +68,6 @@ def preparar_dados_correlacao(
     var_y_plot = aplicar_mapeamento(df_correlacao, var_y, variaveis_sociais)
     
     # Otimizar tipos de dados
-    df_correlacao = optimize_dtypes(df_correlacao)
     
     return df_correlacao, var_x_plot, var_y_plot
 
@@ -166,7 +164,6 @@ def preparar_dados_distribuicao(
     coluna_plot = aplicar_mapeamento(df_dist, aspecto_social, variaveis_sociais)
     
     # Otimizar tipos de dados
-    df_dist = optimize_dtypes(df_dist)
     
     return df_dist, coluna_plot
 
@@ -529,7 +526,6 @@ def preparar_dados_grafico_aspectos_por_estado(
             df_resultado = _agrupar_por_regiao(df_resultado, aspecto_social)
         
         # Otimizar tipos de dados
-        df_resultado = optimize_dtypes(df_resultado)
         
         # Ordenar resultado para garantir consistência na visualização
         df_resultado = df_resultado.sort_values(['Estado', 'Categoria'])

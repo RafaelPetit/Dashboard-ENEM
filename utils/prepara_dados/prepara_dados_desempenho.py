@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any, Union, Set
-from utils.data_loader import calcular_seguro, optimize_dtypes
+from utils.data_loader import calcular_seguro
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from utils.prepara_dados.validacao_dados import validar_completude_dados
 from utils.helpers.regiao_utils import obter_regiao_do_estado
@@ -43,8 +43,27 @@ def preparar_dados_comparativo(
     --------
     DataFrame: DataFrame pronto para visualização com médias por categoria e competência
     """
+    # Verificar se temos dados de entrada válidos
+    if microdados_full is None or microdados_full.empty:
+        print("Erro: DataFrame de entrada vazio ou None")
+        return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
+    
+    # Verificar se a variável selecionada existe nos dados
+    if variavel_selecionada not in microdados_full.columns:
+        print(f"Erro: Variável '{variavel_selecionada}' não encontrada nos dados")
+        colunas_disponiveis = list(microdados_full.columns)
+        print(f"Colunas disponíveis: {colunas_disponiveis[:20]}...")  # Mostrar apenas as primeiras 20
+        return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
+    
+    # Verificar se temos as colunas de notas
+    colunas_notas_disponiveis = [col for col in colunas_notas if col in microdados_full.columns]
+    if not colunas_notas_disponiveis:
+        print(f"Erro: Nenhuma coluna de notas encontrada nos dados")
+        print(f"Colunas de notas esperadas: {colunas_notas}")
+        return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
+    
     # Verificar se temos dados suficientes
-    colunas_necessarias = [variavel_selecionada] + colunas_notas
+    colunas_necessarias = [variavel_selecionada] + colunas_notas_disponiveis
     dados_validos, taxas_completude = validar_completude_dados(
         microdados_full, 
         colunas_necessarias,
@@ -56,12 +75,19 @@ def preparar_dados_comparativo(
         colunas_problema = [col for col, taxa in taxas_completude.items() 
                           if taxa < LIMIARES_PROCESSAMENTO['min_completude_dados']]
         print(f"Aviso: Baixa completude nas colunas: {colunas_problema}")
-        
+        print("Continuando processamento com dados disponíveis...")
     # Selecionar apenas colunas necessárias para economizar memória
     df_trabalho = microdados_full[colunas_necessarias].copy()
     
     # Remover registros com valores inválidos na variável categórica
     df_trabalho = df_trabalho.dropna(subset=[variavel_selecionada])
+    
+    # Verificar se ainda temos dados após limpeza
+    if df_trabalho.empty:
+        print("Erro: Nenhum dado válido após remoção de valores nulos")
+        return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
+    
+    print(f"Processando {len(df_trabalho)} registros para variável '{variavel_selecionada}'")
     
     # Determinar mapeamento de valores e nome da coluna a ser usada
     nome_coluna_mapeada = variavel_selecionada
@@ -69,17 +95,25 @@ def preparar_dados_comparativo(
     
     if variavel_selecionada in variaveis_categoricas and "mapeamento" in variaveis_categoricas[variavel_selecionada]:
         mapeamento = variaveis_categoricas[variavel_selecionada]["mapeamento"]
+        print(f"Usando mapeamento para '{variavel_selecionada}': {list(mapeamento.keys())[:5]}...")  # Mostrar apenas alguns valores
     
     # Calcular médias para cada combinação categoria-competência
     resultados = _calcular_medias_por_categoria(
         df_trabalho, 
         nome_coluna_mapeada, 
-        colunas_notas, 
+        colunas_notas_disponiveis,  # Usar apenas colunas disponíveis
         competencia_mapping,
         mapeamento
     )
     
     df_resultados = pd.DataFrame(resultados)
+    
+    # Verificar se obtivemos resultados
+    if df_resultados.empty:
+        print("Aviso: Nenhum resultado obtido após processamento")
+        return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
+    
+    print(f"Processamento concluído: {len(df_resultados)} linhas de resultados")
     
     # Aplicar ordem categórica se disponível no mapeamento
     if (variavel_selecionada in variaveis_categoricas and 
@@ -108,7 +142,7 @@ def preparar_dados_comparativo(
     release_memory(df_trabalho)
     
     # Retornar dataframe otimizado
-    return optimize_dtypes(df_resultados)
+    return df_resultados
 
 
 @memory_intensive_function
@@ -143,9 +177,26 @@ def _calcular_medias_por_categoria(
     """
     resultados = []
     
+    # Verificar se temos dados válidos
+    if df.empty:
+        print("Erro: DataFrame vazio em _calcular_medias_por_categoria")
+        return resultados
+    
+    # Verificar se a coluna categoria existe
+    if coluna_categoria not in df.columns:
+        print(f"Erro: Coluna '{coluna_categoria}' não encontrada no DataFrame")
+        return resultados
+    
     # Obter categorias únicas de forma eficiente
     categorias_unicas = df[coluna_categoria].unique()
+    categorias_unicas = [cat for cat in categorias_unicas if pd.notna(cat)]  # Remover NaN
     total_categorias = len(categorias_unicas)
+    
+    if total_categorias == 0:
+        print("Erro: Nenhuma categoria válida encontrada")
+        return resultados
+    
+    print(f"Processando {total_categorias} categorias únicas")
     
     # Verificar se há muitas categorias (pode indicar problema)
     if total_categorias > CONFIG_PROCESSAMENTO['max_categorias_alerta']:
@@ -166,15 +217,25 @@ def _calcular_medias_por_categoria(
                 
                 # Calcular médias para cada competência
                 for competencia in colunas_notas:
+                    if competencia not in dados_categoria.columns:
+                        print(f"Aviso: Coluna '{competencia}' não encontrada nos dados")
+                        continue
+                        
                     # Filtrar apenas notas válidas (maiores que zero)
                     notas_validas = dados_categoria[dados_categoria[competencia] > 0][competencia]
                     
-                    # Calcular média ou usar zero se não houver notas válidas
-                    media_comp = calcular_seguro(notas_validas, 'media')
+                    if len(notas_validas) == 0:
+                        # Se não há notas válidas, usar 0 como média
+                        media_comp = 0
+                    else:
+                        # Calcular média ou usar zero se não houver notas válidas
+                        media_comp = calcular_seguro(notas_validas, 'media')
+                    
+                    competencia_nome = competencia_mapping.get(competencia, competencia)
                     
                     resultados.append({
                         'Categoria': categoria_exibicao,
-                        'Competência': competencia_mapping[competencia],
+                        'Competência': competencia_nome,
                         'Média': round(media_comp, 2)
                     })
             except KeyError:
@@ -191,15 +252,25 @@ def _calcular_medias_por_categoria(
             
             # Calcular médias para cada competência
             for competencia in colunas_notas:
+                if competencia not in dados_categoria.columns:
+                    print(f"Aviso: Coluna '{competencia}' não encontrada nos dados")
+                    continue
+                    
                 # Filtrar apenas notas válidas (maiores que zero)
                 notas_validas = dados_categoria[dados_categoria[competencia] > 0][competencia]
                 
-                # Calcular média ou usar zero se não houver notas válidas
-                media_comp = calcular_seguro(notas_validas, 'media')
+                if len(notas_validas) == 0:
+                    # Se não há notas válidas, usar 0 como média
+                    media_comp = 0
+                else:
+                    # Calcular média ou usar zero se não houver notas válidas
+                    media_comp = calcular_seguro(notas_validas, 'media')
+                
+                competencia_nome = competencia_mapping.get(competencia, competencia)
                 
                 resultados.append({
                     'Categoria': categoria_exibicao,
-                    'Competência': competencia_mapping[competencia],
+                    'Competência': competencia_nome,
                     'Média': round(media_comp, 2)
                 })
             
@@ -235,52 +306,65 @@ def preparar_dados_grafico_linha(
     --------
     DataFrame: DataFrame preparado para visualização em gráfico de linha
     """
-    # Verificar se temos dados para processar
-    if df_resultados.empty:
-        return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
-    
-    # Trabalhar com uma cópia dos dados
-    df_linha = df_resultados.copy()
-    
-    # Filtrar por competência específica, se solicitado
-    if competencia_filtro is not None:
-        df_linha = df_linha[df_linha['Competência'] == competencia_filtro]
-    
-    # Aplicar ordenação por valor se solicitado
-    if ordenar_decrescente:
-        # Se não for especificada uma competência de ordenação, use a que está filtrada
-        # ou a primeira competência disponível
-        if competencia_ordenacao is None:
-            if competencia_filtro is not None:
-                competencia_ordenacao = competencia_filtro
-            else:
-                competencias_disponiveis = df_resultados['Competência'].unique()
-                if len(competencias_disponiveis) > 0:
-                    competencia_ordenacao = competencias_disponiveis[0]
-        
-        # Verificar se temos uma competência válida para ordenação
-        if competencia_ordenacao is not None:
-            # Obter ordem das categorias com base na competência de ordenação
-            df_ordem = df_resultados[df_resultados['Competência'] == competencia_ordenacao]
+    try:
+        # Verificar se temos dados para processar
+        if df_resultados is None:
+            print("[WARN] preparar_dados_grafico_linha: df_resultados é None")
+            return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
             
-            if not df_ordem.empty:
-                # Ordenar por média decrescente
-                ordem_categorias = df_ordem.sort_values('Média', ascending=False)['Categoria'].unique().tolist()
+        if df_resultados.empty:
+            print("[WARN] preparar_dados_grafico_linha: df_resultados está vazio")
+            return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
+        
+        # Trabalhar com uma cópia dos dados
+        df_linha = df_resultados.copy()
+        
+        # Filtrar por competência específica, se solicitado
+        if competencia_filtro is not None:
+            df_linha = df_linha[df_linha['Competência'] == competencia_filtro]
+        
+        # Aplicar ordenação por valor se solicitado
+        if ordenar_decrescente:
+            # Se não for especificada uma competência de ordenação, use a que está filtrada
+            # ou a primeira competência disponível
+            if competencia_ordenacao is None:
+                if competencia_filtro is not None:
+                    competencia_ordenacao = competencia_filtro
+                else:
+                    competencias_disponiveis = df_resultados['Competência'].unique()
+                    if len(competencias_disponiveis) > 0:
+                        competencia_ordenacao = competencias_disponiveis[0]
+            
+            # Verificar se temos uma competência válida para ordenação
+            if competencia_ordenacao is not None:
+                # Obter ordem das categorias com base na competência de ordenação
+                df_ordem = df_resultados[df_resultados['Competência'] == competencia_ordenacao]
                 
-                # Aplicar essa ordem como tipo categórico ordenado
-                df_linha['Categoria'] = pd.Categorical(
-                    df_linha['Categoria'], 
-                    categories=ordem_categorias, 
-                    ordered=True
-                )
-                
-                # Forçar a ordenação do DataFrame
-                df_linha = df_linha.sort_values('Categoria')
-                
-                # Importante: Marcar o DataFrame como tendo ordem aplicada
-                df_linha.attrs['ordenado'] = True
-    
-    return df_linha
+                if not df_ordem.empty:
+                    # Ordenar por média decrescente
+                    ordem_categorias = df_ordem.sort_values('Média', ascending=False)['Categoria'].unique().tolist()
+                    
+                    # Aplicar essa ordem como tipo categórico ordenado
+                    df_linha['Categoria'] = pd.Categorical(
+                        df_linha['Categoria'], 
+                        categories=ordem_categorias, 
+                        ordered=True
+                    )
+                    
+                    # Forçar a ordenação do DataFrame
+                    df_linha = df_linha.sort_values('Categoria')
+                    
+                    # Importante: Marcar o DataFrame como tendo ordem aplicada
+                    df_linha.attrs['ordenado'] = True
+        
+        return df_linha
+        
+    except Exception as e:
+        print(f"[ERRO] preparar_dados_grafico_linha: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Sempre retornar um DataFrame válido, mesmo em caso de erro
+        return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
 
 
 def obter_ordem_categorias(
@@ -347,7 +431,8 @@ def preparar_dados_desempenho_geral(
     DataFrame: DataFrame com dados preparados e categoria de desempenho adicionada
     """
     # Verificar se temos dados para processar
-    if microdados.empty:
+    if microdados is None or microdados.empty:
+        print("[WARN] preparar_dados_desempenho_geral: microdados vazios ou None")
         return pd.DataFrame()
     
     # Colunas demográficas que precisamos para análises
@@ -380,7 +465,7 @@ def preparar_dados_desempenho_geral(
         if not microdados_full['CATEGORIA_DESEMPENHO'].isna().all():
             microdados_full['CATEGORIA_DESEMPENHO'] = microdados_full['CATEGORIA_DESEMPENHO'].astype('category')
     
-    return optimize_dtypes(microdados_full)
+    return microdados_full
 
 
 @optimized_cache(ttl=1800)

@@ -161,7 +161,7 @@ def _calcular_medias_estados_competencias(
     
     try:
         # Agrupar por estado para melhor desempenho
-        grupos_estado = df.groupby('SG_UF_PROVA')
+        grupos_estado = df.groupby('SG_UF_PROVA', observed=False)
         
         # Processar cada estado
         for estado in estados:

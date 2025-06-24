@@ -308,9 +308,36 @@ def exibir_analise_faltas(
         with st.spinner("Processando dados para análise de faltas..."):
             df_faltas = preparar_dados_grafico_faltas(microdados_estados, estados_selecionados, colunas_presenca)
             
-            if df_faltas.empty:
-                st.warning("Não há dados suficientes para análise de faltas com os filtros aplicados.")
+            # Verificação robusta para dados válidos
+            if df_faltas is None or df_faltas.empty:
+                st.error("❌ Não foi possível processar os dados para análise de faltas.")
+                st.info("Possíveis causas: estados não encontrados nos dados, coluna de presença ausente, ou dados insuficientes.")
+                
+                # Debug: mostrar informações sobre os dados
+                with st.expander("🔍 Informações de Debug"):
+                    st.write(f"Estados selecionados: {estados_selecionados}")
+                    if not microdados_estados.empty:
+                        st.write(f"Total de registros: {len(microdados_estados)}")
+                        if 'SG_UF_PROVA' in microdados_estados.columns:
+                            estados_nos_dados = microdados_estados['SG_UF_PROVA'].unique()
+                            st.write(f"Estados disponíveis nos dados: {list(estados_nos_dados)[:10]}...")
+                        else:
+                            st.write("❌ Coluna 'SG_UF_PROVA' não encontrada")
+                        
+                        if 'TP_PRESENCA_GERAL' in microdados_estados.columns:
+                            st.write("✅ Coluna 'TP_PRESENCA_GERAL' encontrada")
+                        else:
+                            st.write("❌ Coluna 'TP_PRESENCA_GERAL' não encontrada")
                 return
+            
+            # Verificar estrutura do DataFrame
+            colunas_esperadas = ['Estado', 'Tipo de Falta', 'Percentual de Faltas']
+            colunas_faltantes = [col for col in colunas_esperadas if col not in df_faltas.columns]
+            if colunas_faltantes:
+                st.error(f"❌ Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
+                return
+            
+            st.success(f"✅ Dados de faltas processados com sucesso: {len(df_faltas)} registros encontrados")
             
             # Calcular análise completa das faltas (uma vez só)
             analise_faltas_dados = analisar_faltas(df_faltas)
