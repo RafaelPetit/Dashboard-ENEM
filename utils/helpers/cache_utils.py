@@ -31,6 +31,17 @@ def release_memory(obj: Optional[Union[Any, List[Any]]] = None) -> None:
     # Executar coleta de lixo
     gc.collect()
 
+def clear_memory():
+# Limpar cache do Streamlit
+    st.cache_data.clear()
+
+    # Limpar session state
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+
+    # Forçar garbage collection
+    gc.collect()
+
 
 def optimized_cache(ttl: int = DEFAULT_TTL, max_entries: Optional[int] = None) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """
