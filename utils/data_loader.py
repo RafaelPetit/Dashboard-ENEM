@@ -27,31 +27,20 @@ def load_data_for_tab(tab_name: str, apenas_filtros: bool = False):
     --------
     DataFrame: Dados carregados para a aba especificada
     """
+
     try:
         # Para filtros, carregar apenas a coluna de UF do arquivo genérico
         if apenas_filtros:
-            return pd.read_parquet("sample_gerenico.parquet", 
-                                  columns=['SG_UF_PROVA'], 
+            return pd.read_parquet("sample_localizacao.parquet", 
                                   engine='pyarrow')
-        
-        # Carregar dados genéricos (compartilhados entre abas)
-        dados_genericos = pd.read_parquet("sample_gerenico.parquet", engine='pyarrow')
         
         # Carregar dados específicos da aba
         dados_especificos = pd.read_parquet(f"sample_{tab_name.lower()}.parquet", engine='pyarrow')
         
         # Aplicar otimização de tipos de dados
-        dados_genericos = optimize_dtypes(dados_genericos)
-        dados_especificos = optimize_dtypes(dados_especificos)
+        dados_especificos = optimize_dtypes(dados_especificos, tab_name)
         
-        # Concatenar dados genéricos e específicos
-        df_completo = pd.concat([dados_genericos, dados_especificos], axis=1)
-        
-        # Liberar memória de dataframes intermediários
-        del dados_genericos, dados_especificos
-        gc.collect()
-        
-        return df_completo
+        return dados_especificos
         
     except Exception as e:
         st.error(f"Erro ao carregar dados para aba {tab_name}: {e}")
@@ -171,7 +160,7 @@ def calcular_seguro(serie_dados, operacao='media'):
 # FUNÇÕES DE OTIMIZAÇÃO DE MEMÓRIA
 # ------------------------------------------------------------
 
-def optimize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
+def optimize_dtypes(df: pd.DataFrame, dtypes) -> pd.DataFrame:
     """
     Otimiza tipos de dados para reduzir uso de memória.
     
@@ -188,36 +177,11 @@ def optimize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
         return df
     
     # Otimizar inteiros
-    for col in df.select_dtypes(include=['int64']).columns:
-        col_min, col_max = df[col].min(), df[col].max()
-        
-        # Valores positivos
-        if col_min >= 0:
-            if col_max < 256:
-                df[col] = df[col].astype(np.uint8)
-            elif col_max < 65536:
-                df[col] = df[col].astype(np.uint16)
-            else:
-                df[col] = df[col].astype(np.uint32)
-        # Valores que podem ser negativos
-        else:
-            if col_min > -128 and col_max < 128:
-                df[col] = df[col].astype(np.int8)
-            elif col_min > -32768 and col_max < 32768:
-                df[col] = df[col].astype(np.int16)
-            else:
-                df[col] = df[col].astype(np.int32)
-    
-    # Otimizar floats
-    for col in df.select_dtypes(include=['float64']).columns:
-        df[col] = df[col].astype(np.float32)
-    
-    # Otimizar strings e categóricas
-    for col in df.select_dtypes(include=['object']).columns:
-        # Convertemos para categoria apenas se o número de valores únicos for baixo
-        n_unique = df[col].nunique()
-        if n_unique < 100 or (n_unique / len(df) < 0.1):
-            df[col] = df[col].astype('category')
+    arquivo_dtypes = f'dtypes_{dtypes}.json'
+
+    dtypes = pd.read_json(arquivo_dtypes, orient='index', typ='series')
+
+    df = df.astype(dtypes)
     
     return df
 
