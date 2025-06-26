@@ -58,44 +58,38 @@ def criar_expander_analise_histograma(
         Dicionário com estatísticas calculadas
     """
     with st.expander("Ver análise estatística detalhada"):
-        try:
-            # Título principal
-            st.write(f"### Análise de distribuição de notas em {nome_area}")
-            
-            # Verificar se temos estatísticas válidas
-            if not estatisticas or estatisticas.get('total_valido', 0) == 0:
-                st.warning(f"Dados insuficientes para análise detalhada de {nome_area}.")
-                return
-            
-            # Layout em colunas para melhor organização
-            col1, col2 = st.columns(2)
-            
-            # Coluna 1: Estatísticas descritivas
-            with col1:
-                _mostrar_estatisticas_descritivas(estatisticas)
-            
-            # Coluna 2: Distribuição por percentis
-            with col2:
-                _mostrar_percentis_detalhados(estatisticas)
-            
-            # Análise avançada da distribuição
-            st.write("#### Análise detalhada da distribuição")
-            interpretacao = get_interpretacao_distribuicao(
+        # Verificar se temos dados suficientes
+        if df is None or df.empty or estatisticas is None:
+            st.warning("Dados insuficientes para análise detalhada.")
+            return
+        
+        # Criar abas para diferentes análises
+        tab_stats, tab_perc, tab_faixas, tab_interpretation = st.tabs([
+            "Estatísticas Básicas", 
+            "Análise Percentílica", 
+            "Faixas de Desempenho",
+            "Interpretação Estatística"
+        ])
+        
+        with tab_stats:
+            _mostrar_estatisticas_descritivas(estatisticas)
+        
+        with tab_perc:
+            _mostrar_percentis_detalhados(estatisticas)
+        
+        with tab_faixas:
+            _mostrar_grafico_faixas_desempenho(estatisticas)
+            _mostrar_grafico_conceitos(estatisticas, nome_area)
+        
+        with tab_interpretation:
+            # Usar função do módulo de explicação para interpretação avançada
+            interpretation = get_interpretacao_distribuicao(
                 estatisticas.get('assimetria', 0),
                 estatisticas.get('curtose', 0),
                 estatisticas.get('media', 0),
                 estatisticas.get('desvio_padrao', 0)
             )
-            st.write(interpretacao)
-            
-            # Mostrar faixas de desempenho
-            _mostrar_grafico_faixas_desempenho(estatisticas)
-            
-            # Análise comparativa de conceitos
-            _mostrar_grafico_conceitos(estatisticas, nome_area)
-            
-        except Exception as e:
-            st.error(f"Erro ao gerar análise detalhada: {str(e)}")
+            st.markdown(interpretation)
 
 
 def criar_expander_analise_faltas(
@@ -113,40 +107,36 @@ def criar_expander_analise_faltas(
         Dicionário com métricas de análise
     """
     with st.expander("Ver análise detalhada de ausências"):
-        try:
-            # Verificar se temos dados válidos para análise
-            if analise is None or df_faltas is None or df_faltas.empty:
-                st.warning("Dados insuficientes para análise detalhada de ausências.")
-                return
-                
-            # Título principal
-            st.write("### Análise detalhada do padrão de faltas")
-            
-            # Bloco de métricas principais
+        # Verificar se temos dados suficientes
+        if df_faltas is None or df_faltas.empty or analise is None:
+            st.warning("Dados insuficientes para análise detalhada de ausências.")
+            return
+        
+        # Criar abas para diferentes análises
+        tab_overview, tab_detalhes, tab_regional, tab_causas = st.tabs([
+            "Visão Geral", 
+            "Análise por Dia", 
+            "Análise Regional",
+            "Possíveis Causas"
+        ])
+        
+        with tab_overview:
+            st.write("#### Visão geral das ausências no ENEM")
             _mostrar_metricas_principais_faltas(analise)
-            
-            # Análise por tipo de falta
-            st.write("#### Comparativo entre tipos de falta")
-            _criar_grafico_tipos_falta(analise.get('medias_por_tipo'))
-            
-            # Análise por dia de prova
-            st.write("#### Comparativo entre dias de prova")
+            _criar_grafico_tipos_falta(analise.get('medias_por_tipo', pd.DataFrame()))
+        
+        with tab_detalhes:
+            st.write("#### Análise comparativa entre dias de prova")
             _criar_grafico_dias_prova(analise)
-            
-            # Análise da variabilidade regional
+        
+        with tab_regional:
+            st.write("#### Análise regional de ausências")
             _mostrar_analise_variabilidade_faltas(analise)
-            
-            # Análise dos estados com maior e menor evasão
             _mostrar_estados_extremos_evasao(analise)
-            
-            # Mapa de calor de faltas por região
             _criar_mapa_calor_faltas(df_faltas)
-            
-            # Análise das causas potenciais
+        
+        with tab_causas:
             _mostrar_causas_potenciais_faltas()
-            
-        except Exception as e:
-            st.error(f"Erro ao gerar análise detalhada de faltas: {str(e)}")
 
 
 def criar_expander_analise_faixas_desempenho(
@@ -167,39 +157,35 @@ def criar_expander_analise_faixas_desempenho(
         Nome formatado da área de conhecimento
     """
     with st.expander("Ver análise por faixas de desempenho"):
-        try:
-            # Verificar se temos dados válidos
-            if df is None or df.empty or coluna not in df.columns:
-                st.warning(f"Dados insuficientes para análise por faixas de desempenho em {nome_area}.")
-                return
-                
-            # Filtrar para notas válidas
-            df_valido = df[df[coluna] > 0].copy()
-            
-            if df_valido.empty:
-                st.warning(f"Não foram encontradas notas válidas para análise em {nome_area}.")
-                return
-                
-            # Título principal
-            st.write(f"### Análise por faixas de desempenho em {nome_area}")
-            
-            # Analisar desempenho por faixas
-            analise_faixas = analisar_desempenho_por_faixa_nota(df_valido, coluna)
-            
-            # Mostrar estatísticas por faixa
-            _mostrar_estatisticas_por_faixa(analise_faixas)
-            
-            # Criar gráfico comparativo entre faixas
+        # Verificar se temos dados suficientes
+        if df is None or df.empty or coluna not in df.columns:
+            st.warning("Dados insuficientes para análise por faixas de desempenho.")
+            return
+        
+        # Calcular análise por faixas de desempenho
+        with st.spinner("Calculando estatísticas por faixas..."):
+            analise_faixas = analisar_desempenho_por_faixa_nota(df, coluna)
+        
+        if not analise_faixas or not analise_faixas.get('percentual'):
+            st.warning("Não foi possível calcular estatísticas por faixas de desempenho.")
+            return
+        
+        # Criar abas para diferentes análises
+        tab_visao, tab_stats, tab_implicacoes = st.tabs([
+            "Distribuição por Faixa", 
+            "Estatísticas Detalhadas", 
+            "Implicações Educacionais"
+        ])
+        
+        with tab_visao:
             _criar_grafico_comparativo_faixas(analise_faixas)
-            
-            # Análise da faixa predominante
             _mostrar_analise_faixa_predominante(analise_faixas)
-            
-            # Análise de implicações educacionais
+        
+        with tab_stats:
+            _mostrar_estatisticas_por_faixa(analise_faixas)
+        
+        with tab_implicacoes:
             _mostrar_implicacoes_educacionais_faixas(analise_faixas, nome_area)
-            
-        except Exception as e:
-            st.error(f"Erro ao gerar análise por faixas de desempenho: {str(e)}")
 
 
 def criar_expander_analise_regional(
@@ -220,43 +206,42 @@ def criar_expander_analise_regional(
         Mapeamento entre códigos de competência e nomes legíveis
     """
     with st.expander("Ver análise por região"):
-        try:
-            # Verificar se temos dados válidos
-            if df is None or df.empty or 'SG_UF_PROVA' not in df.columns:
-                st.warning("Dados insuficientes para análise regional.")
-                return
-                
-            # Título principal
-            st.write("### Análise de desempenho por região do país")
-            
-            # Obter métricas por região
+        # Verificar se temos dados suficientes
+        if df is None or df.empty or 'SG_UF_PROVA' not in df.columns:
+            st.warning("Dados insuficientes para análise regional.")
+            return
+        
+        # Calcular métricas por região
+        with st.spinner("Calculando métricas por região..."):
             metricas_regiao = analisar_metricas_por_regiao(df, colunas_notas)
-            
-            if not metricas_regiao:
-                st.warning("Não foi possível calcular métricas por região.")
-                return
-                
-            # Layout em abas para cada tipo de análise
-            tab1, tab2, tab3 = st.tabs(["Médias por competência", "Comparativo entre regiões", "Mapa de desempenho"])
-            
-            # Aba 1: Médias por competência e região
-            with tab1:
-                _mostrar_medias_competencia_regiao(metricas_regiao, competencia_mapping)
-            
-            # Aba 2: Comparativo entre regiões
-            with tab2:
-                _criar_grafico_comparativo_regioes(metricas_regiao)
-            
-            # Aba 3: Mapa de desempenho (heatmap)
-            with tab3:
-                _criar_mapa_calor_regioes(metricas_regiao, competencia_mapping)
-                
-            # Análise das disparidades regionais
-            st.write("#### Análise das disparidades regionais")
+        
+        if not metricas_regiao:
+            st.warning("Não foi possível calcular métricas por região.")
+            return
+        
+        # Criar abas para diferentes análises
+        tab_resumo, tab_detalhes, tab_visual, tab_disparidades = st.tabs([
+            "Resumo Regional", 
+            "Métricas por Competência", 
+            "Visualização Comparativa",
+            "Análise de Disparidades"
+        ])
+        
+        with tab_resumo:
+            st.write("#### Resumo do desempenho por região")
+            _criar_grafico_comparativo_regioes(metricas_regiao)
+        
+        with tab_detalhes:
+            st.write("#### Detalhamento por região e competência")
+            _mostrar_medias_competencia_regiao(metricas_regiao, competencia_mapping)
+        
+        with tab_visual:
+            st.write("#### Mapa de calor do desempenho regional")
+            _criar_mapa_calor_regioes(metricas_regiao, competencia_mapping)
+        
+        with tab_disparidades:
+            st.write("#### Análise de disparidades regionais")
             _mostrar_analise_disparidades_regionais(metricas_regiao)
-            
-        except Exception as e:
-            st.error(f"Erro ao gerar análise regional: {str(e)}")
 
 
 def criar_expander_analise_comparativo_areas(
@@ -271,48 +256,74 @@ def criar_expander_analise_comparativo_areas(
         DataFrame com dados comparativos entre áreas
     """
     with st.expander("Ver análise comparativa entre áreas"):
-        try:
-            # Verificar se temos dados válidos
-            if df_areas is None or df_areas.empty:
-                st.warning("Dados insuficientes para análise comparativa entre áreas.")
-                return
-                
-            # Verificar estrutura necessária
-            colunas_necessarias = ['Area', 'Media', 'DesvioPadrao']
-            if not all(col in df_areas.columns for col in colunas_necessarias):
-                st.warning("Estrutura de dados incorreta para análise comparativa entre áreas.")
-                return
-                
-            # Título principal
-            st.write("### Análise comparativa entre áreas de conhecimento")
-            
-            # Identificar áreas com melhor e pior desempenho
-            melhor_area, pior_area = _identificar_areas_extremas(df_areas)
-            
-            # Mostrar resumo comparativo
+        # Verificar se temos dados suficientes
+        if df_areas is None or df_areas.empty:
+            st.warning("Dados insuficientes para análise comparativa entre áreas.")
+            return
+        
+        # Identificar áreas com melhor e pior desempenho
+        melhor_area, pior_area = _identificar_areas_extremas(df_areas)
+        
+        # Criar abas para diferentes análises
+        tab_resumo, tab_visual, tab_analise = st.tabs([
+            "Resumo Comparativo", 
+            "Visualização Detalhada", 
+            "Análise de Diferenças"
+        ])
+        
+        with tab_resumo:
             _mostrar_resumo_comparativo_areas(df_areas, melhor_area, pior_area)
-            
-            # Criar gráfico de barras com desvio padrão
+        
+        with tab_visual:
             _criar_grafico_comparativo_areas_detalhado(df_areas)
+        
+        with tab_analise:
+            st.write("#### Análise de diferenças entre áreas")
             
-            # Análise de correlação entre dificuldades das áreas
-            _mostrar_analise_dificuldade_relativa(df_areas)
-            
-            # Mostrar tabela completa de dados
-            with st.expander("Ver dados completos"):
-                st.dataframe(
-                    df_areas,
-                    column_config={
-                        "Media": st.column_config.NumberColumn("Média", format="%.2f"),
-                        "DesvioPadrao": st.column_config.NumberColumn("Desvio Padrão", format="%.2f"),
-                        "Mediana": st.column_config.NumberColumn("Mediana", format="%.2f"),
-                        "Minimo": st.column_config.NumberColumn("Mínimo", format="%.2f") if "Minimo" in df_areas else None,
-                        "Maximo": st.column_config.NumberColumn("Máximo", format="%.2f") if "Maximo" in df_areas else None
-                    }
-                )
+            # Criar um seletor para comparar duas áreas específicas
+            areas_disponiveis = df_areas['Area'].tolist()
+            if len(areas_disponiveis) >= 2:
+                col1, col2 = st.columns(2)
+                with col1:
+                    area1 = st.selectbox("Primeira área", areas_disponiveis, index=0)
+                with col2:
+                    # Definir índice padrão para área 2 (segundo item ou primeiro se houver apenas um)
+                    idx2 = min(1, len(areas_disponiveis)-1)
+                    area2 = st.selectbox("Segunda área", areas_disponiveis, index=idx2)
                 
-        except Exception as e:
-            st.error(f"Erro ao gerar análise comparativa entre áreas: {str(e)}")
+                # Extrair dados das áreas selecionadas
+                dados_area1 = df_areas[df_areas['Area'] == area1].iloc[0] if not df_areas[df_areas['Area'] == area1].empty else None
+                dados_area2 = df_areas[df_areas['Area'] == area2].iloc[0] if not df_areas[df_areas['Area'] == area2].empty else None
+                
+                if dados_area1 is not None and dados_area2 is not None:
+                    # Calcular diferença percentual
+                    diff_percent = ((dados_area1['Media'] - dados_area2['Media']) / dados_area2['Media'] * 100) if dados_area2['Media'] > 0 else 0
+                    
+                    st.write(f"**Diferença entre {area1} e {area2}:**")
+                    st.write(f"- Média {area1}: {dados_area1['Media']:.2f}")
+                    st.write(f"- Média {area2}: {dados_area2['Media']:.2f}")
+                    st.write(f"- Diferença absoluta: {abs(dados_area1['Media'] - dados_area2['Media']):.2f} pontos")
+                    st.write(f"- Diferença percentual: {abs(diff_percent):.2f}% {'maior' if diff_percent > 0 else 'menor'}")
+                    
+                    if 'DesvioPadrao' in df_areas.columns:
+                        st.write(f"- Desvio padrão {area1}: {dados_area1['DesvioPadrao']:.2f}")
+                        st.write(f"- Desvio padrão {area2}: {dados_area2['DesvioPadrao']:.2f}")
+                        
+                        # Comparar variabilidade
+                        cv1 = (dados_area1['DesvioPadrao'] / dados_area1['Media'] * 100) if dados_area1['Media'] > 0 else 0
+                        cv2 = (dados_area2['DesvioPadrao'] / dados_area2['Media'] * 100) if dados_area2['Media'] > 0 else 0
+                        
+                        st.write(f"- Coeficiente de variação {area1}: {cv1:.2f}%")
+                        st.write(f"- Coeficiente de variação {area2}: {cv2:.2f}%")
+                        
+                        # Interpretar diferença na variabilidade
+                        if abs(cv1 - cv2) < 5:
+                            st.write("Ambas as áreas apresentam variabilidade semelhante nas notas.")
+                        else:
+                            area_mais_variavel = area1 if cv1 > cv2 else area2
+                            st.write(f"A área de **{area_mais_variavel}** apresenta **maior variabilidade** nas notas, indicando desempenho mais heterogêneo entre os candidatos.")
+            else:
+                st.warning("Dados insuficientes para comparação entre áreas específicas.")
 
 
 # Funções auxiliares para análise de histograma
@@ -409,6 +420,7 @@ def _mostrar_grafico_faixas_desempenho(estatisticas: Dict[str, Any]) -> None:
     # Verificar se temos dados de faixas
     faixas = estatisticas.get('faixas', {})
     if not faixas:
+        st.info("Dados de faixas de desempenho não disponíveis.")
         return
         
     st.write("#### Distribuição por faixas de desempenho")
@@ -429,7 +441,7 @@ def _mostrar_grafico_faixas_desempenho(estatisticas: Dict[str, Any]) -> None:
     })
     
     if df_faixas.empty:
-        st.info("Dados de faixas de desempenho não disponíveis.")
+        st.info("Nenhuma faixa com dados disponíveis.")
         return
     
     # Criar gráfico de barras
@@ -687,6 +699,7 @@ def _criar_mapa_calor_faltas(df_faltas: pd.DataFrame) -> None:
     try:
         # Verificar estrutura necessária
         if 'Estado' not in df_faltas.columns or 'Tipo de Falta' not in df_faltas.columns:
+            st.warning("Estrutura de dados insuficiente para criar mapa de calor.")
             return
             
         # Criar cópia do DataFrame
@@ -702,21 +715,25 @@ def _criar_mapa_calor_faltas(df_faltas: pd.DataFrame) -> None:
         df_regiao = df_mapa.groupby('Região')['Percentual de Faltas'].mean().reset_index()
         
         if not df_regiao.empty:
-            st.write("#### Mapa de calor de faltas por região")
+            st.write("#### Média de faltas por região")
             
-            # Criar mapa de calor
-            fig = px.imshow(
-                pd.pivot_table(
-                    df_regiao, 
-                    values='Percentual de Faltas',
-                    index=['Região']
-                ),
-                text_auto='.2f',
-                color_continuous_scale='Reds',
-                title="Taxa média de faltas por região"
+            # Criar gráfico de barras para médias por região
+            fig = px.bar(
+                df_regiao.sort_values('Percentual de Faltas', ascending=False),
+                x='Região',
+                y='Percentual de Faltas',
+                text_auto='.1f',
+                title="Taxa média de faltas por região",
+                labels={'Percentual de Faltas': '% de Faltas', 'Região': 'Região do Brasil'},
+                color='Região',
+                color_discrete_sequence=px.colors.qualitative.Set2
             )
             
-            fig.update_layout(height=300)
+            fig.update_layout(
+                yaxis=dict(ticksuffix='%'),
+                plot_bgcolor='white'
+            )
+            
             st.plotly_chart(fig, use_container_width=True)
             
     except Exception as e:
@@ -1707,6 +1724,49 @@ def criar_expander_analise_comparativo_areas(
                 st.warning("Dados insuficientes para comparação entre áreas específicas.")
 
 
+def _mostrar_analise_dificuldade_relativa(df_areas: pd.DataFrame) -> None:
+    """
+    Mostra análise interpretativa sobre a dificuldade relativa entre áreas.
+    
+    Parâmetros:
+    -----------
+    df_areas : DataFrame
+        DataFrame com dados comparativos entre áreas
+    """
+    if df_areas is None or df_areas.empty or 'Media' not in df_areas.columns or 'Area' not in df_areas.columns:
+        st.info("Dados insuficientes para análise de dificuldade relativa entre áreas.")
+        return
+
+    # Ordenar por média (menor média = área mais difícil)
+    df_ordenado = df_areas.sort_values('Media', ascending=True)
+    area_mais_dificil = df_ordenado.iloc[0]
+    area_mais_facil = df_ordenado.iloc[-1]
+    
+    # Diferença absoluta e percentual
+    diff_abs = area_mais_facil['Media'] - area_mais_dificil['Media']
+    diff_pct = (diff_abs / area_mais_dificil['Media'] * 100) if area_mais_dificil['Media'] > 0 else 0
+
+    st.write("#### Dificuldade relativa entre áreas")
+    st.write(f"A área considerada mais difícil (menor média) é **{area_mais_dificil['Area']}** com média **{area_mais_dificil['Media']:.2f}**.")
+    st.write(f"A área considerada mais fácil (maior média) é **{area_mais_facil['Area']}** com média **{area_mais_facil['Media']:.2f}**.")
+    st.write(f"A diferença absoluta entre as médias é de **{diff_abs:.2f}** pontos, o que representa uma diferença percentual de **{diff_pct:.2f}%**.")
+
+    # Interpretação
+    if diff_pct < 5:
+        st.info("As áreas apresentam dificuldade semelhante, com pequena diferença entre as médias. Isso sugere equilíbrio no grau de exigência das áreas avaliadas.")
+    elif diff_pct < 15:
+        st.info("Existe uma diferença moderada de dificuldade entre as áreas. Pode haver fatores curriculares, metodológicos ou de perfil dos candidatos que expliquem essa variação.")
+    else:
+        st.info("A diferença de dificuldade entre as áreas é significativa. Isso pode indicar que uma das áreas apresenta desafios maiores para os candidatos, seja pelo conteúdo, abordagem pedagógica ou outros fatores externos.")
+
+    # Opcional: destacar áreas intermediárias
+    if len(df_ordenado) > 2:
+        st.write("Áreas intermediárias:")
+        for i in range(1, len(df_ordenado)-1):
+            row = df_ordenado.iloc[i]
+            st.write(f"- {row['Area']}: média {row['Media']:.2f}")
+
+
 # Completando funções auxiliares pendentes
 
 def _mostrar_grafico_faixas_desempenho(estatisticas: Dict[str, Any]) -> None:
@@ -1906,64 +1966,3 @@ def _criar_mapa_calor_faltas(df_faltas: pd.DataFrame) -> None:
             
     except Exception as e:
         st.error(f"Erro ao criar mapa de calor: {str(e)}")
-
-
-def _mostrar_estatisticas_por_faixa(analise_faixas: Dict[str, Any]) -> None:
-    """
-    Mostra estatísticas detalhadas por faixa de desempenho.
-    
-    Parâmetros:
-    -----------
-    analise_faixas : Dict[str, Any]
-        Análise por faixas de desempenho
-    """
-    # Verificar se temos estatísticas por faixa
-    estatisticas_faixas = analise_faixas.get('estatisticas_faixas', {})
-    if not estatisticas_faixas:
-        st.info("Dados de estatísticas por faixa não disponíveis.")
-        return
-        
-    st.write("#### Estatísticas por faixa de desempenho")
-    
-    # Criar DataFrame para exibição
-    dados = []
-    for faixa, stats in estatisticas_faixas.items():
-        dados.append({
-            'Faixa': faixa,
-            'Candidatos': stats.get('contagem', 0),
-            'Percentual': stats.get('percentual', 0),
-            'Média': stats.get('media', 0),
-            'Desvio Padrão': stats.get('desvio_padrao', 0)
-        })
-    
-    df_stats = pd.DataFrame(dados)
-    
-    # Ordenar por faixas na ordem correta
-    ordem_faixas = [
-        'Insuficiente (abaixo de 450)',
-        'Regular (450 a 600)',
-        'Bom (600 a 750)',
-        'Muito bom (750 a 850)',
-        'Excelente (850 ou mais)'
-    ]
-    
-    # Filtrar apenas faixas que existem nos dados
-    df_stats['Faixa'] = pd.Categorical(
-        df_stats['Faixa'], 
-        categories=[f for f in ordem_faixas if f in df_stats['Faixa'].values],
-        ordered=True
-    )
-    
-    df_stats = df_stats.sort_values('Faixa')
-    
-    # Mostrar tabela formatada
-    st.dataframe(
-        df_stats,
-        column_config={
-            "Candidatos": st.column_config.NumberColumn(format="%d"),
-            "Percentual": st.column_config.NumberColumn(format="%.2f%%"),
-            "Média": st.column_config.NumberColumn(format="%.2f"),
-            "Desvio Padrão": st.column_config.NumberColumn(format="%.2f")
-        },
-        hide_index=True
-    )
