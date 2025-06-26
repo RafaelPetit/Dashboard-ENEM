@@ -483,39 +483,21 @@ def _adicionar_caixa_estatisticas(fig: go.Figure, estatisticas: Dict[str, Any]) 
     --------
     Figure: Figura Plotly com anotação adicionada
     """
-    # Extrair estatísticas com valores padrão
+    # Extrair apenas as estatísticas básicas necessárias
     media = estatisticas.get('media', 0)
     mediana = estatisticas.get('mediana', 0)
     min_valor = estatisticas.get('min_valor', 0)
     max_valor = estatisticas.get('max_valor', 0)
-    desvio_padrao = estatisticas.get('desvio_padrao', 0)
-    curtose = estatisticas.get('curtose', 0)
-    assimetria = estatisticas.get('assimetria', 0)
-    total_valido = estatisticas.get('total_valido', 0)
+    total_candidatos = estatisticas.get('total_candidatos', 0)  # Total real incluindo ausentes
     
-    # Criar texto com informações adicionais sobre percentis, se disponíveis
-    percentis_texto = ""
-    if 'percentis' in estatisticas and estatisticas['percentis']:
-        percentis = estatisticas['percentis']
-        percentis_texto = f"""
-        P25: {percentis.get(25, 0):.2f}<br>
-        P50: {percentis.get(50, 0):.2f}<br>
-        P75: {percentis.get(75, 0):.2f}<br>
-        P90: {percentis.get(90, 0):.2f}<br>
-        """
-    
-    # Montar texto completo
+    # Montar texto simplificado
     stats_text = f"""
     <b>Estatísticas:</b><br>
-    Total de Notas: {total_valido:,}<br>
+    Total de Candidatos: {total_candidatos:,}<br>
     Média: {media:.2f}<br>
     Mediana: {mediana:.2f}<br>
     Mínimo: {min_valor:.2f}<br>
-    Máximo: {max_valor:.2f}<br>
-    Desvio Padrão: {desvio_padrao:.2f}<br>
-    Curtose: {curtose:.2f}<br>
-    Assimetria: {assimetria:.2f}
-    {percentis_texto}
+    Máximo: {max_valor:.2f}
     """
 
     fig.add_annotation(

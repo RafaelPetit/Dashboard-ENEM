@@ -113,6 +113,16 @@ def get_cached_data_geral(estados_selecionados: List[str]):
     estados_key = "_".join(sorted(estados_selecionados))
     return _load_geral_data(estados_key)
 
+def get_all_data_geral():
+    """Carrega TODOS os dados (não filtrados) para a página Geral"""
+    
+    @st.cache_data(ttl=600, max_entries=1, show_spinner=False)
+    def _load_all_geral_data():
+        """Cache interno para TODOS os dados da página Geral"""
+        return load_data_for_tab("geral")
+    
+    return _load_all_geral_data()
+
 def optimize_memory_usage(microdados_estados: pd.DataFrame) -> pd.DataFrame:
     """
     Otimização de memória usando APENAS pandas - versão ultra-segura
@@ -182,7 +192,8 @@ def render_geral(
     estados_selecionados: List[str], 
     locais_selecionados: List[str], 
     colunas_notas: List[str], 
-    competencia_mapping: Dict[str, str]
+    competencia_mapping: Dict[str, str],
+    microdados_completos: Optional[pd.DataFrame] = None
 ) -> None:
     """
     Renderiza a aba Geral do dashboard com métricas e visualizações interativas.
@@ -227,7 +238,7 @@ def render_geral(
     # Exibir a visualização selecionada - EXATAMENTE IGUAL À ORIGINAL
     try:
         if analise_selecionada == "Distribuição de Notas":
-            exibir_histograma_notas(microdados_estados, colunas_notas, competencia_mapping)
+            exibir_histograma_notas(microdados_estados, colunas_notas, competencia_mapping, microdados_completos)
         elif analise_selecionada == "Análise por Região/Estado":
             exibir_analise_regional(microdados_estados, estados_selecionados, colunas_notas, competencia_mapping)
         elif analise_selecionada == "Comparativo entre Áreas":
@@ -304,7 +315,8 @@ def exibir_metricas_principais(
 def exibir_histograma_notas(
     microdados_estados: pd.DataFrame, 
     colunas_notas: List[str], 
-    competencia_mapping: Dict[str, str]
+    competencia_mapping: Dict[str, str],
+    microdados_completos: Optional[pd.DataFrame] = None
 ) -> None:
     """
     Exibe um histograma interativo da distribuição de notas com análise estatística.
@@ -336,7 +348,9 @@ def exibir_histograma_notas(
                 return
                 
             # Calcular estatísticas para a coluna selecionada
-            estatisticas = analisar_distribuicao_notas(df_valido, coluna_hist)
+            # Usar o DataFrame completo para obter o total correto de candidatos
+            df_para_estatisticas = microdados_completos if microdados_completos is not None else microdados_estados
+            estatisticas = analisar_distribuicao_notas(df_para_estatisticas, coluna_hist)
         
         # Criar e exibir o histograma
         with st.spinner("Gerando visualização..."):
@@ -806,9 +820,10 @@ def main():
     try:
         # Carregar dados para estados selecionados
         with st.spinner("Carregando dados da análise geral..."):
-            microdados_completos = get_cached_data_geral(estados_selecionados)
+            # Carregar dados completos (todos os estados) para cálculo de totais corretos
+            microdados_completos = get_all_data_geral()
             
-            # Filtrar dados pelos estados selecionados
+            # Filtrar dados pelos estados selecionados para análise
             microdados_estados = filter_data_by_states(microdados_completos, estados_selecionados)
         
         if microdados_estados.empty:
@@ -821,7 +836,8 @@ def main():
             estados_selecionados, 
             locais_selecionados, 
             colunas_notas, 
-            competencia_mapping
+            competencia_mapping,
+            microdados_completos
         )
         
     except Exception as e:

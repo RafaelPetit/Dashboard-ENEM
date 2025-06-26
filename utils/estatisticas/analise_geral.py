@@ -310,6 +310,7 @@ def analisar_distribuicao_notas(
         
         # Calcular faixas de desempenho
         total_valido = len(df_valido)
+        total_candidatos = len(df_dados)  # Total real de candidatos (incluindo ausentes)
         faixas = _calcular_faixas_desempenho(df_valido, coluna, total_valido)
         
         # Análise de conceito (baseado em faixas típicas de nota do ENEM)
@@ -324,6 +325,7 @@ def analisar_distribuicao_notas(
         # Retornar análise completa
         return {
             'total_valido': total_valido,
+            'total_candidatos': total_candidatos,  # Total real incluindo ausentes
             'total_invalido': len(df_dados) - total_valido,
             'media': round(media, 2),
             'mediana': round(mediana, 2),
@@ -354,6 +356,7 @@ def _criar_analise_distribuicao_vazia() -> Dict[str, Any]:
     """
     return {
         'total_valido': 0,
+        'total_candidatos': 0,  # Total real incluindo ausentes
         'total_invalido': 0,
         'media': 0.0,
         'mediana': 0.0,
