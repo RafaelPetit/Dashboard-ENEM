@@ -902,8 +902,8 @@ def _definir_estilo_linha_tendencia(nome: str) -> Dict[str, Any]:
             'largura': 1.5,
             'tracado': 'dash'
         }
-    # Estilo para linha de regiões
-    elif nome in ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul']:
+    # Estilo para linha de regiões - SUDESTE REMOVIDO
+    elif nome in ['Norte', 'Nordeste', 'Centro-Oeste', 'Sul']:
         return {
             'cor': '#2CA02C',  # Verde para regiões
             'largura': 2,

@@ -2,11 +2,11 @@ import pandas as pd
 from typing import Dict, List, Any, Optional, Union
 
 # Mapeamento constante de regiões do Brasil para uso em múltiplas funções
+# SUDESTE REMOVIDO - dados já filtrados no dataset
 REGIOES_BRASIL = {
     'Norte': ['AC', 'AM', 'AP', 'PA', 'RO', 'RR', 'TO'],
     'Nordeste': ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'],
     'Centro-Oeste': ['DF', 'GO', 'MS', 'MT'],
-    'Sudeste': ['ES', 'MG', 'RJ', 'SP'],
     'Sul': ['PR', 'RS', 'SC']
 }
 
@@ -30,54 +30,37 @@ def agrupar_por_regiao(
     coluna_valores: str = 'Média'
 ) -> pd.DataFrame:
     """
-    Agrupa um DataFrame por região, baseado na coluna especificada para estados.
+    Retorna o DataFrame com a coluna de Região já existente, sem recriar.
+    Assume que o dataset já possui uma coluna 'Regiao' criada anteriormente.
     
     Parâmetros:
     -----------
     df : DataFrame
-        DataFrame contendo dados por estado
+        DataFrame contendo dados por estado com coluna 'Regiao' já existente
     coluna_estado : str, default='Estado'
-        Nome da coluna que contém os códigos dos estados
+        Nome da coluna que contém os códigos dos estados (mantido para compatibilidade)
     coluna_valores : str, default='Média'
-        Nome da coluna que contém os valores a serem agregados
+        Nome da coluna que contém os valores (mantido para compatibilidade)
         
     Retorna:
     --------
-    DataFrame : DataFrame agrupado por região
+    DataFrame : DataFrame original com coluna 'Regiao' já existente
     """
     # Verificar se temos dados para processar
     if df.empty:
-        return pd.DataFrame(columns=df.columns)
-        
-    # Criar uma cópia para evitar modificar o DataFrame original
-    df_regioes = df.copy()
+        return df
     
-    # Verificar se a coluna de estado existe
-    if coluna_estado not in df_regioes.columns:
-        raise ValueError(f"Coluna '{coluna_estado}' não encontrada no DataFrame")
-    
-    # Mapear estados para regiões
-    df_regioes['Região'] = df_regioes[coluna_estado].map(ESTADO_PARA_REGIAO)
-    
-    # Verificar se todos os estados foram mapeados corretamente
-    estados_nao_mapeados = df_regioes[df_regioes['Região'].isna()][coluna_estado].unique()
-    if len(estados_nao_mapeados) > 0:
-        print(f"Aviso: Os seguintes estados não foram mapeados para regiões: {estados_nao_mapeados}")
-    
-    # Identificar colunas para agrupamento (todas exceto estado, valores e região)
-    colunas_para_remover = [coluna_estado, coluna_valores, 'Região']
-    colunas_agrupamento = [col for col in df_regioes.columns if col not in colunas_para_remover]
-    
-    # Criar lista de colunas para agrupar
-    colunas_grupo = ['Região'] + colunas_agrupamento
-    
-    # Realizar o agrupamento e calcular a média
-    df_agrupado = df_regioes.groupby(colunas_grupo)[coluna_valores].mean().reset_index()
-    
-    # Renomear coluna de região para manter compatibilidade com o restante do código
-    df_agrupado = df_agrupado.rename(columns={'Região': coluna_estado})
-    
-    return df_agrupado
+    # Verificar se a coluna Regiao já existe no DataFrame
+    if 'Regiao' in df.columns:
+        # Retornar o DataFrame original, pois a coluna Regiao já existe
+        return df
+    else:
+        # Fallback: se por algum motivo a coluna não existir, criar usando o mapeamento
+        # (mantendo compatibilidade com datasets antigos)
+        df_com_regiao = df.copy()
+        if coluna_estado in df_com_regiao.columns:
+            df_com_regiao['SG_REGIAO'] = df_com_regiao[coluna_estado].map(ESTADO_PARA_REGIAO)
+        return df_com_regiao
 
 
 def obter_estados_da_regiao(regiao: str) -> List[str]:
@@ -87,7 +70,7 @@ def obter_estados_da_regiao(regiao: str) -> List[str]:
     Parâmetros:
     -----------
     regiao : str
-        Nome da região (Norte, Nordeste, Centro-Oeste, Sudeste, Sul)
+        Nome da região (Norte, Nordeste, Centro-Oeste, Sul)
         
     Retorna:
     --------

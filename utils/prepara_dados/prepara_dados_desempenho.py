@@ -812,8 +812,8 @@ def _agrupar_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
         # Renomear coluna de região para manter compatibilidade
         df_agrupado = df_agrupado.rename(columns={'Região': 'Estado'})
         
-        # Otimizar tipo de dados da coluna de região
-        regioes = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul']
+        # Otimizar tipo de dados da coluna de região - SUDESTE REMOVIDO
+        regioes = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sul']
         df_agrupado['Estado'] = pd.Categorical(df_agrupado['Estado'], categories=regioes)
         
         return df_agrupado
