@@ -110,21 +110,30 @@ def criar_filtros_dispersao(
             horizontal=True
         )
         
-        # Exclusão de notas zero
-        excluir_notas_zero = st.checkbox(
-            "Excluir notas zero", 
-            value=True,
-            key="excluir_zeros_dispersao"
-        )
+        # Remoção do checkbox "Excluir notas zero"
+        # excluir_notas_zero sempre será True por padrão
+        excluir_notas_zero = True
         
     with col2:
         # Eixo Y (competência no eixo vertical)
         opcoes_eixo_y = [col for col in colunas_notas if col != eixo_x]
+        
+        # Verificar se há opções disponíveis para o eixo Y
+        if not opcoes_eixo_y:
+            # Se não há opções, usar todas as colunas e mostrar aviso
+            opcoes_eixo_y = colunas_notas
+            st.warning("Aviso: Mesma competência selecionada para ambos os eixos")
+        
+        # Garantir que temos pelo menos uma opção
+        indice_y = 0
+        if len(opcoes_eixo_y) > 1:
+            indice_y = 1 if opcoes_eixo_y[0] == eixo_x else 0
+        
         eixo_y = st.selectbox(
             "Competência (Eixo Y):",
             options=opcoes_eixo_y,
             format_func=lambda x: competencia_mapping[x],
-            index=0,
+            index=indice_y,
             key="eixo_y_dispersao"
         )
         

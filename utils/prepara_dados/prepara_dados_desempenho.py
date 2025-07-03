@@ -45,21 +45,15 @@ def preparar_dados_comparativo(
     """
     # Verificar se temos dados de entrada válidos
     if microdados_full is None or microdados_full.empty:
-        print("Erro: DataFrame de entrada vazio ou None")
         return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
     
     # Verificar se a variável selecionada existe nos dados
     if variavel_selecionada not in microdados_full.columns:
-        print(f"Erro: Variável '{variavel_selecionada}' não encontrada nos dados")
-        colunas_disponiveis = list(microdados_full.columns)
-        print(f"Colunas disponíveis: {colunas_disponiveis[:20]}...")  # Mostrar apenas as primeiras 20
         return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
     
     # Verificar se temos as colunas de notas
     colunas_notas_disponiveis = [col for col in colunas_notas if col in microdados_full.columns]
     if not colunas_notas_disponiveis:
-        print(f"Erro: Nenhuma coluna de notas encontrada nos dados")
-        print(f"Colunas de notas esperadas: {colunas_notas}")
         return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
     
     # Verificar se temos dados suficientes
@@ -71,11 +65,8 @@ def preparar_dados_comparativo(
     )
     
     if not dados_validos:
-        # Log de colunas com baixa completude
-        colunas_problema = [col for col, taxa in taxas_completude.items() 
-                          if taxa < LIMIARES_PROCESSAMENTO['min_completude_dados']]
-        print(f"Aviso: Baixa completude nas colunas: {colunas_problema}")
-        print("Continuando processamento com dados disponíveis...")
+        # Continuar processamento com dados disponíveis
+        pass
     # Selecionar apenas colunas necessárias para economizar memória
     df_trabalho = microdados_full[colunas_necessarias].copy()
     
@@ -84,10 +75,7 @@ def preparar_dados_comparativo(
     
     # Verificar se ainda temos dados após limpeza
     if df_trabalho.empty:
-        print("Erro: Nenhum dado válido após remoção de valores nulos")
         return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
-    
-    print(f"Processando {len(df_trabalho)} registros para variável '{variavel_selecionada}'")
     
     # Determinar mapeamento de valores e nome da coluna a ser usada
     nome_coluna_mapeada = variavel_selecionada
@@ -95,7 +83,6 @@ def preparar_dados_comparativo(
     
     if variavel_selecionada in variaveis_categoricas and "mapeamento" in variaveis_categoricas[variavel_selecionada]:
         mapeamento = variaveis_categoricas[variavel_selecionada]["mapeamento"]
-        print(f"Usando mapeamento para '{variavel_selecionada}': {list(mapeamento.keys())[:5]}...")  # Mostrar apenas alguns valores
     
     # Calcular médias para cada combinação categoria-competência
     resultados = _calcular_medias_por_categoria(
@@ -110,10 +97,8 @@ def preparar_dados_comparativo(
     
     # Verificar se obtivemos resultados
     if df_resultados.empty:
-        print("Aviso: Nenhum resultado obtido após processamento")
         return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
     
-    print(f"Processamento concluído: {len(df_resultados)} linhas de resultados")
     
     # Aplicar ordem categórica se disponível no mapeamento
     if (variavel_selecionada in variaveis_categoricas and 
@@ -179,12 +164,10 @@ def _calcular_medias_por_categoria(
     
     # Verificar se temos dados válidos
     if df.empty:
-        print("Erro: DataFrame vazio em _calcular_medias_por_categoria")
         return resultados
     
     # Verificar se a coluna categoria existe
     if coluna_categoria not in df.columns:
-        print(f"Erro: Coluna '{coluna_categoria}' não encontrada no DataFrame")
         return resultados
     
     # Obter categorias únicas de forma eficiente
@@ -193,14 +176,11 @@ def _calcular_medias_por_categoria(
     total_categorias = len(categorias_unicas)
     
     if total_categorias == 0:
-        print("Erro: Nenhuma categoria válida encontrada")
         return resultados
     
-    print(f"Processando {total_categorias} categorias únicas")
-    
-    # Verificar se há muitas categorias (pode indicar problema)
+    # Verificar se há muitas categorias (pode afetar performance)
     if total_categorias > CONFIG_PROCESSAMENTO['max_categorias_alerta']:
-        print(f"Alerta: {total_categorias} categorias encontradas. Isso pode afetar a performance e visualização.")
+        pass  # Continuar processamento mesmo com muitas categorias
     
     # Agrupar dados para economizar memória e melhorar performance
     if total_categorias <= CONFIG_PROCESSAMENTO['limiar_agrupamento']:
@@ -218,7 +198,6 @@ def _calcular_medias_por_categoria(
                 # Calcular médias para cada competência
                 for competencia in colunas_notas:
                     if competencia not in dados_categoria.columns:
-                        print(f"Aviso: Coluna '{competencia}' não encontrada nos dados")
                         continue
                         
                     # Filtrar apenas notas válidas (maiores que zero)
@@ -253,7 +232,6 @@ def _calcular_medias_por_categoria(
             # Calcular médias para cada competência
             for competencia in colunas_notas:
                 if competencia not in dados_categoria.columns:
-                    print(f"Aviso: Coluna '{competencia}' não encontrada nos dados")
                     continue
                     
                 # Filtrar apenas notas válidas (maiores que zero)
@@ -309,11 +287,9 @@ def preparar_dados_grafico_linha(
     try:
         # Verificar se temos dados para processar
         if df_resultados is None:
-            print("[WARN] preparar_dados_grafico_linha: df_resultados é None")
             return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
             
         if df_resultados.empty:
-            print("[WARN] preparar_dados_grafico_linha: df_resultados está vazio")
             return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
         
         # Trabalhar com uma cópia dos dados
@@ -360,9 +336,6 @@ def preparar_dados_grafico_linha(
         return df_linha
         
     except Exception as e:
-        print(f"[ERRO] preparar_dados_grafico_linha: {str(e)}")
-        import traceback
-        traceback.print_exc()
         # Sempre retornar um DataFrame válido, mesmo em caso de erro
         return pd.DataFrame(columns=['Categoria', 'Competência', 'Média'])
 
@@ -432,7 +405,6 @@ def preparar_dados_desempenho_geral(
     """
     # Verificar se temos dados para processar
     if microdados is None or microdados.empty:
-        print("[WARN] preparar_dados_desempenho_geral: microdados vazios ou None")
         return pd.DataFrame()
     
     # Colunas demográficas que precisamos para análises
@@ -477,7 +449,7 @@ def filtrar_dados_scatter(
     eixo_y: str, 
     excluir_notas_zero: bool = True, 
     filtro_raca: Optional[str] = None,
-    filtro_faixa_salarial: Optional[int] = None,
+    filtro_faixa_salarial: Optional[Union[int, List[int]]] = None,
     max_amostras: int = CONFIG_PROCESSAMENTO['max_amostras_scatter']
 ) -> Tuple[pd.DataFrame, int]:
     """
@@ -499,8 +471,8 @@ def filtrar_dados_scatter(
         Se True, exclui registros com notas zero
     filtro_raca : str, opcional
         Filtro para raça/cor específica
-    filtro_faixa_salarial : int, opcional
-        Filtro para faixa salarial específica
+    filtro_faixa_salarial : Union[int, List[int]], opcional
+        Filtro para faixa salarial específica (valor único) ou lista de faixas salariais
     max_amostras : int, default=50000
         Número máximo de amostras para o gráfico de dispersão
         
@@ -515,7 +487,7 @@ def filtrar_dados_scatter(
     # Determinar colunas necessárias para a análise
     colunas_necessarias = [eixo_x, eixo_y]
     
-    # Adicionar colunas de agrupamento se presentes
+    # Adicionar colunas de filtro se necessárias
     for coluna, filtro in [
         ('TP_SEXO', filtro_sexo),
         ('TP_DEPENDENCIA_ADM_ESC', filtro_tipo_escola),
@@ -525,44 +497,46 @@ def filtrar_dados_scatter(
         if filtro is not None and coluna in dados.columns:
             colunas_necessarias.append(coluna)
     
+    # Adicionar TP_FAIXA_SALARIAL se colorir por faixa estiver ativo
+    if 'TP_FAIXA_SALARIAL' in dados.columns and 'TP_FAIXA_SALARIAL' not in colunas_necessarias:
+        colunas_necessarias.append('TP_FAIXA_SALARIAL')
+    
     # Selecionar colunas e criar cópia
     df = dados[colunas_necessarias].copy()
     tamanho_inicial = len(df)
     
-    # Construir filtros como expressões para aplicar tudo de uma vez
-    filtros = []
-    
-    # Notas válidas
-    if excluir_notas_zero:
-        filtros.append(f"{eixo_x} > 0")
-        filtros.append(f"{eixo_y} > 0")
-    
-    # Filtros demográficos
-    if filtro_sexo and 'TP_SEXO' in df.columns:
-        filtros.append(f"TP_SEXO == '{filtro_sexo}'")
-    
-    if filtro_tipo_escola and 'TP_DEPENDENCIA_ADM_ESC' in df.columns:
-        if filtro_tipo_escola == 'Pública':
-            filtros.append("TP_DEPENDENCIA_ADM_ESC.isin(['1', '2', '3'])")
-        elif filtro_tipo_escola == 'Privada':
-            filtros.append("TP_DEPENDENCIA_ADM_ESC == '4'")
-    
-    if filtro_raca and 'TP_COR_RACA' in df.columns:
-        filtros.append(f"TP_COR_RACA == {filtro_raca}")
-    
-    if filtro_faixa_salarial is not None and 'TP_FAIXA_SALARIAL' in df.columns:
-        filtros.append(f"TP_FAIXA_SALARIAL == {filtro_faixa_salarial}")
-    
-    # Aplicar filtros
-    if filtros:
-        query = " & ".join(filtros)
-        try:
-            df = df.query(query)
-        except Exception as e:
-            print(f"Erro ao aplicar filtro: {e}")
-            # Aplicar filtros manualmente como fallback
-            if excluir_notas_zero:
-                df = df[(df[eixo_x] > 0) & (df[eixo_y] > 0)]
+    # Aplicar filtros de forma mais robusta - usar sempre método manual
+    try:
+        # Aplicar filtro de notas zero primeiro
+        if excluir_notas_zero:
+            df = df[(df[eixo_x] > 0) & (df[eixo_y] > 0)]
+        
+        # Aplicar filtros demográficos manualmente
+        if filtro_sexo and filtro_sexo != 'Todos' and 'TP_SEXO' in df.columns:
+            df = df[df['TP_SEXO'].isin([filtro_sexo, str(filtro_sexo)])]
+            
+        if filtro_tipo_escola and filtro_tipo_escola != 'Todos' and 'TP_DEPENDENCIA_ADM_ESC' in df.columns:
+            if filtro_tipo_escola == 'Pública':
+                df = df[df['TP_DEPENDENCIA_ADM_ESC'].isin([1, 2, 3, '1', '2', '3', 1.0, 2.0, 3.0])]
+            elif filtro_tipo_escola == 'Privada':
+                df = df[df['TP_DEPENDENCIA_ADM_ESC'].isin([4, '4', 4.0])]
+                
+        if filtro_raca and 'TP_COR_RACA' in df.columns:
+            df = df[df['TP_COR_RACA'] == filtro_raca]
+            
+        if filtro_faixa_salarial is not None and 'TP_FAIXA_SALARIAL' in df.columns:
+            if isinstance(filtro_faixa_salarial, list):
+                valores_aceitos = []
+                for f in filtro_faixa_salarial:
+                    valores_aceitos.extend([f, str(f), float(f)])
+                df = df[df['TP_FAIXA_SALARIAL'].isin(valores_aceitos)]
+            else:
+                df = df[df['TP_FAIXA_SALARIAL'].isin([filtro_faixa_salarial, str(filtro_faixa_salarial), float(filtro_faixa_salarial)])]
+                
+    except Exception as e:
+        # Em caso de erro, aplicar apenas filtro básico
+        if excluir_notas_zero:
+            df = df[(df[eixo_x] > 0) & (df[eixo_y] > 0)]
     
     # Remover valores NaN nos eixos
     df = df.dropna(subset=[eixo_x, eixo_y])
@@ -611,7 +585,6 @@ def preparar_dados_grafico_linha_desempenho(
     
     # Verificar se temos a coluna de UF
     if 'SG_UF_PROVA' not in microdados_estados.columns:
-        print("Erro: Coluna 'SG_UF_PROVA' não encontrada nos dados")
         return pd.DataFrame()
     
     # Usar processamento em lotes para reduzir uso de memória
@@ -672,7 +645,6 @@ def _processar_estados_em_lotes(
     try:
         grupos_estado = microdados.groupby('SG_UF_PROVA')
     except Exception as e:
-        print(f"Erro ao agrupar por estado: {e}")
         return resultados
     
     # Processar cada estado
@@ -757,20 +729,18 @@ def _otimizar_tipos_dados(
     try:
         df['Área'] = pd.Categorical(df['Área'], categories=areas_unicas)
     except Exception as e:
-        print(f"Erro ao converter coluna 'Área': {e}")
+        pass
     
     try:
         df['Estado'] = pd.Categorical(df['Estado'], categories=estados)
     except Exception as e:
-        print(f"Erro ao converter coluna 'Estado': {e}")
+        pass
     
     # Otimizar coluna numérica
     try:
         df['Média'] = df['Média'].astype('float32')
     except Exception as e:
-        print(f"Erro ao converter coluna 'Média': {e}")
-    
-    return df
+        pass
 
 
 def _agrupar_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
@@ -818,5 +788,4 @@ def _agrupar_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
         
         return df_agrupado
     except Exception as e:
-        print(f"Erro ao agrupar por região: {e}")
         return df  # Retornar dados originais em caso de erro

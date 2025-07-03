@@ -430,17 +430,17 @@ def render_relacao_competencias(microdados_estados, colunas_notas, competencia_m
     # Configuração dos filtros - EXATAMENTE IGUAL À ORIGINAL
     config_filtros = criar_filtros_dispersao(colunas_notas, competencia_mapping)
     
-    # Filtragem e processamento dos dados - EXATAMENTE IGUAL À ORIGINAL
+    # Filtragem e processamento dos dados - CORRIGIDO
     with st.spinner("Processando dados para o gráfico de dispersão..."):
         dados_filtrados, registros_removidos = filtrar_dados_scatter(
             microdados_estados, 
-            config_filtros['sexo'], 
-            config_filtros['tipo_escola'], 
+            config_filtros['sexo'] if config_filtros['sexo'] != 'Todos' else None,
+            config_filtros['tipo_escola'] if config_filtros['tipo_escola'] != 'Todos' else None,
             config_filtros['eixo_x'], 
             config_filtros['eixo_y'], 
-            config_filtros['excluir_notas_zero'], 
-            race_mapping,
-            config_filtros['faixa_salarial']
+            config_filtros['excluir_notas_zero'],
+            filtro_raca=None,  # Não usar filtro de raça
+            filtro_faixa_salarial=config_filtros['faixa_salarial']  # Passar lista completa
         )
         
         # Calcular correlação apenas uma vez e reutilizar - EXATAMENTE IGUAL À ORIGINAL
@@ -450,9 +450,8 @@ def render_relacao_competencias(microdados_estados, colunas_notas, competencia_m
             config_filtros['eixo_y']
         )
     
-    # Informações sobre registros removidos - EXATAMENTE IGUAL À ORIGINAL
-    if config_filtros['excluir_notas_zero'] and registros_removidos > 0:
-        st.info(f"Foram desconsiderados {registros_removidos:,} registros com nota zero.")
+    # Informações sobre registros removidos foram removidas conforme solicitado
+    # (Não exibir mais a mensagem sobre exclusão de notas zero)
     
     # Exibição do gráfico de dispersão - EXATAMENTE IGUAL À ORIGINAL
     with st.spinner("Gerando visualização de dispersão..."):

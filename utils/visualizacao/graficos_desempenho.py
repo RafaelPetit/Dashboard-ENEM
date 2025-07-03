@@ -52,27 +52,21 @@ def criar_grafico_comparativo_barras(
     """
     # Verificar dados de entrada
     if df_resultados is None or df_resultados.empty:
-        print("Erro: DataFrame de resultados vazio para gráfico comparativo")
         return _criar_grafico_vazio("Sem dados disponíveis para visualização")
     
     # Verificar estrutura mínima do DataFrame
     colunas_necessarias = ['Categoria', 'Competência', 'Média']
     colunas_faltantes = [col for col in colunas_necessarias if col not in df_resultados.columns]
     if colunas_faltantes:
-        print(f"Erro: Colunas faltantes no DataFrame: {colunas_faltantes}")
         return _criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
     
     # Verificar se a variável selecionada existe no dicionário
     if variavel_selecionada not in variaveis_categoricas:
-        print(f"Erro: Variável '{variavel_selecionada}' não encontrada nos metadados")
         return _criar_grafico_vazio(f"Variável '{variavel_selecionada}' não encontrada nos metadados")
     
     # Verificar se temos dados suficientes
     if len(df_resultados) == 0:
-        print("Erro: DataFrame não contém nenhuma linha de dados")
         return _criar_grafico_vazio("Nenhum dado encontrado após filtros aplicados")
-    
-    print(f"Criando gráfico comparativo com {len(df_resultados)} linhas de dados")
     
     try:
         # Determinar título e componentes do texto
@@ -105,7 +99,6 @@ def criar_grafico_comparativo_barras(
         return fig
         
     except Exception as e:
-        print(f"Erro ao criar gráfico de barras comparativo: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -138,22 +131,18 @@ def criar_grafico_linha_desempenho(
     """
     # Validação de dados de entrada
     if df_linha is None:
-        print("[ERRO] criar_grafico_linha_desempenho: df_linha é None")
         return _criar_grafico_vazio("Erro: dados não fornecidos")
         
     if df_linha.empty:
-        print("[WARN] criar_grafico_linha_desempenho: df_linha está vazio")
         return _criar_grafico_vazio("Sem dados disponíveis para visualização")
     
     # Verificar se as colunas necessárias existem
     colunas_necessarias = ['Categoria', 'Competência', 'Média']
     colunas_faltantes = [col for col in colunas_necessarias if col not in df_linha.columns]
     if colunas_faltantes:
-        print(f"[ERRO] criar_grafico_linha_desempenho: colunas faltantes: {colunas_faltantes}")
         return _criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
     
     if variavel_selecionada not in variaveis_categoricas:
-        print(f"[ERRO] criar_grafico_linha_desempenho: variável '{variavel_selecionada}' não encontrada")
         return _criar_grafico_vazio(f"Variável '{variavel_selecionada}' não encontrada nos metadados")
     
     try:
@@ -165,7 +154,6 @@ def criar_grafico_linha_desempenho(
         try:
             competencias_unicas = df_linha['Competência'].unique()
         except Exception as e:
-            print(f"[ERRO] ao acessar competências: {e}")
             return _criar_grafico_vazio("Erro ao processar competências dos dados")
         
         filtro_texto = f" - {competencia_filtro}" if competencia_filtro and len(competencias_unicas) == 1 else ""
@@ -196,7 +184,6 @@ def criar_grafico_linha_desempenho(
         return fig
         
     except Exception as e:
-        print(f"Erro ao criar gráfico de linha de desempenho: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -259,7 +246,6 @@ def criar_grafico_linha_estados(
         return fig
         
     except Exception as e:
-        print(f"Erro ao criar gráfico de linha por estados: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -295,6 +281,7 @@ def criar_grafico_scatter(
     if df is None or df.empty:
         return _criar_grafico_vazio("Sem dados disponíveis para visualização")
     
+    
     if eixo_x not in df.columns or eixo_y not in df.columns:
         return _criar_grafico_vazio(f"Colunas de eixo não encontradas nos dados")
     
@@ -321,7 +308,6 @@ def criar_grafico_scatter(
         return fig
         
     except Exception as e:
-        print(f"Erro ao criar gráfico de dispersão: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -407,7 +393,6 @@ def adicionar_linha_tendencia(
         return fig
         
     except Exception as e:
-        print(f"Erro ao adicionar linha de tendência: {e}")
         return fig
 
 
@@ -549,13 +534,16 @@ def _filtrar_dados_validos_scatter(
     DataFrame: DataFrame com dados filtrados
     """
     try:
+        
         # Filtrar dados válidos (remover zeros e NaN)
         df_filtrado = df[(df[eixo_x] > 0) & (df[eixo_y] > 0) & 
                          (~df[eixo_x].isna()) & (~df[eixo_y].isna())].copy()
         
+        
         # Verificar se há outliers extremos que possam distorcer o gráfico
-        q1_x, q3_x = df_filtrado[eixo_x].quantile([0.01, 0.99])
-        q1_y, q3_y = df_filtrado[eixo_y].quantile([0.01, 0.99])
+        if len(df_filtrado) > 0:
+            q1_x, q3_x = df_filtrado[eixo_x].quantile([0.01, 0.99])
+            q1_y, q3_y = df_filtrado[eixo_y].quantile([0.01, 0.99])
         
         # Remover outliers extremos (opcional - comentado por padrão)
         # df_filtrado = df_filtrado[(df_filtrado[eixo_x] >= q1_x) & (df_filtrado[eixo_x] <= q3_x) &
@@ -564,7 +552,6 @@ def _filtrar_dados_validos_scatter(
         return df_filtrado
         
     except Exception as e:
-        print(f"Erro ao filtrar dados para scatter: {e}")
         # Retornar dataframe vazio em caso de erro
         return pd.DataFrame(columns=df.columns)
 
@@ -671,7 +658,6 @@ def _criar_scatter_colorido_por_faixa(
         return fig
         
     except Exception as e:
-        print(f"Erro ao criar scatter colorido: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -726,7 +712,6 @@ def _criar_scatter_simples(
         return fig
         
     except Exception as e:
-        print(f"Erro ao criar scatter simples: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -806,7 +791,6 @@ def _adicionar_linha_tendencia_scatter(
         return fig
         
     except Exception as e:
-        print(f"Erro ao adicionar linha de tendência: {e}")
         return fig
 
 
