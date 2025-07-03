@@ -212,6 +212,7 @@ def get_mappings():
         "Nordeste": ["AL", "BA", "CE", "MA", "PB", "PE", "PI", "RN", "SE"],
         "Centro-Oeste": ["DF", "GO", "MS", "MT"],
         "Sul": ["PR", "RS", "SC"],
+        "Sudeste": ["SP", "RJ", "ES", "MG"]
     }
 
     # Configurações de visualização
