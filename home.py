@@ -60,6 +60,13 @@ st.markdown("""
         margin-bottom: 1rem;
         border-radius: 0.5rem;
     }
+    .info-card {
+        background-color: #DBEAFE;
+        border-left: 4px solid #3B82F6;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 0.5rem;
+    }
     .footer {
         margin-top: 3rem;
         padding-top: 1rem;
@@ -92,6 +99,22 @@ st.markdown("""
         font-size: 0.75rem;
         font-weight: 600;
         margin-right: 0.5rem;
+    }
+    .link-button {
+        background-color: #3B82F6;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        font-weight: 600;
+        display: inline-block;
+        margin-top: 0.5rem;
+        transition: background-color 0.3s;
+    }
+    .link-button:hover {
+        background-color: #2563EB;
+        color: white;
+        text-decoration: none;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -138,6 +161,11 @@ st.markdown("""
         (Distrito Federal e Mato Grosso do Sul), acesse a <strong>Versão Sul</strong> da plataforma.
     </p>
     <p><span class="region-badge">Norte</span><span class="region-badge">Nordeste</span><span class="region-badge">MT e GO</span></p>
+    <p style="margin-top: 1rem;">
+        <a href="https://enem-insights-sul.streamlit.app/" target="_blank" class="link-button">
+            🌐 Acessar Versão Sul (SP, RJ, MG, RS, SC, PR, ES, DF, MS)
+        </a>
+    </p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -293,6 +321,25 @@ with main_col2:
     _Para análise de SP, RJ, MG, RS, SC, PR, ES, DF e MS, utilize a Versão Sul._
     """)
     
+    # Card específico para redirecionamento à versão Sul
+    st.markdown("""
+    <div class="info-card">
+        <h3>🌐 Precisa Analisar Outras Regiões?</h3>
+        <p>
+            Se você precisa analisar dados das regiões <strong>Sul, Sudeste</strong> ou dos estados 
+            <strong>DF e MS</strong> do Centro-Oeste, acesse nossa versão complementar:
+        </p>
+        <p style="text-align: center; margin-top: 1rem;">
+            <a href="https://enem-insights-sul.streamlit.app/" target="_blank" class="link-button">
+                📊 Dashboard ENEM Sul/Sudeste
+            </a>
+        </p>
+        <p style="font-size: 12px; margin-top: 0.5rem; text-align: center;">
+            <em>Mesma metodologia, dados complementares</em>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     # Adicionar uma visualização simples para destacar um insight regional
     st.markdown("""
     <div class="feature-card">
@@ -370,39 +417,6 @@ with method_col3:
             técnica sem prejuízo à qualidade analítica.
         </p>
         <p><span class="badge">Ética em Pesquisa</span><span class="badge">LGPD Compliance</span></p>
-    </div>
-    """, unsafe_allow_html=True)
-
-# Seção de otimizações técnicas
-st.markdown("### ⚡ Otimizações Implementadas")
-
-opt_col1, opt_col2 = st.columns(2)
-
-with opt_col1:
-    st.markdown("""
-    <div class="feature-card">
-        <h4>🚀 Performance e Escalabilidade</h4>
-        <ul>
-            <li><strong>Redução de 71% no uso de memória</strong> através de otimização de tipos de dados</li>
-            <li><strong>Cache multicamadas</strong> com tempos de resposta sub-segundo</li>
-            <li><strong>Carregamento lazy</strong> para datasets de milhões de registros</li>
-            <li><strong>Processamento vetorizado</strong> em operações estatísticas complexas</li>
-            <li><strong>Divisão regional estratégica</strong> para máxima estabilidade operacional</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-with opt_col2:
-    st.markdown("""
-    <div class="feature-card">
-        <h4>🔧 Qualidade e Confiabilidade</h4>
-        <ul>
-            <li><strong>Validação sistemática</strong> de integridade dos dados</li>
-            <li><strong>Tratamento inteligente</strong> de valores ausentes e outliers</li>
-            <li><strong>Modularização SOLID</strong> para manutenibilidade do código</li>
-            <li><strong>Documentação técnica</strong> completa para reprodutibilidade</li>
-            <li><strong>Testes automatizados</strong> de consistência estatística</li>
-        </ul>
     </div>
     """, unsafe_allow_html=True)
 
