@@ -8,7 +8,7 @@ from utils.helpers.sidebar_filter import render_sidebar_filters
 
 # Configuração inicial da página
 st.set_page_config(
-    page_title="Dashboard ENEM Norte/Nordeste - Análise Acadêmica", 
+    page_title="Dashboard ENEM Sul/Sudeste - Análise Acadêmica", 
     page_icon="🌎", 
     layout="wide",
     initial_sidebar_state="expanded"
@@ -148,22 +148,22 @@ init_session_state()
 estados_selecionados, locais_selecionados = render_sidebar_filters()
 
 # Título principal com indicação regional
-st.title("🌎 Dashboard ENEM 2023 - Região Norte/Nordeste")
-st.markdown("#### _Plataforma de Análise Acadêmica para Pesquisa Educacional - Versão Norte_")
+st.title("🌎 Dashboard ENEM 2023 - Região Sul/Sudeste")
+st.markdown("#### _Plataforma de Análise Acadêmica para Pesquisa Educacional - Versão Sul_")
 
 # Aviso importante sobre a divisão regional
 st.markdown("""
 <div class="warning-card">
     <h4>📍 Cobertura Regional desta Plataforma</h4>
     <p>
-        Esta versão da plataforma contém dados das regiões <strong>Norte, Nordeste</strong> e parcialmente do <strong>Centro-Oeste</strong> 
-        (apenas Mato Grosso e Goiás). Para análise das regiões <strong>Sul, Sudeste</strong> e demais estados do Centro-Oeste 
-        (Distrito Federal e Mato Grosso do Sul), acesse a <strong>Versão Sul</strong> da plataforma.
+        Esta versão da plataforma contém dados das regiões <strong>Sul, Sudeste</strong> e parcialmente do <strong>Centro-Oeste</strong> 
+        (apenas Distrito Federal e Mato Grosso do Sul). Para análise das regiões <strong>Norte, Nordeste</strong> e demais estados do Centro-Oeste 
+        (Mato Grosso e Goiás), acesse a <strong>Versão Norte</strong> da plataforma.
     </p>
-    <p><span class="region-badge">Norte</span><span class="region-badge">Nordeste</span><span class="region-badge">MT e GO</span></p>
+    <p><span class="region-badge">Sul</span><span class="region-badge">Sudeste</span><span class="region-badge">DF e MS</span></p>
     <p style="margin-top: 1rem;">
-        <a href="https://enem-insights-sul.streamlit.app/" target="_blank" class="link-button">
-            🌐 Acessar Versão Sul (SP, RJ, MG, RS, SC, PR, ES, DF, MS)
+        <a href="https://enem-insights-norte.streamlit.app/" target="_blank" class="link-button">
+            🌐 Acessar Versão Norte (AC, AM, AP, PA, RO, RR, TO, AL, BA, CE, MA, PB, PE, PI, RN, SE, MT, GO)
         </a>
     </p>
 </div>
@@ -200,7 +200,7 @@ with main_col1:
         <h3>🏠 Análise Geral</h3>
         <p><span class="badge">Estatísticas Descritivas</span><span class="badge">Distribuições</span><span class="badge">Comparativos Regionais</span></p>
         <p>
-            Oferece uma visão abrangente e panorâmica do cenário educacional das regiões Norte e Nordeste no ENEM 2023. 
+            Oferece uma visão abrangente e panorâmica do cenário educacional das regiões Sul e Sudeste no ENEM 2023. 
             Este módulo implementa análises estatísticas descritivas robustas, incluindo métricas de tendência central, 
             dispersão e forma das distribuições, proporcionando insights fundamentais sobre os padrões de desempenho educacional.
         </p>
@@ -299,8 +299,8 @@ with main_col2:
     # Métricas sobre o dataset
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Registros Regionais", "~1.8M", help="Candidatos das regiões Norte, Nordeste, MT e GO")
-        st.metric("Cobertura Regional", "52%", help="Percentual do território nacional coberto nesta versão")
+        st.metric("Registros Regionais", "~2.1M", help="Candidatos das regiões Sul, Sudeste, DF e MS")
+        st.metric("Cobertura Regional", "48%", help="Percentual do território nacional coberto nesta versão")
     
     with col2:
         st.metric("Variáveis Analíticas", "82", help="Total de variáveis processadas e otimizadas")
@@ -314,24 +314,24 @@ with main_col2:
     """, unsafe_allow_html=True)
     
     st.markdown("""
-    **Norte:** AC, AM, AP, PA, RO, RR, TO  
-    **Nordeste:** AL, BA, CE, MA, PB, PE, PI, RN, SE  
-    **Centro-Oeste:** MT, GO  
+    **Sul:** RS, SC, PR  
+    **Sudeste:** SP, RJ, MG, ES  
+    **Centro-Oeste:** DF, MS  
     
-    _Para análise de SP, RJ, MG, RS, SC, PR, ES, DF e MS, utilize a Versão Sul._
+    _Para análise de AC, AM, AP, PA, RO, RR, TO, AL, BA, CE, MA, PB, PE, PI, RN, SE, MT e GO, utilize a Versão Norte._
     """)
     
-    # Card específico para redirecionamento à versão Sul
+    # Card específico para redirecionamento à versão Norte
     st.markdown("""
     <div class="info-card">
         <h3>🌐 Precisa Analisar Outras Regiões?</h3>
         <p>
-            Se você precisa analisar dados das regiões <strong>Sul, Sudeste</strong> ou dos estados 
-            <strong>DF e MS</strong> do Centro-Oeste, acesse nossa versão complementar:
+            Se você precisa analisar dados das regiões <strong>Norte, Nordeste</strong> ou dos estados 
+            <strong>MT e GO</strong> do Centro-Oeste, acesse nossa versão complementar:
         </p>
         <p style="text-align: center; margin-top: 1rem;">
-            <a href="https://enem-insights-sul.streamlit.app/" target="_blank" class="link-button">
-                📊 Dashboard ENEM Sul/Sudeste
+            <a href="https://enem-insights-norte.streamlit.app/" target="_blank" class="link-button">
+                📊 Dashboard ENEM Norte/Nordeste
             </a>
         </p>
         <p style="font-size: 12px; margin-top: 0.5rem; text-align: center;">
@@ -349,7 +349,7 @@ with main_col2:
     
     st.markdown("""
     > **Descoberta Regional:**  
-    > As regiões Norte e Nordeste apresentam padrões distintos de desempenho que correlacionam significativamente com indicadores socioeconômicos regionais.
+    > As regiões Sul e Sudeste apresentam padrões distintos de desempenho que correlacionam significativamente com indicadores socioeconômicos regionais.
     
     Explore esses e outros insights na nossa plataforma científica.
     """)
@@ -448,10 +448,10 @@ with footer_col2:
         <p style='font-size: 16px;'><b>Plataforma de Análise Científica do ENEM 2023</b></p>
         <p style='font-size: 14px; margin-top: 1rem;'>Projeto de pesquisa desenvolvido como contribuição científica 
         para a compreensão dos fatores multidimensionais que influenciam o desempenho educacional nas regiões 
-        Norte e Nordeste do Brasil.</p>
+        Sul e Sudeste do Brasil.</p>
         <hr style='margin: 15px 0; border-color: #E2E8F0;'>
         <p style='font-size: 12px;'>© 2025 - Licença Acadêmica para Pesquisa Científica</p>
-        <p style='font-size: 11px; margin-top: 5px;'>v2.1.0 - Norte/Nordeste Analytics Engine</p>
+        <p style='font-size: 11px; margin-top: 5px;'>v2.1.0 - Sul/Sudeste Analytics Engine</p>
     </div>
     """, unsafe_allow_html=True)
 
