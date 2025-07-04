@@ -210,7 +210,7 @@ def get_mappings():
     regioes_mapping = {
         "Sul": ["PR", "RS", "SC"],
         "Sudeste": ["SP", "RJ", "ES", "MG"],
-        "Centro-Oeste": ["GO", "MT"],
+        "Centro-Oeste": ["DF", "MS"],
     }
 
     # Configurações de visualização
