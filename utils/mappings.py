@@ -206,13 +206,11 @@ def get_mappings():
         "Q025": {"nome": "Acesso à Internet", "mapeamento": acesso_internet_mapping}
     }
 
-    # Mapeamento de regiões - SUDESTE REMOVIDO do dataset
+    # Mapeamento de regiões - Sul, Sudeste, MS e DF REMOVIDO do dataset
     regioes_mapping = {
         "Norte": ["AC", "AM", "AP", "PA", "RO", "RR", "TO"],
         "Nordeste": ["AL", "BA", "CE", "MA", "PB", "PE", "PI", "RN", "SE"],
-        "Centro-Oeste": ["DF", "GO", "MS", "MT"],
-        "Sul": ["PR", "RS", "SC"],
-        "Sudeste": ["SP", "RJ", "ES", "MG"]
+        "Centro-Oeste": ["GO", "MT"],
     }
 
     # Configurações de visualização
