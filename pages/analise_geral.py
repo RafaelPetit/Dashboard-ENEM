@@ -801,7 +801,7 @@ def main():
     estados_selecionados, locais_selecionados = render_sidebar_filters()
 
     # Título da página
-    st.title("🏠 Análise Geral - ENEM 2023")
+    st.title("📊 Análise Geral - ENEM 2023")
 
     
     if not estados_selecionados:
