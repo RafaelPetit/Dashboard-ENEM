@@ -299,7 +299,7 @@ with main_col2:
     # Métricas sobre o dataset
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Registros Regionais", "~2.1M", help="Candidatos das regiões Sul, Sudeste, DF e MS")
+        st.metric("Registros Regionais", "2.056.502", help="Candidatos das regiões Sul, Sudeste, DF e MS")
         st.metric("Cobertura Regional", "48%", help="Percentual do território nacional coberto nesta versão")
     
     with col2:
