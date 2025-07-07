@@ -1,11 +1,16 @@
 import pandas as pd
 import numpy as np
+import warnings
 from typing import Dict, List, Tuple, Optional, Any, Union, Set
 from utils.data_loader import calcular_seguro
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from utils.prepara_dados.validacao_dados import validar_completude_dados
 from utils.helpers.regiao_utils import obter_regiao_do_estado
 from utils.mappings import get_mappings
+
+# Suprimir warnings específicos do pandas
+warnings.filterwarnings('ignore', message='The default of observed=False is deprecated')
+warnings.filterwarnings('ignore', category=FutureWarning, module='pandas')
 
 
 # Obter mapeamentos e constantes
@@ -184,8 +189,8 @@ def _calcular_medias_por_categoria(
     
     # Agrupar dados para economizar memória e melhorar performance
     if total_categorias <= CONFIG_PROCESSAMENTO['limiar_agrupamento']:
-        # Cálculo eficiente com agrupamento
-        df_agrupado = df.groupby(coluna_categoria)
+        # Cálculo eficiente com agrupamento - adicionar observed=True para evitar warning
+        df_agrupado = df.groupby(coluna_categoria, observed=True)
         
         for categoria in categorias_unicas:
             # Determinar o valor de exibição da categoria
