@@ -3,18 +3,16 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from typing import Dict, List, Any, Optional, Union, Tuple
-from utils.helpers.regiao_utils import obter_regiao_do_estado, obter_todas_regioes
+from typing import Dict, List, Any, Tuple
+from utils.helpers.regiao_utils import obter_regiao_do_estado
 from utils.estatisticas.analise_geral import (
-    analisar_distribuicao_notas, 
-    analisar_faltas,
     analisar_desempenho_por_faixa_nota,
     analisar_metricas_por_regiao
 )
 from utils.explicacao.explicacao_geral import (
     get_interpretacao_distribuicao
 )
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 # Obter mapeamentos e constantes
 mappings = get_mappings()

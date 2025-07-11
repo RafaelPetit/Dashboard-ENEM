@@ -1,11 +1,9 @@
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Any, Union, Set
-from utils.data_loader import calcular_seguro, optimize_dtypes
+from typing import Dict, List, Tuple, Any
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from utils.prepara_dados.validacao_dados import validar_completude_dados
-from utils.helpers.regiao_utils import obter_regiao_do_estado
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 # Obter mapeamentos e constantes
 mappings = get_mappings()
@@ -69,7 +67,6 @@ def preparar_dados_correlacao(
     var_y_plot = aplicar_mapeamento(df_correlacao, var_y, variaveis_sociais)
     
     # Otimizar tipos de dados
-    df_correlacao = optimize_dtypes(df_correlacao)
     
     return df_correlacao, var_x_plot, var_y_plot
 
@@ -166,7 +163,6 @@ def preparar_dados_distribuicao(
     coluna_plot = aplicar_mapeamento(df_dist, aspecto_social, variaveis_sociais)
     
     # Otimizar tipos de dados
-    df_dist = optimize_dtypes(df_dist)
     
     return df_dist, coluna_plot
 
@@ -529,7 +525,6 @@ def preparar_dados_grafico_aspectos_por_estado(
             df_resultado = _agrupar_por_regiao(df_resultado, aspecto_social)
         
         # Otimizar tipos de dados
-        df_resultado = optimize_dtypes(df_resultado)
         
         # Ordenar resultado para garantir consistência na visualização
         df_resultado = df_resultado.sort_values(['Estado', 'Categoria'])
@@ -648,7 +643,7 @@ def _agrupar_por_regiao(
     DataFrame: DataFrame com dados agrupados por região
     """
     # Importar localmente para evitar importação circular
-    from utils.mappings import get_mappings
+    from utils.helpers.mappings import get_mappings
     from utils.helpers.regiao_utils import obter_regiao_do_estado
     
     mappings = get_mappings()
@@ -680,8 +675,8 @@ def _agrupar_por_regiao(
         # Renomear coluna de região para manter compatibilidade
         df_agrupado = df_agrupado.rename(columns={'Região': 'Estado'})
         
-        # Otimizar tipo de dados da coluna de região
-        regioes = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul']
+        # Otimizar tipo de dados da coluna de região - SUDESTE REMOVIDO
+        regioes = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sul']
         df_agrupado['Estado'] = pd.Categorical(df_agrupado['Estado'], categories=regioes)
         df_agrupado['Percentual'] = df_agrupado['Percentual'].round(2)
         

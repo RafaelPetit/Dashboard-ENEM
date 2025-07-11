@@ -1,10 +1,15 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Any, Optional, Union, Tuple
+import warnings
+from typing import Dict, List, Any, Tuple
 from utils.estatisticas.analise_desempenho import analisar_desempenho_por_estado, calcular_estatisticas_comparativas
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 from utils.helpers.regiao_utils import obter_regiao_do_estado
+
+# Suprimir warnings específicos de cálculos matemáticos
+warnings.filterwarnings('ignore', message='invalid value encountered in scalar subtract')
+warnings.filterwarnings('ignore', category=RuntimeWarning, module='numpy')
 
 # Obter limiares dos mapeamentos centralizados
 mappings = get_mappings()
@@ -450,7 +455,17 @@ def _gerar_comparacao_medias(
     """
     Gera texto comparativo para médias de duas competências.
     """
-    diff_percent = ((media_x - media_y) / media_y * 100) if media_y != 0 else 0
+    # Verificar valores válidos para evitar erros matemáticos
+    if not (np.isfinite(media_x) and np.isfinite(media_y)) or media_y == 0:
+        return "Não foi possível calcular comparação entre as médias devido a dados insuficientes."
+    
+    # Calcular diferença com proteção contra overflow
+    try:
+        diff_percent = ((media_x - media_y) / media_y * 100)
+        if not np.isfinite(diff_percent):
+            return "Diferença entre médias não pode ser calculada (valores extremos)."
+    except (OverflowError, ZeroDivisionError):
+        return "Erro no cálculo da diferença percentual entre as médias."
     
     if abs(diff_percent) < 1:
         return f"As médias de desempenho são praticamente iguais (diferença de apenas {abs(diff_percent):.2f}%)."
@@ -459,7 +474,12 @@ def _gerar_comparacao_medias(
         comp_menor = nome_y if media_x > media_y else nome_x
         diff_abs = abs(media_x - media_y)
         diff_perc = abs(diff_percent)
-        return f"A média em {comp_maior} é {diff_perc:.2f}% maior que em {comp_menor} (diferença de {diff_abs:.2f} pontos)."
+        
+        # Verificar se os valores são finitos antes de formatar
+        if np.isfinite(diff_abs) and np.isfinite(diff_perc):
+            return f"A média em {comp_maior} é {diff_perc:.2f}% maior que em {comp_menor} (diferença de {diff_abs:.2f} pontos)."
+        else:
+            return "Diferença significativa detectada, mas valores extremos impedem cálculo preciso."
 
 
 def _gerar_comparacao_variabilidade(
@@ -471,7 +491,19 @@ def _gerar_comparacao_variabilidade(
     """
     Gera texto comparativo para variabilidade de duas competências.
     """
-    if abs(var_x - var_y) < 5:
+    # Verificar valores válidos para evitar erros matemáticos
+    if not (np.isfinite(var_x) and np.isfinite(var_y)):
+        return "Não foi possível calcular comparação de variabilidade devido a dados insuficientes."
+    
+    # Calcular diferença com proteção contra valores inválidos
+    try:
+        diff_var = abs(var_x - var_y)
+        if not np.isfinite(diff_var):
+            return "Diferença de variabilidade não pode ser calculada (valores extremos)."
+    except (OverflowError, RuntimeError):
+        return "Erro no cálculo da diferença de variabilidade."
+    
+    if diff_var < 5:
         return "Ambas as competências apresentam níveis similares de variabilidade nos resultados."
     else:
         comp_mais_var = nome_x if var_x > var_y else nome_y

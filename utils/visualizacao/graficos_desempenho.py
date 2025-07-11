@@ -4,10 +4,18 @@ from plotly.graph_objs import Figure
 import pandas as pd
 import numpy as np
 from scipy import stats
-from typing import Dict, List, Optional, Union, Tuple, Any
+import warnings
+from typing import Dict, Optional, Any
 from utils.visualizacao.config_graficos import aplicar_layout_padrao, cores_padrao
 from utils.helpers.cache_utils import memory_intensive_function
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
+
+# Suprimir warnings específicos que podem aparecer em cálculos estatísticos
+warnings.filterwarnings('ignore', category=RuntimeWarning, module='scipy')
+warnings.filterwarnings('ignore', category=RuntimeWarning, module='numpy')
+warnings.filterwarnings('ignore', message='overflow encountered in scalar power')
+warnings.filterwarnings('ignore', message='overflow encountered in reduce')
+warnings.filterwarnings('ignore', message='invalid value encountered in scalar subtract')
 
 # Obter configurações de mapeamentos centralizados
 mappings = get_mappings()
@@ -54,9 +62,19 @@ def criar_grafico_comparativo_barras(
     if df_resultados is None or df_resultados.empty:
         return _criar_grafico_vazio("Sem dados disponíveis para visualização")
     
+    # Verificar estrutura mínima do DataFrame
+    colunas_necessarias = ['Categoria', 'Competência', 'Média']
+    colunas_faltantes = [col for col in colunas_necessarias if col not in df_resultados.columns]
+    if colunas_faltantes:
+        return _criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
+    
     # Verificar se a variável selecionada existe no dicionário
     if variavel_selecionada not in variaveis_categoricas:
         return _criar_grafico_vazio(f"Variável '{variavel_selecionada}' não encontrada nos metadados")
+    
+    # Verificar se temos dados suficientes
+    if len(df_resultados) == 0:
+        return _criar_grafico_vazio("Nenhum dado encontrado após filtros aplicados")
     
     try:
         # Determinar título e componentes do texto
@@ -89,7 +107,6 @@ def criar_grafico_comparativo_barras(
         return fig
         
     except Exception as e:
-        print(f"Erro ao criar gráfico de barras comparativo: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -121,8 +138,17 @@ def criar_grafico_linha_desempenho(
     Figure: Objeto de figura Plotly com o gráfico de linha
     """
     # Validação de dados de entrada
-    if df_linha is None or df_linha.empty:
+    if df_linha is None:
+        return _criar_grafico_vazio("Erro: dados não fornecidos")
+        
+    if df_linha.empty:
         return _criar_grafico_vazio("Sem dados disponíveis para visualização")
+    
+    # Verificar se as colunas necessárias existem
+    colunas_necessarias = ['Categoria', 'Competência', 'Média']
+    colunas_faltantes = [col for col in colunas_necessarias if col not in df_linha.columns]
+    if colunas_faltantes:
+        return _criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
     
     if variavel_selecionada not in variaveis_categoricas:
         return _criar_grafico_vazio(f"Variável '{variavel_selecionada}' não encontrada nos metadados")
@@ -130,7 +156,15 @@ def criar_grafico_linha_desempenho(
     try:
         # Determinar título adequado
         ordenacao_texto = " (ordenado por valor decrescente)" if ordenar_decrescente else ""
-        filtro_texto = f" - {competencia_filtro}" if competencia_filtro and len(df_linha['Competência'].unique()) == 1 else ""
+        
+        # Verificar competências disponíveis de forma segura
+        competencias_unicas = []
+        try:
+            competencias_unicas = df_linha['Competência'].unique()
+        except Exception as e:
+            return _criar_grafico_vazio("Erro ao processar competências dos dados")
+        
+        filtro_texto = f" - {competencia_filtro}" if competencia_filtro and len(competencias_unicas) == 1 else ""
         titulo = f"Desempenho por {variaveis_categoricas[variavel_selecionada]['nome']}{filtro_texto}{ordenacao_texto}"
         
         fig = px.line(
@@ -158,7 +192,6 @@ def criar_grafico_linha_desempenho(
         return fig
         
     except Exception as e:
-        print(f"Erro ao criar gráfico de linha de desempenho: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -221,7 +254,6 @@ def criar_grafico_linha_estados(
         return fig
         
     except Exception as e:
-        print(f"Erro ao criar gráfico de linha por estados: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -257,6 +289,7 @@ def criar_grafico_scatter(
     if df is None or df.empty:
         return _criar_grafico_vazio("Sem dados disponíveis para visualização")
     
+    
     if eixo_x not in df.columns or eixo_y not in df.columns:
         return _criar_grafico_vazio(f"Colunas de eixo não encontradas nos dados")
     
@@ -283,7 +316,6 @@ def criar_grafico_scatter(
         return fig
         
     except Exception as e:
-        print(f"Erro ao criar gráfico de dispersão: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -369,7 +401,6 @@ def adicionar_linha_tendencia(
         return fig
         
     except Exception as e:
-        print(f"Erro ao adicionar linha de tendência: {e}")
         return fig
 
 
@@ -511,13 +542,27 @@ def _filtrar_dados_validos_scatter(
     DataFrame: DataFrame com dados filtrados
     """
     try:
-        # Filtrar dados válidos (remover zeros e NaN)
-        df_filtrado = df[(df[eixo_x] > 0) & (df[eixo_y] > 0) & 
-                         (~df[eixo_x].isna()) & (~df[eixo_y].isna())].copy()
+        # Filtrar dados válidos (remover zeros, NaN e valores extremos)
+        df_filtrado = df[
+            (df[eixo_x] > 0) & (df[eixo_y] > 0) & 
+            (df[eixo_x] < 1000) & (df[eixo_y] < 1000) &  # Limitar valores extremos
+            (~df[eixo_x].isna()) & (~df[eixo_y].isna()) &
+            np.isfinite(df[eixo_x]) & np.isfinite(df[eixo_y])  # Garantir valores finitos
+        ].copy()
         
         # Verificar se há outliers extremos que possam distorcer o gráfico
-        q1_x, q3_x = df_filtrado[eixo_x].quantile([0.01, 0.99])
-        q1_y, q3_y = df_filtrado[eixo_y].quantile([0.01, 0.99])
+        if len(df_filtrado) > 0:
+            try:
+                q1_x, q3_x = df_filtrado[eixo_x].quantile([0.01, 0.99])
+                q1_y, q3_y = df_filtrado[eixo_y].quantile([0.01, 0.99])
+                
+                # Verificar se os quantis são válidos
+                if np.isfinite(q1_x) and np.isfinite(q3_x) and np.isfinite(q1_y) and np.isfinite(q3_y):
+                    # Opcional: filtrar outliers extremos se necessário
+                    pass
+            except Exception:
+                # Se houver erro no cálculo de quantis, continuar sem filtrar outliers
+                pass
         
         # Remover outliers extremos (opcional - comentado por padrão)
         # df_filtrado = df_filtrado[(df_filtrado[eixo_x] >= q1_x) & (df_filtrado[eixo_x] <= q3_x) &
@@ -526,9 +571,11 @@ def _filtrar_dados_validos_scatter(
         return df_filtrado
         
     except Exception as e:
-        print(f"Erro ao filtrar dados para scatter: {e}")
-        # Retornar dataframe vazio em caso de erro
-        return pd.DataFrame(columns=df.columns)
+        # Retornar dataframe vazio em caso de erro, mas manter as colunas originais
+        try:
+            return pd.DataFrame(columns=df.columns)
+        except:
+            return pd.DataFrame(columns=[eixo_x, eixo_y])
 
 
 def _criar_scatter_base(
@@ -590,7 +637,7 @@ def _criar_scatter_colorido_por_faixa(
     """
     try:
         # Garantir que temos dados para processar
-        if df_valido.empty:
+        if df_valido is None or df_valido.empty:
             return _criar_grafico_vazio("Dados insuficientes após filtragem")
             
         # Criar cópia para evitar SettingWithCopyWarning
@@ -633,7 +680,6 @@ def _criar_scatter_colorido_por_faixa(
         return fig
         
     except Exception as e:
-        print(f"Erro ao criar scatter colorido: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -663,7 +709,7 @@ def _criar_scatter_simples(
     """
     try:
         # Garantir que temos dados para processar
-        if df_valido.empty:
+        if df_valido is None or df_valido.empty:
             return _criar_grafico_vazio("Dados insuficientes após filtragem")
             
         # Título do gráfico
@@ -688,7 +734,6 @@ def _criar_scatter_simples(
         return fig
         
     except Exception as e:
-        print(f"Erro ao criar scatter simples: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -717,7 +762,7 @@ def _adicionar_linha_tendencia_scatter(
     Figure: Figura Plotly com linha de tendência adicionada
     """
     # Validação básica
-    if fig is None or df_valido.empty:
+    if fig is None or df_valido is None or df_valido.empty:
         return fig
     
     try:
@@ -726,49 +771,63 @@ def _adicionar_linha_tendencia_scatter(
         
         # Verificações adicionais para garantir que podemos fazer uma regressão confiável
         if len(x) > MIN_PONTOS_REGRESSAO and len(np.unique(x)) > MIN_VALORES_UNICOS:
-            # Usar scipy.stats para maior robustez
-            slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+            # Validar dados antes da regressão para evitar overflow
+            x_valid = x[(x > 0) & (x < 1000) & np.isfinite(x)]
+            y_valid = y[(y > 0) & (y < 1000) & np.isfinite(y)]
             
-            # Verificar se o cálculo foi bem-sucedido
-            if not np.isnan(slope) and not np.isnan(intercept):
-                # Criar pontos para a linha de tendência
-                x_min, x_max = np.min(x), np.max(x)
-                x_trend = np.array([x_min, x_max])
-                y_trend = slope * x_trend + intercept
-                
-                # Adicionar linha com detalhes da correlação
-                fig.add_trace(
-                    go.Scatter(
-                        x=x_trend,
-                        y=y_trend,
-                        mode='lines', 
-                        name=f'Tendência (r={r_value:.2f})',
-                        line=dict(color='red', dash='dash', width=2),
-                        opacity=OPACIDADE_PADRAO,
-                        hoverinfo='text',
-                        hovertext=f'Correlação: {r_value:.4f}<br>y = {slope:.2f}x + {intercept:.2f}'
-                    )
-                )
-                
-                # Adicionar anotação com valor da correlação
-                fig.add_annotation(
-                    x=0.95,
-                    y=0.05,
-                    xref='paper',
-                    yref='paper',
-                    text=f'Correlação (r): {r_value:.3f}',
-                    showarrow=False,
-                    font=dict(size=12),
-                    bgcolor='rgba(255, 255, 255, 0.8)',
-                    bordercolor='gray',
-                    borderwidth=1,
-                    borderpad=4
-                )
+            # Garantir que temos o mesmo número de pontos válidos
+            if len(x_valid) == len(y_valid) and len(x_valid) > MIN_PONTOS_REGRESSAO:
+                # Usar scipy.stats para maior robustez com tratamento de erro
+                try:
+                    slope, intercept, r_value, p_value, std_err = stats.linregress(x_valid, y_valid)
+                    
+                    # Verificar se o cálculo foi bem-sucedido e valores são finitos
+                    if (not np.isnan(slope) and not np.isnan(intercept) and 
+                        not np.isnan(r_value) and np.isfinite(slope) and 
+                        np.isfinite(intercept) and np.isfinite(r_value)):
+                        
+                        # Criar pontos para a linha de tendência
+                        x_min, x_max = np.min(x_valid), np.max(x_valid)
+                        x_trend = np.array([x_min, x_max])
+                        y_trend = slope * x_trend + intercept
+                        
+                        # Verificar se os valores da linha são válidos
+                        if np.all(np.isfinite(y_trend)) and np.all(y_trend > 0) and np.all(y_trend < 1000):
+                            # Adicionar linha com detalhes da correlação
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=x_trend,
+                                    y=y_trend,
+                                    mode='lines', 
+                                    name=f'Tendência (r={r_value:.2f})',
+                                    line=dict(color='red', dash='dash', width=2),
+                                    opacity=OPACIDADE_PADRAO,
+                                    hoverinfo='text',
+                                    hovertext=f'Correlação: {r_value:.4f}<br>y = {slope:.2f}x + {intercept:.2f}'
+                                )
+                            )
+                            
+                            # Adicionar anotação com valor da correlação
+                            fig.add_annotation(
+                                x=0.95,
+                                y=0.05,
+                                xref='paper',
+                                yref='paper',
+                                text=f'Correlação (r): {r_value:.3f}',
+                                showarrow=False,
+                                font=dict(size=12),
+                                bgcolor='rgba(255, 255, 255, 0.8)',
+                                bordercolor='gray',
+                                borderwidth=1,
+                                borderpad=4
+                            )
+                except (ValueError, RuntimeWarning, OverflowError) as e:
+                    # Silenciosamente falhar se houver problemas matemáticos
+                    pass
         
         return fig
         
     except Exception as e:
-        print(f"Erro ao adicionar linha de tendência: {e}")
         return fig
 
 
@@ -864,8 +923,8 @@ def _definir_estilo_linha_tendencia(nome: str) -> Dict[str, Any]:
             'largura': 1.5,
             'tracado': 'dash'
         }
-    # Estilo para linha de regiões
-    elif nome in ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul']:
+    # Estilo para linha de regiões - SUDESTE REMOVIDO
+    elif nome in ['Norte', 'Nordeste', 'Centro-Oeste', 'Sul']:
         return {
             'cor': '#2CA02C',  # Verde para regiões
             'largura': 2,

@@ -1,5 +1,6 @@
 import pandas as pd
 from typing import Dict
+
 def calcular_indicadores_desigualdade(
     df: pd.DataFrame, 
     coluna_categoria: str, 

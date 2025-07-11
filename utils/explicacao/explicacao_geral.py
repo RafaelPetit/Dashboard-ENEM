@@ -1,5 +1,5 @@
-from typing import Dict, Any, Optional, List, Tuple
-from utils.mappings import get_mappings
+from typing import Optional, Tuple
+from utils.helpers.mappings import get_mappings
 
 # Obter mapeamentos e constantes centralizados
 mappings = get_mappings()

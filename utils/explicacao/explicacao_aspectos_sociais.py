@@ -1,5 +1,5 @@
-from typing import Dict, Any, Optional
-from utils.mappings import get_mappings
+from typing import Any, Optional
+from utils.helpers.mappings import get_mappings
 import pandas as pd
 
 # Obter limiares dos mapeamentos centralizados

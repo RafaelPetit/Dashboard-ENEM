@@ -1,11 +1,10 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-import numpy as np
-from typing import Dict, List, Optional, Union, Tuple, Any
-from utils.visualizacao.config_graficos import aplicar_layout_padrao, cores_padrao, aplicar_tema_grafico
+from typing import Dict, List, Optional, Any
+from utils.visualizacao.config_graficos import aplicar_layout_padrao, cores_padrao
 from utils.helpers.cache_utils import memory_intensive_function, release_memory
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 # Obter mapeamentos e constantes
 mappings = get_mappings()
@@ -122,12 +121,23 @@ def criar_grafico_faltas(
     """
     # Verificar se temos dados válidos
     if df_faltas is None or df_faltas.empty:
+        print("Erro: DataFrame de faltas vazio")
         return _criar_grafico_vazio("Sem dados disponíveis para análise de faltas")
     
     # Verificar estrutura mínima necessária
     colunas_necessarias = ['Estado', 'Tipo de Falta', 'Percentual de Faltas']
-    if not all(col in df_faltas.columns for col in colunas_necessarias):
-        return _criar_grafico_vazio("Estrutura de dados incorreta para análise de faltas")
+    colunas_faltantes = [col for col in colunas_necessarias if col not in df_faltas.columns]
+    if colunas_faltantes:
+        print(f"Erro: Colunas faltantes no DataFrame de faltas: {colunas_faltantes}")
+        print(f"Colunas disponíveis: {list(df_faltas.columns)}")
+        return _criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
+    
+    # Verificar se temos dados suficientes
+    if len(df_faltas) == 0:
+        print("Erro: DataFrame de faltas não contém nenhuma linha")
+        return _criar_grafico_vazio("Nenhum dado de faltas encontrado")
+    
+    print(f"Criando gráfico de faltas com {len(df_faltas)} linhas de dados")
     
     try:
         # Criar uma cópia para não modificar o DataFrame original
@@ -241,12 +251,12 @@ def criar_grafico_media_por_estado(
             yaxis_title="Média Geral",
             xaxis=dict(tickangle=-45),
             height=500,
-            yaxis=dict(
-                range=[
-                    max(0, df_plot['Média Geral'].min() - 50),  # Garantir que comece em 0 ou um pouco abaixo do mínimo
-                    min(1000, df_plot['Média Geral'].max() + 50)  # Limitar a 1000 (nota máxima)
-                ]
-            )
+            # yaxis=dict(
+            #     range=[
+            #         max(0, df_plot['Média Geral'].min() - 50),  # Garantir que comece em 0 ou um pouco abaixo do mínimo
+            #         min(1000, df_plot['Média Geral'].max() + 50)  # Limitar a 1000 (nota máxima)
+            #     ]
+            # )
         )
         
         # Adicionar legenda para cores destacadas
@@ -317,7 +327,7 @@ def criar_grafico_comparativo_areas(
         if tipo_grafico == "radar":
             fig = _criar_grafico_radar_areas(df_areas)
         elif tipo_grafico == "linha":
-            fig = _criar_grafico_linha_areas(df_areas)
+            fig = _criar_grafico_linha_areas(df_areas, mostrar_dispersao)
         else:  # "barras" como padrão
             # Passar explicitamente o parâmetro mostrar_dispersao
             fig = _criar_grafico_barras_areas(df_areas, mostrar_dispersao)
@@ -472,39 +482,21 @@ def _adicionar_caixa_estatisticas(fig: go.Figure, estatisticas: Dict[str, Any]) 
     --------
     Figure: Figura Plotly com anotação adicionada
     """
-    # Extrair estatísticas com valores padrão
+    # Extrair apenas as estatísticas básicas necessárias
     media = estatisticas.get('media', 0)
     mediana = estatisticas.get('mediana', 0)
     min_valor = estatisticas.get('min_valor', 0)
     max_valor = estatisticas.get('max_valor', 0)
-    desvio_padrao = estatisticas.get('desvio_padrao', 0)
-    curtose = estatisticas.get('curtose', 0)
-    assimetria = estatisticas.get('assimetria', 0)
-    total_valido = estatisticas.get('total_valido', 0)
+    total_candidatos = estatisticas.get('total_candidatos', 0)  # Total real incluindo ausentes
     
-    # Criar texto com informações adicionais sobre percentis, se disponíveis
-    percentis_texto = ""
-    if 'percentis' in estatisticas and estatisticas['percentis']:
-        percentis = estatisticas['percentis']
-        percentis_texto = f"""
-        P25: {percentis.get(25, 0):.2f}<br>
-        P50: {percentis.get(50, 0):.2f}<br>
-        P75: {percentis.get(75, 0):.2f}<br>
-        P90: {percentis.get(90, 0):.2f}<br>
-        """
-    
-    # Montar texto completo
+    # Montar texto simplificado
     stats_text = f"""
     <b>Estatísticas:</b><br>
-    Total de Notas: {total_valido:,}<br>
+    Total de Candidatos: {total_candidatos:,}<br>
     Média: {media:.2f}<br>
     Mediana: {mediana:.2f}<br>
     Mínimo: {min_valor:.2f}<br>
-    Máximo: {max_valor:.2f}<br>
-    Desvio Padrão: {desvio_padrao:.2f}<br>
-    Curtose: {curtose:.2f}<br>
-    Assimetria: {assimetria:.2f}
-    {percentis_texto}
+    Máximo: {max_valor:.2f}
     """
 
     fig.add_annotation(
@@ -722,7 +714,7 @@ def _aplicar_layout_faltas(fig: go.Figure, filtro_area: Optional[str] = None) ->
         ),
         yaxis=dict(
             ticksuffix="%",  # Adicionar símbolo % aos valores do eixo Y
-            range=[0, fig.data[0].y.max() * 1.1 if len(fig.data) > 0 and len(fig.data[0].y) > 0 else 100]  # Margem superior para visualização
+            # range=[0, fig.data[0].y.max() * 1.1 if len(fig.data) > 0 and len(fig.data[0].y) > 0 else 100]  # Margem superior para visualização
         )
     )
     
@@ -750,22 +742,36 @@ def _criar_grafico_barras_areas(df: pd.DataFrame, mostrar_dispersao: bool = True
     # Inicializar figura
     fig = go.Figure()
     
-    # Adicionar barras para cada área
-    for i, row in df.iterrows():
-        fig.add_trace(
-            go.Bar(
-                x=[row['Area']],
-                y=[row['Media']],
-                name=row['Area'],
-                text=[f"{row['Media']:.1f}"],
-                textposition='auto',
-                error_y=dict(
-                    type='data',
-                    array=[row['DesvioPadrao']] if tem_desvio else None,
-                    visible=tem_desvio
+    # Preparar dados para barra de erro
+    error_y_config = None
+    if tem_desvio:
+        error_y_config = dict(
+            type='data',
+            array=df['DesvioPadrao'],
+            visible=True,
+            thickness=2,
+            width=4,
+            color='rgba(68, 68, 68, 0.8)'
+        )
+    
+    # Adicionar uma única trace com todas as barras
+    fig.add_trace(
+        go.Bar(
+            x=df['Area'],
+            y=df['Media'],
+            name='Média das Notas',
+            text=[f"{val:.1f}" for val in df['Media']],
+            textposition='auto',
+            error_y=error_y_config,
+            marker=dict(
+                color='rgba(55, 128, 191, 0.8)',
+                line=dict(
+                    color='rgba(55, 128, 191, 1.0)',
+                    width=1
                 )
             )
         )
+    )
     
     # Atualizar layout
     fig.update_layout(
@@ -774,12 +780,12 @@ def _criar_grafico_barras_areas(df: pd.DataFrame, mostrar_dispersao: bool = True
         yaxis_title="Nota Média",
         showlegend=False,
         height=500,
-        yaxis=dict(
-            range=[
-                max(0, df['Media'].min() - 50),  # Garantir que comece em 0 ou um pouco abaixo do mínimo
-                min(1000, df['Media'].max() + 50)  # Limitar a 1000 (nota máxima)
-            ]
-        )
+        # yaxis=dict(
+        #     range=[
+        #         max(0, df['Media'].min() - 50),  # Garantir que comece em 0 ou um pouco abaixo do mínimo
+        #         min(1000, df['Media'].max() + 50)  # Limitar a 1000 (nota máxima)
+        #     ]
+        # )
     )
     
     return fig
@@ -829,7 +835,7 @@ def _criar_grafico_radar_areas(df: pd.DataFrame) -> go.Figure:
         polar=dict(
             radialaxis=dict(
                 visible=True,
-                range=[0, max(1000, df['Media'].max() * 1.1)]
+                # range=[0, max(1000, df['Media'].max() * 1.1)]
             )
         ),
         showlegend=True,
@@ -839,7 +845,7 @@ def _criar_grafico_radar_areas(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def _criar_grafico_linha_areas(df: pd.DataFrame) -> go.Figure:
+def _criar_grafico_linha_areas(df: pd.DataFrame, mostrar_dispersao: bool = False) -> go.Figure:
     """
     Cria gráfico de linha para comparação entre áreas.
     
@@ -847,6 +853,8 @@ def _criar_grafico_linha_areas(df: pd.DataFrame) -> go.Figure:
     -----------
     df : DataFrame
         DataFrame com dados por área
+    mostrar_dispersao : bool
+        Se deve mostrar barras de erro com desvio padrão
         
     Retorna:
     --------
@@ -854,6 +862,21 @@ def _criar_grafico_linha_areas(df: pd.DataFrame) -> go.Figure:
     """
     # Inicializar figura
     fig = go.Figure()
+    
+    # Verificar se temos dados de dispersão
+    tem_desvio = 'DesvioPadrao' in df.columns and mostrar_dispersao
+    
+    # Preparar dados para barra de erro
+    error_y_config = None
+    if tem_desvio:
+        error_y_config = dict(
+            type='data',
+            array=df['DesvioPadrao'],
+            visible=True,
+            thickness=2,
+            width=4,
+            color='rgba(68, 68, 68, 0.8)'
+        )
     
     # Adicionar linha conectando os pontos
     fig.add_trace(
@@ -864,7 +887,9 @@ def _criar_grafico_linha_areas(df: pd.DataFrame) -> go.Figure:
             name='Média',
             text=df['Media'].round(1).tolist(),
             textposition='top center',
-            line=dict(color='#3366CC', width=3)
+            line=dict(color='#3366CC', width=3),
+            marker=dict(size=8, color='#3366CC'),
+            error_y=error_y_config
         )
     )
     

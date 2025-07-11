@@ -1,5 +1,4 @@
-from typing import Optional
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 # Obter limiares dos mapeamentos centralizados
 mappings = get_mappings()
