@@ -59,57 +59,55 @@ def criar_expander_analise_correlacao(
     """
     # Validar entrada
     if df_correlacao is None or df_correlacao.empty:
+        st.warning("⚠️ Não há dados suficientes para análise estatística.")
         return
     
     # Verificar se as variáveis existem no dicionário de mapeamentos
     if var_x not in variaveis_sociais or var_y not in variaveis_sociais:
+        st.warning("⚠️ Variáveis não encontradas no dicionário de mapeamentos.")
         return
-        
-    with st.expander("Ver análise estatística detalhada"):
+    
+    # Obter nomes amigáveis das variáveis
+    nome_x = variaveis_sociais[var_x].get('nome', var_x)
+    nome_y = variaveis_sociais[var_y].get('nome', var_y)
+    
+    with st.expander(f"📊 Análise estatística da correlação: {nome_x} × {nome_y}"):
         try:
-            # Calcular métricas de correlação
+            # Realizar análise de correlação
             metricas = analisar_correlacao_categorias(df_correlacao, var_x_plot, var_y_plot)
             
-            # Título principal
-            st.write(f"### Análise de associação entre {variaveis_sociais[var_x]['nome']} e {variaveis_sociais[var_y]['nome']}")
+            # Seção 1: Resumo Executivo
+            st.write("### 🎯 Resumo Executivo")
+            _mostrar_resumo_associacao(metricas, variaveis_sociais, var_x, var_y)
             
-            # Dividir em colunas para organizar a visualização
-            col1, col2 = st.columns(2)
+            st.divider()
             
-            with col1:
-                # Resumo da associação
-                _mostrar_resumo_associacao(metricas, variaveis_sociais, var_x, var_y)
+            # Seção 2: Métricas Estatísticas
+            st.write("### 📈 Métricas Estatísticas")
+            _mostrar_metricas_estatisticas(metricas)
             
-            with col2:
-                # Métricas estatísticas
-                _mostrar_metricas_estatisticas(metricas)
-                
-            # Mostrar interpretação contextualizada da associação
-            st.write("#### Interpretação contextualizada:")
-            interpretacao = get_interpretacao_associacao(
-                metricas['coeficiente'],
-                variaveis_sociais[var_x]['nome'],
-                variaveis_sociais[var_y]['nome']
-            )
-            st.write(interpretacao)
+            st.divider()
             
-            # Análise por categorias
+            # Seção 3: Análise de Combinações
+            st.write("### 🔍 Análise de Combinações")
             _mostrar_analise_categorias(df_correlacao, var_x_plot, var_y_plot, variaveis_sociais, var_x, var_y)
             
-            # Verificar se temos uma tabela de contingência válida
-            if not metricas['tabela_contingencia'].empty:
-                st.write("#### Tabela de contingência (percentuais por linha):")
-                
-                # Criar tabela normalizada por linha
-                tabela_normalizada = metricas['tabela_contingencia'].copy()
-                somas_linha = tabela_normalizada.sum(axis=1)
-                tabela_normalizada = tabela_normalizada.div(somas_linha, axis=0) * 100
-                
-                # Formatar para exibição
-                st.dataframe(tabela_normalizada.round(1).fillna(0))
-        
+            st.divider()
+            
+            # Seção 4: Interpretação e Insights
+            st.write("### 💡 Interpretação e Insights")
+            _mostrar_interpretacao_correlacao(metricas, variaveis_sociais, var_x, var_y)
+            
+            st.divider()
+            
+            # Seção 5: Downloads e Exportação
+            st.write("### 💾 Downloads e Exportação")
+            _mostrar_downloads_correlacao(df_correlacao, metricas, var_x, var_y, variaveis_sociais)
+            
         except Exception as e:
-            st.error(f"Erro ao gerar análise de correlação: {str(e)}")
+            st.error(f"❌ Erro ao gerar análise estatística: {str(e)}")
+            # Fallback para versão básica
+            _mostrar_correlacao_basica(df_correlacao, var_x_plot, var_y_plot, variaveis_sociais, var_x, var_y)
 
 
 def criar_expander_dados_distribuicao(
@@ -118,7 +116,7 @@ def criar_expander_dados_distribuicao(
     variaveis_sociais: Dict[str, Dict[str, Any]]
 ) -> None:
     """
-    Cria um expander com dados detalhados sobre a distribuição de um aspecto social.
+    Cria um expander com análise estatística detalhada sobre a distribuição de um aspecto social.
     
     Parâmetros:
     -----------
@@ -131,61 +129,66 @@ def criar_expander_dados_distribuicao(
     """
     # Validar entrada
     if contagem_aspecto is None or contagem_aspecto.empty:
+        st.warning("⚠️ Não há dados suficientes para análise estatística.")
         return
     
     # Verificar se o aspecto social existe no dicionário
     if aspecto_social not in variaveis_sociais:
+        st.warning("⚠️ Aspecto social não encontrado no dicionário de mapeamentos.")
         return
-        
-    with st.expander("Ver dados detalhados"):
+    
+    # Obter nome amigável do aspecto social
+    nome_aspecto = variaveis_sociais[aspecto_social].get("nome", aspecto_social)
+    
+    with st.expander(f"📊 Análise estatística da distribuição: {nome_aspecto}"):
         try:
             # Calcular estatísticas de distribuição
             estatisticas = calcular_estatisticas_distribuicao(contagem_aspecto)
             
-            # Nome amigável do aspecto social
-            nome_aspecto = variaveis_sociais[aspecto_social]["nome"]
+            # Seção 1: Resumo Executivo
+            st.write("### 🎯 Resumo Executivo")
+            _mostrar_resumo_distribuicao(estatisticas, nome_aspecto, contagem_aspecto)
             
-            # Mostrar estatísticas principais
-            _mostrar_estatisticas_principais_distribuicao(estatisticas, nome_aspecto)
+            st.divider()
             
-            # Mostrar análise de concentração e equidade
+            # Seção 2: Métricas Estatísticas
+            st.write("### 📈 Métricas Estatísticas")
+            _mostrar_metricas_distribuicao(estatisticas, nome_aspecto)
+            
+            st.divider()
+            
+            # Seção 3: Análise de Concentração e Equidade
+            st.write("### ⚖️ Análise de Concentração e Equidade")
             _mostrar_analise_concentracao_equidade(estatisticas, nome_aspecto)
             
-            # Calcular e mostrar percentuais acumulados
-            _mostrar_analise_concentracao_percentual(contagem_aspecto)
+            st.divider()
             
-            # Opção para exibir tabela completa
-            if st.checkbox("Mostrar tabela completa", key="show_full_table_dist"):
-                st.write("### Tabela completa")
-                
-                # Formatar colunas numéricas
-                df_display = contagem_aspecto.copy()
-                st.dataframe(
-                    df_display,
-                    column_config={
-                        'Quantidade': st.column_config.NumberColumn(
-                            'Quantidade',
-                            format="%d"
-                        ),
-                        'Percentual': st.column_config.NumberColumn(
-                            'Percentual (%)',
-                            format="%.2f%%"
-                        )
-                    }
-                )
-                
-                # Opção para download
-                csv = df_display.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    "Download dos dados (CSV)",
-                    csv,
-                    f"distribuicao_{aspecto_social}.csv",
-                    "text/csv",
-                    key='download_distribuicao_csv'
-                )
-                
+            # Seção 4: Ranking e Padrões
+            st.write("### 🏆 Ranking e Padrões")
+            _mostrar_ranking_categorias(contagem_aspecto, nome_aspecto)
+            
+            st.divider()
+            
+            # Seção 5: Insights e Interpretação
+            st.write("### 💡 Insights e Interpretação")
+            _mostrar_insights_distribuicao(estatisticas, contagem_aspecto, nome_aspecto)
+            
+            st.divider()
+            
+            # Seção 6: Tabela Interativa
+            st.write("### 📋 Tabela Interativa")
+            _mostrar_tabela_interativa_distribuicao(contagem_aspecto, aspecto_social)
+            
+            st.divider()
+            
+            # Seção 7: Downloads e Exportação
+            st.write("### 💾 Downloads e Exportação")
+            _mostrar_downloads_distribuicao(contagem_aspecto, estatisticas, aspecto_social, nome_aspecto)
+            
         except Exception as e:
-            st.error(f"Erro ao gerar análise de distribuição: {str(e)}")
+            st.error(f"❌ Erro ao gerar análise estatística: {str(e)}")
+            # Fallback para versão básica
+            _mostrar_distribuicao_basica(contagem_aspecto, aspecto_social, nome_aspecto)
 
 
 def criar_expander_analise_regional(
@@ -1198,3 +1201,591 @@ def _adicionar_regiao_aos_estados(df: pd.DataFrame) -> pd.DataFrame:
     except Exception as e:
         print(f"Erro ao adicionar região aos estados: {e}")
         return df
+
+
+def _mostrar_interpretacao_correlacao(metricas: Dict, variaveis_sociais: Dict, var_x: str, var_y: str) -> None:
+    """
+    Mostra interpretação contextualizada da correlação entre variáveis.
+    """
+    try:
+        nome_x = variaveis_sociais[var_x].get('nome', var_x)
+        nome_y = variaveis_sociais[var_y].get('nome', var_y)
+        
+        coeficiente = metricas.get('coeficiente', 0)
+        p_valor = metricas.get('p_valor', 1)
+        
+        # Interpretação do coeficiente
+        if coeficiente < 0.1:
+            forca = "muito fraca"
+        elif coeficiente < 0.3:
+            forca = "fraca"
+        elif coeficiente < 0.5:
+            forca = "moderada"
+        elif coeficiente < 0.7:
+            forca = "forte"
+        else:
+            forca = "muito forte"
+        
+        # Significância estatística
+        if p_valor < 0.001:
+            sig_texto = "extremamente significativa (p < 0.001)"
+        elif p_valor < 0.01:
+            sig_texto = "altamente significativa (p < 0.01)"
+        elif p_valor < 0.05:
+            sig_texto = "significativa (p < 0.05)"
+        else:
+            sig_texto = "não significativa (p ≥ 0.05)"
+        
+        # Criar interpretação
+        interpretacao = f"""
+        **Análise da Associação:**
+        
+        A associação entre **{nome_x}** e **{nome_y}** apresenta uma intensidade **{forca}** 
+        (coeficiente = {coeficiente:.3f}) e é **{sig_texto}**.
+        
+        **Significado prático:**
+        - {_gerar_insight_correlacao(coeficiente, nome_x, nome_y)}
+        
+        **Considerações metodológicas:**
+        - Utilizou-se o coeficiente de Cramér's V para medir a associação entre variáveis categóricas
+        - O teste qui-quadrado avalia se existe dependência estatística entre as variáveis
+        - Valores próximos de 0 indicam independência; próximos de 1 indicam forte associação
+        """
+        
+        st.markdown(interpretacao)
+        
+    except Exception as e:
+        st.error(f"Erro ao gerar interpretação: {str(e)}")
+
+
+def _mostrar_downloads_correlacao(df_correlacao: pd.DataFrame, metricas: Dict, var_x: str, var_y: str, variaveis_sociais: Dict) -> None:
+    """
+    Mostra seção de downloads para análise de correlação.
+    """
+    try:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**📊 Dados da Análise:**")
+            
+            # Preparar dados para download
+            dados_download = df_correlacao.copy()
+            
+            # Download dos dados
+            csv = dados_download.to_csv(index=False)
+            st.download_button(
+                label="📥 Baixar dados da correlação (CSV)",
+                data=csv,
+                file_name=f"correlacao_{var_x}_{var_y}.csv",
+                mime="text/csv"
+            )
+            
+        with col2:
+            st.markdown("**📈 Relatório de Análise:**")
+            
+            # Criar relatório
+            relatorio = _criar_relatorio_correlacao(metricas, var_x, var_y, variaveis_sociais)
+            
+            st.download_button(
+                label="📄 Baixar relatório (TXT)",
+                data=relatorio,
+                file_name=f"relatorio_correlacao_{var_x}_{var_y}.txt",
+                mime="text/plain"
+            )
+        
+        # Metadados
+        st.markdown("**ℹ️ Metadados:**")
+        st.info(f"""
+        - **Observações:** {len(df_correlacao):,}
+        - **Variáveis:** {var_x} × {var_y}
+        - **Análise:** {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}
+        - **Método:** Coeficiente de Cramér's V
+        """)
+        
+    except Exception as e:
+        st.error(f"Erro ao gerar downloads: {str(e)}")
+
+
+def _mostrar_correlacao_basica(df_correlacao: pd.DataFrame, var_x_plot: str, var_y_plot: str, variaveis_sociais: Dict, var_x: str, var_y: str) -> None:
+    """
+    Mostra versão básica da análise de correlação como fallback.
+    """
+    try:
+        nome_x = variaveis_sociais[var_x].get('nome', var_x)
+        nome_y = variaveis_sociais[var_y].get('nome', var_y)
+        
+        st.write(f"**Análise básica: {nome_x} × {nome_y}**")
+        
+        # Tabela de contingência simples
+        tabela_contingencia = pd.crosstab(
+            df_correlacao[var_x_plot], 
+            df_correlacao[var_y_plot], 
+            margins=True
+        )
+        
+        st.write("**Tabela de contingência:**")
+        st.dataframe(tabela_contingencia)
+        
+        # Estatísticas básicas
+        st.write("**Estatísticas básicas:**")
+        st.write(f"- Total de observações: {len(df_correlacao):,}")
+        st.write(f"- Categorias em {nome_x}: {df_correlacao[var_x_plot].nunique()}")
+        st.write(f"- Categorias em {nome_y}: {df_correlacao[var_y_plot].nunique()}")
+        
+    except Exception as e:
+        st.error(f"Erro na análise básica: {str(e)}")
+
+
+def _gerar_insight_correlacao(coeficiente: float, nome_x: str, nome_y: str) -> str:
+    """
+    Gera insight contextualizado sobre a correlação.
+    """
+    try:
+        if coeficiente < 0.1:
+            return f"As variáveis {nome_x} e {nome_y} são praticamente independentes, com pouca ou nenhuma associação entre elas."
+        elif coeficiente < 0.3:
+            return f"Existe uma associação fraca entre {nome_x} e {nome_y}, sugerindo alguma relação, mas não determinística."
+        elif coeficiente < 0.5:
+            return f"Há uma associação moderada entre {nome_x} e {nome_y}, indicando uma relação perceptível mas não dominante."
+        elif coeficiente < 0.7:
+            return f"Existe uma associação forte entre {nome_x} e {nome_y}, sugerindo que uma variável tem influência considerável sobre a outra."
+        else:
+            return f"A associação entre {nome_x} e {nome_y} é muito forte, indicando alta dependência entre as variáveis."
+    except:
+        return "Análise de insight não disponível."
+
+
+def _criar_relatorio_correlacao(metricas: Dict, var_x: str, var_y: str, variaveis_sociais: Dict) -> str:
+    """
+    Cria relatório detalhado da análise de correlação.
+    """
+    try:
+        nome_x = variaveis_sociais[var_x].get('nome', var_x)
+        nome_y = variaveis_sociais[var_y].get('nome', var_y)
+        
+        relatorio = f"""
+RELATÓRIO DE ANÁLISE DE CORRELAÇÃO
+=====================================
+
+Data: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+VARIÁVEIS ANALISADAS:
+- X: {nome_x} ({var_x})
+- Y: {nome_y} ({var_y})
+
+MÉTRICAS ESTATÍSTICAS:
+- Coeficiente de Cramér's V: {metricas.get('coeficiente', 0):.4f}
+- Valor p: {metricas.get('p_valor', 1):.4f}
+- Qui-quadrado: {metricas.get('qui_quadrado', 0):.4f}
+- Graus de liberdade: {metricas.get('graus_liberdade', 0)}
+
+INTERPRETAÇÃO:
+{_gerar_insight_correlacao(metricas.get('coeficiente', 0), nome_x, nome_y)}
+
+SIGNIFICÂNCIA ESTATÍSTICA:
+{'Significativa' if metricas.get('p_valor', 1) < 0.05 else 'Não significativa'} (α = 0.05)
+
+METODOLOGIA:
+- Teste: Qui-quadrado de Pearson
+- Medida de associação: Coeficiente de Cramér's V
+- Nível de significância: 5%
+
+OBSERVAÇÕES:
+- Esta análise considera apenas a associação entre variáveis categóricas
+- Correlação não implica causalidade
+- Resultados baseados em dados observacionais
+        """
+        
+        return relatorio.strip()
+    
+    except Exception as e:
+        return f"Erro ao gerar relatório: {str(e)}"
+
+
+def _mostrar_resumo_distribuicao(estatisticas: Dict, nome_aspecto: str, contagem_aspecto: pd.DataFrame) -> None:
+    """
+    Mostra resumo executivo da distribuição.
+    """
+    try:
+        total_observacoes = contagem_aspecto['Quantidade'].sum()
+        total_categorias = len(contagem_aspecto)
+        categoria_dominante = contagem_aspecto.loc[contagem_aspecto['Percentual'].idxmax()]
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric(
+                "🔢 Total de Observações",
+                f"{total_observacoes:,}",
+                help="Número total de registros analisados"
+            )
+            
+        with col2:
+            st.metric(
+                "📊 Categorias",
+                f"{total_categorias}",
+                help="Número de categorias distintas"
+            )
+            
+        with col3:
+            st.metric(
+                "🎯 Categoria Dominante",
+                f"{categoria_dominante['Percentual']:.1f}%",
+                help=f"Categoria: {categoria_dominante.name}"
+            )
+        
+        # Resumo textual
+        st.markdown(f"""
+        **Resumo da Distribuição de {nome_aspecto}:**
+        
+        A análise revela que **{categoria_dominante.name}** é a categoria mais representativa, 
+        concentrando **{categoria_dominante['Percentual']:.1f}%** dos casos ({categoria_dominante['Quantidade']:,} observações).
+        
+        A distribuição apresenta **{total_categorias}** categorias distintas, com um 
+        **índice de concentração de {estatisticas.get('indice_concentracao', 0):.3f}** 
+        ({'alta' if estatisticas.get('indice_concentracao', 0) > 0.5 else 'baixa'} concentração).
+        """)
+        
+    except Exception as e:
+        st.error(f"Erro ao gerar resumo: {str(e)}")
+
+
+def _mostrar_metricas_distribuicao(estatisticas: Dict, nome_aspecto: str) -> None:
+    """
+    Mostra métricas estatísticas da distribuição.
+    """
+    try:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**📈 Medidas de Tendência Central:**")
+            st.write(f"• **Média:** {estatisticas.get('media', 0):.2f}%")
+            st.write(f"• **Mediana:** {estatisticas.get('mediana', 0):.2f}%")
+            st.write(f"• **Moda:** {estatisticas.get('moda', 0):.2f}%")
+            
+            st.markdown("**📊 Medidas de Dispersão:**")
+            st.write(f"• **Desvio Padrão:** {estatisticas.get('desvio_padrao', 0):.2f}%")
+            st.write(f"• **Coeficiente de Variação:** {estatisticas.get('coeficiente_variacao', 0):.2f}%")
+            st.write(f"• **Amplitude:** {estatisticas.get('amplitude', 0):.2f}%")
+            
+        with col2:
+            st.markdown("**⚖️ Medidas de Concentração:**")
+            st.write(f"• **Índice de Concentração:** {estatisticas.get('indice_concentracao', 0):.3f}")
+            st.write(f"• **Índice de Gini:** {estatisticas.get('indice_gini', 0):.3f}")
+            st.write(f"• **Entropia:** {estatisticas.get('entropia', 0):.3f}")
+            
+            st.markdown("**📏 Percentis:**")
+            st.write(f"• **P25:** {estatisticas.get('percentil_25', 0):.2f}%")
+            st.write(f"• **P75:** {estatisticas.get('percentil_75', 0):.2f}%")
+            st.write(f"• **P90:** {estatisticas.get('percentil_90', 0):.2f}%")
+            
+    except Exception as e:
+        st.error(f"Erro ao gerar métricas: {str(e)}")
+
+
+def _mostrar_ranking_categorias(contagem_aspecto: pd.DataFrame, nome_aspecto: str) -> None:
+    """
+    Mostra ranking das categorias.
+    """
+    try:
+        # Ordenar por percentual decrescente
+        df_ordenado = contagem_aspecto.sort_values('Percentual', ascending=False).reset_index(drop=True)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**🏆 Top 5 Categorias:**")
+            top_5 = df_ordenado.head(5)
+            for i, row in top_5.iterrows():
+                percentual = row['Percentual']
+                quantidade = row['Quantidade']
+                categoria = row.name if hasattr(row, 'name') else str(i+1)
+                
+                # Barra de progresso visual
+                st.markdown(f"**{i+1}º** {categoria}")
+                st.progress(percentual / 100)
+                st.write(f"   {percentual:.1f}% ({quantidade:,} casos)")
+                
+        with col2:
+            st.markdown("**🔻 5 Menores Categorias:**")
+            bottom_5 = df_ordenado.tail(5)
+            for i, row in bottom_5.iterrows():
+                percentual = row['Percentual']
+                quantidade = row['Quantidade']
+                categoria = row.name if hasattr(row, 'name') else str(i+1)
+                
+                st.markdown(f"**{len(df_ordenado)-i}º** {categoria}")
+                st.progress(percentual / 100)
+                st.write(f"   {percentual:.1f}% ({quantidade:,} casos)")
+                
+    except Exception as e:
+        st.error(f"Erro ao gerar ranking: {str(e)}")
+
+
+def _mostrar_insights_distribuicao(estatisticas: Dict, contagem_aspecto: pd.DataFrame, nome_aspecto: str) -> None:
+    """
+    Mostra insights e interpretação da distribuição.
+    """
+    try:
+        # Calcular insights
+        total_categorias = len(contagem_aspecto)
+        categoria_dominante = contagem_aspecto.loc[contagem_aspecto['Percentual'].idxmax()]
+        percentual_dominante = categoria_dominante['Percentual']
+        
+        # Classificar concentração
+        indice_concentracao = estatisticas.get('indice_concentracao', 0)
+        if indice_concentracao > 0.7:
+            nivel_concentracao = "muito alta"
+        elif indice_concentracao > 0.5:
+            nivel_concentracao = "alta"
+        elif indice_concentracao > 0.3:
+            nivel_concentracao = "moderada"
+        else:
+            nivel_concentracao = "baixa"
+        
+        # Analisar equidade
+        coef_variacao = estatisticas.get('coeficiente_variacao', 0)
+        if coef_variacao < 30:
+            equidade = "alta equidade"
+        elif coef_variacao < 50:
+            equidade = "equidade moderada"
+        else:
+            equidade = "baixa equidade"
+        
+        # Gerar insights
+        st.markdown("**🔍 Principais Insights:**")
+        
+        insights = f"""
+        • **Concentração:** A distribuição apresenta {nivel_concentracao} concentração 
+          (índice = {indice_concentracao:.3f}), com a categoria dominante representando {percentual_dominante:.1f}% do total.
+        
+        • **Equidade:** A distribuição demonstra {equidade} entre as categorias 
+          (coeficiente de variação = {coef_variacao:.1f}%).
+        
+        • **Diversidade:** Com {total_categorias} categorias distintas, a distribuição 
+          {'mostra alta diversidade' if total_categorias > 5 else 'apresenta baixa diversidade'}.
+        
+        • **Padrão:** {'Distribuição assimétrica' if percentual_dominante > 50 else 'Distribuição relativamente balanceada'} 
+          com tendência {'concentrada' if indice_concentracao > 0.5 else 'dispersa'}.
+        """
+        
+        st.markdown(insights)
+        
+        # Recomendações
+        st.markdown("**💡 Recomendações:**")
+        
+        if indice_concentracao > 0.7:
+            st.info("🎯 **Alta concentração detectada:** Considere investigar os fatores que levam à concentração em poucas categorias.")
+        elif indice_concentracao < 0.3:
+            st.info("⚖️ **Distribuição equilibrada:** A distribuição mostra boa diversidade entre as categorias.")
+        
+        if coef_variacao > 50:
+            st.warning("⚠️ **Alta variabilidade:** Existe grande desigualdade entre as categorias.")
+        
+    except Exception as e:
+        st.error(f"Erro ao gerar insights: {str(e)}")
+
+
+def _mostrar_tabela_interativa_distribuicao(contagem_aspecto: pd.DataFrame, aspecto_social: str) -> None:
+    """
+    Mostra tabela interativa com filtros e ordenação.
+    """
+    try:
+        # Opções de filtro
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Filtro por percentual mínimo
+            min_percentual = st.slider(
+                "Percentual mínimo (%)",
+                min_value=0.0,
+                max_value=float(contagem_aspecto['Percentual'].max()),
+                value=0.0,
+                step=0.1,
+                help="Filtrar categorias com percentual mínimo"
+            )
+            
+        with col2:
+            # Ordenação
+            ordem = st.selectbox(
+                "Ordenar por:",
+                ["Percentual (Decrescente)", "Percentual (Crescente)", "Quantidade (Decrescente)", "Quantidade (Crescente)", "Categoria (A-Z)"],
+                help="Escolha a ordenação da tabela"
+            )
+        
+        # Aplicar filtros
+        df_filtrado = contagem_aspecto[contagem_aspecto['Percentual'] >= min_percentual].copy()
+        
+        # Aplicar ordenação
+        if ordem == "Percentual (Decrescente)":
+            df_filtrado = df_filtrado.sort_values('Percentual', ascending=False)
+        elif ordem == "Percentual (Crescente)":
+            df_filtrado = df_filtrado.sort_values('Percentual', ascending=True)
+        elif ordem == "Quantidade (Decrescente)":
+            df_filtrado = df_filtrado.sort_values('Quantidade', ascending=False)
+        elif ordem == "Quantidade (Crescente)":
+            df_filtrado = df_filtrado.sort_values('Quantidade', ascending=True)
+        elif ordem == "Categoria (A-Z)":
+            df_filtrado = df_filtrado.sort_index()
+        
+        # Mostrar tabela
+        st.dataframe(
+            df_filtrado,
+            column_config={
+                'Quantidade': st.column_config.NumberColumn(
+                    'Quantidade',
+                    help="Número de observações na categoria",
+                    format="%d"
+                ),
+                'Percentual': st.column_config.NumberColumn(
+                    'Percentual (%)',
+                    help="Percentual da categoria em relação ao total",
+                    format="%.2f%%"
+                )
+            },
+            use_container_width=True
+        )
+        
+        # Informações do filtro
+        st.info(f"📊 Mostrando {len(df_filtrado)} de {len(contagem_aspecto)} categorias")
+        
+    except Exception as e:
+        st.error(f"Erro ao gerar tabela interativa: {str(e)}")
+
+
+def _mostrar_downloads_distribuicao(contagem_aspecto: pd.DataFrame, estatisticas: Dict, aspecto_social: str, nome_aspecto: str) -> None:
+    """
+    Mostra seção de downloads para análise de distribuição.
+    """
+    try:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**📊 Dados da Análise:**")
+            
+            # Download dos dados
+            csv = contagem_aspecto.to_csv(index=True)
+            st.download_button(
+                label="📥 Baixar dados da distribuição (CSV)",
+                data=csv,
+                file_name=f"distribuicao_{aspecto_social}.csv",
+                mime="text/csv"
+            )
+            
+        with col2:
+            st.markdown("**📈 Relatório de Análise:**")
+            
+            # Criar relatório
+            relatorio = _criar_relatorio_distribuicao(estatisticas, contagem_aspecto, aspecto_social, nome_aspecto)
+            
+            st.download_button(
+                label="📄 Baixar relatório (TXT)",
+                data=relatorio,
+                file_name=f"relatorio_distribuicao_{aspecto_social}.txt",
+                mime="text/plain"
+            )
+        
+        # Metadados
+        st.markdown("**ℹ️ Metadados:**")
+        st.info(f"""
+        - **Total de observações:** {contagem_aspecto['Quantidade'].sum():,}
+        - **Categorias:** {len(contagem_aspecto)}
+        - **Análise:** {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}
+        - **Variável:** {nome_aspecto}
+        """)
+        
+    except Exception as e:
+        st.error(f"Erro ao gerar downloads: {str(e)}")
+
+
+def _mostrar_distribuicao_basica(contagem_aspecto: pd.DataFrame, aspecto_social: str, nome_aspecto: str) -> None:
+    """
+    Mostra versão básica da análise de distribuição como fallback.
+    """
+    try:
+        st.write(f"**Análise básica: {nome_aspecto}**")
+        
+        # Estatísticas simples
+        total = contagem_aspecto['Quantidade'].sum()
+        categorias = len(contagem_aspecto)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric("Total", f"{total:,}")
+            
+        with col2:
+            st.metric("Categorias", f"{categorias}")
+        
+        # Tabela básica
+        st.write("**Distribuição:**")
+        st.dataframe(contagem_aspecto)
+        
+    except Exception as e:
+        st.error(f"Erro na análise básica: {str(e)}")
+
+
+def _criar_relatorio_distribuicao(estatisticas: Dict, contagem_aspecto: pd.DataFrame, aspecto_social: str, nome_aspecto: str) -> str:
+    """
+    Cria relatório detalhado da análise de distribuição.
+    """
+    try:
+        total_observacoes = contagem_aspecto['Quantidade'].sum()
+        total_categorias = len(contagem_aspecto)
+        categoria_dominante = contagem_aspecto.loc[contagem_aspecto['Percentual'].idxmax()]
+        
+        relatorio = f"""
+RELATÓRIO DE ANÁLISE DE DISTRIBUIÇÃO
+====================================
+
+Data: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+VARIÁVEL ANALISADA:
+- Nome: {nome_aspecto}
+- Código: {aspecto_social}
+
+RESUMO GERAL:
+- Total de observações: {total_observacoes:,}
+- Número de categorias: {total_categorias}
+- Categoria dominante: {categoria_dominante.name} ({categoria_dominante['Percentual']:.1f}%)
+
+MÉTRICAS ESTATÍSTICAS:
+- Média: {estatisticas.get('media', 0):.2f}%
+- Mediana: {estatisticas.get('mediana', 0):.2f}%
+- Desvio padrão: {estatisticas.get('desvio_padrao', 0):.2f}%
+- Coeficiente de variação: {estatisticas.get('coeficiente_variacao', 0):.2f}%
+- Índice de concentração: {estatisticas.get('indice_concentracao', 0):.3f}
+- Índice de Gini: {estatisticas.get('indice_gini', 0):.3f}
+
+DISTRIBUIÇÃO POR CATEGORIA:
+{'-' * 50}
+"""
+        
+        # Adicionar dados por categoria
+        for categoria, row in contagem_aspecto.sort_values('Percentual', ascending=False).iterrows():
+            relatorio += f"{categoria}: {row['Quantidade']:,} ({row['Percentual']:.2f}%)\n"
+        
+        relatorio += f"""
+{'-' * 50}
+
+INTERPRETAÇÃO:
+- Concentração: {'Alta' if estatisticas.get('indice_concentracao', 0) > 0.5 else 'Baixa'}
+- Equidade: {'Baixa' if estatisticas.get('coeficiente_variacao', 0) > 50 else 'Alta'}
+- Diversidade: {'Alta' if total_categorias > 5 else 'Baixa'}
+
+METODOLOGIA:
+- Análise descritiva de distribuição de frequências
+- Cálculo de medidas de tendência central e dispersão
+- Índices de concentração e equidade
+- Análise de padrões e outliers
+
+OBSERVAÇÕES:
+- Dados baseados em informações observacionais
+- Análise realizada sobre a distribuição completa
+- Interpretação contextualizada aos aspectos sociais
+        """
+        
+        return relatorio.strip()
+    
+    except Exception as e:
+        return f"Erro ao gerar relatório: {str(e)}"
