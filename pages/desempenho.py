@@ -59,8 +59,8 @@ from utils.expander.expander_desempenho import (
     criar_expander_desempenho_estados
 )
 
-import os
-os.environ["STREAMLIT_WATCH_USE_POLLING"] = "true"
+# import os
+# os.environ["STREAMLIT_WATCH_USE_POLLING"] = "true"
 
 
 # Configuração da página
