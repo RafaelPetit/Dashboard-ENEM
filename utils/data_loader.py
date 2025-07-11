@@ -121,7 +121,7 @@ def calcular_seguro(serie_dados, operacao='media'):
     serie_dados : Series, array ou lista
         Dados para calcular a estatística
     operacao : str, default='media'
-        Tipo de operação: 'media', 'mediana', 'min', 'max', 'std'
+        Tipo de operação: 'media', 'mediana', 'min', 'max', 'std'/'desvio', 'curtose', 'assimetria'
         
     Retorna:
     --------
@@ -130,27 +130,55 @@ def calcular_seguro(serie_dados, operacao='media'):
     try:
         # Converter para array NumPy e remover valores inválidos
         if isinstance(serie_dados, pd.Series):
+            # Converter para float64 para evitar overflow com float16
+            if serie_dados.dtype in ['float16', 'int16']:
+                serie_dados = serie_dados.astype('float64')
             array_dados = serie_dados.dropna().values
         else:
-            array_dados = np.array(serie_dados)
+            array_dados = np.array(serie_dados, dtype='float64')
             array_dados = array_dados[~np.isnan(array_dados)]
         
+        # Remover valores infinitos
+        array_dados = array_dados[np.isfinite(array_dados)]
+        
+        # Verificar se temos dados suficientes
         if len(array_dados) == 0:
+            return 0.0
+            
+        # Para curtose e assimetria, precisamos de pelo menos 4 pontos
+        if operacao in ['curtose', 'assimetria'] and len(array_dados) < 4:
             return 0.0
             
         # Calcular estatística solicitada
         if operacao == 'media':
-            return float(np.mean(array_dados))
+            resultado = float(np.mean(array_dados))
         elif operacao == 'mediana':
-            return float(np.median(array_dados))
+            resultado = float(np.median(array_dados))
         elif operacao == 'min':
-            return float(np.min(array_dados))
+            resultado = float(np.min(array_dados))
         elif operacao == 'max':
-            return float(np.max(array_dados))
-        elif operacao == 'std':
-            return float(np.std(array_dados))
+            resultado = float(np.max(array_dados))
+        elif operacao in ['std', 'desvio']:  # Aceitar tanto 'std' quanto 'desvio'
+            if len(array_dados) < 2:
+                return 0.0
+            resultado = float(np.std(array_dados, ddof=1))  # Usar ddof=1 para amostra
+        elif operacao == 'curtose':
+            # Calcular curtose usando scipy.stats
+            from scipy import stats
+            resultado = float(stats.kurtosis(array_dados, fisher=True))  # Fisher=True para curtose excesso
+        elif operacao == 'assimetria':
+            # Calcular assimetria usando scipy.stats
+            from scipy import stats
+            resultado = float(stats.skew(array_dados))
         else:
             return 0.0
+        
+        # Verificar se o resultado é válido
+        if np.isnan(resultado) or np.isinf(resultado):
+            return 0.0
+            
+        return resultado
+        
     except Exception as e:
         print(f"Erro ao calcular {operacao}: {e}")
         return 0.0

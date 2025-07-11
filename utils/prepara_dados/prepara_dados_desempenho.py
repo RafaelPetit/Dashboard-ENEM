@@ -746,6 +746,7 @@ def _otimizar_tipos_dados(
         df['Média'] = df['Média'].astype('float32')
     except Exception as e:
         pass
+    return df
 
 
 def _agrupar_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
@@ -768,7 +769,7 @@ def _agrupar_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
     regioes_mapping = mappings['regioes_mapping']
     
     # Verificar se temos dados para processar
-    if df.empty:
+    if df is None or df.empty:
         return df
     
     try:

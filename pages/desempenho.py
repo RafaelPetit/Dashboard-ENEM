@@ -518,8 +518,8 @@ def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_
             agrupar_por_regiao
         )
     
-    # Verificar se temos dados suficientes - EXATAMENTE IGUAL À ORIGINAL
-    if df_grafico.empty:
+    # Verificar se temos dados suficientes - CORRIGIDO para tratar None
+    if df_grafico is None or df_grafico.empty:
         st.warning("Não há dados suficientes para mostrar o desempenho com os filtros aplicados.")
         return
     

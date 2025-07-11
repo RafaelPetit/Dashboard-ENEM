@@ -637,7 +637,7 @@ def _criar_scatter_colorido_por_faixa(
     """
     try:
         # Garantir que temos dados para processar
-        if df_valido.empty:
+        if df_valido is None or df_valido.empty:
             return _criar_grafico_vazio("Dados insuficientes após filtragem")
             
         # Criar cópia para evitar SettingWithCopyWarning
@@ -709,7 +709,7 @@ def _criar_scatter_simples(
     """
     try:
         # Garantir que temos dados para processar
-        if df_valido.empty:
+        if df_valido is None or df_valido.empty:
             return _criar_grafico_vazio("Dados insuficientes após filtragem")
             
         # Título do gráfico
@@ -762,7 +762,7 @@ def _adicionar_linha_tendencia_scatter(
     Figure: Figura Plotly com linha de tendência adicionada
     """
     # Validação básica
-    if fig is None or df_valido.empty:
+    if fig is None or df_valido is None or df_valido.empty:
         return fig
     
     try:

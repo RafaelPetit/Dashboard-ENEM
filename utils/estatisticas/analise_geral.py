@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Optional, Any, Union, Set
+from typing import Dict, List, Tuple, Optional, Any
 from utils.data_loader import calcular_seguro
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from utils.helpers.regiao_utils import obter_regiao_do_estado
@@ -79,11 +79,24 @@ def analisar_metricas_principais(
         # Total de candidatos
         total_candidatos = len(microdados_estados)
         
-        # Calcular taxa de presença (candidatos presentes nos dois dias)
+        # Calcular taxa de presença (candidatos que fizeram pelo menos uma prova)
         taxa_presenca = 0.0
         if 'TP_PRESENCA_GERAL' in microdados_estados.columns:
             # Código 3 = presente nos dois dias
             candidatos_presentes = microdados_estados[microdados_estados['TP_PRESENCA_GERAL'] == 3].shape[0]
+            taxa_presenca = round(candidatos_presentes / total_candidatos * 100, 2) if total_candidatos > 0 else 0.0
+        else:
+            # Alternativa: calcular com base nas notas válidas
+            candidatos_presentes = 0
+            for col in colunas_notas:
+                if col in microdados_estados.columns:
+                    presentes_coluna = len(microdados_estados[
+                        (microdados_estados[col] > 0) & 
+                        (microdados_estados[col] != -1) & 
+                        (microdados_estados[col].notna())
+                    ])
+                    candidatos_presentes = max(candidatos_presentes, presentes_coluna)
+            
             taxa_presenca = round(candidatos_presentes / total_candidatos * 100, 2) if total_candidatos > 0 else 0.0
         
         # Calcular totais por região
@@ -177,8 +190,13 @@ def _calcular_medias_estados_competencias(
                 if col not in dados_estado.columns:
                     continue
                     
-                # Filtrar notas válidas
-                notas_validas = dados_estado[dados_estado[col] > 0][col]
+                # Filtrar notas válidas (maiores que 0, diferentes de -1, e não nulas)
+                # -1 representa candidatos ausentes no ENEM
+                notas_validas = dados_estado[
+                    (dados_estado[col] > 0) & 
+                    (dados_estado[col] != -1) & 
+                    (dados_estado[col].notna())
+                ][col]
                 
                 if len(notas_validas) > 0:
                     # Calcular média
@@ -289,24 +307,39 @@ def analisar_distribuicao_notas(
         return _criar_analise_distribuicao_vazia()
     
     try:
-        # Dados apenas para notas válidas (maiores que zero)
-        df_valido = df_dados[df_dados[coluna] > 0]
+        # Converter para float64 para evitar overflow com float16
+        if df_dados[coluna].dtype in ['float16', 'int16']:
+            coluna_convertida = df_dados[coluna].astype('float64')
+        else:
+            coluna_convertida = df_dados[coluna]
+        
+        # Dados apenas para notas válidas (maiores que 0 e diferentes de -1)
+        # -1 representa candidatos ausentes no ENEM
+        df_valido = df_dados[
+            (coluna_convertida > 0) & 
+            (coluna_convertida != -1) & 
+            (coluna_convertida.notna()) &
+            (coluna_convertida < 1000)  # Adicionar limite superior para evitar outliers extremos
+        ]
         
         # Verificar se temos dados suficientes após filtragem
         if df_valido.empty:
             return _criar_analise_distribuicao_vazia()
         
+        # Usar a coluna convertida para os cálculos
+        coluna_valida = coluna_convertida[df_valido.index]
+        
         # Calcular estatísticas básicas
-        media = calcular_seguro(df_valido[coluna], 'media')
-        mediana = calcular_seguro(df_valido[coluna], 'mediana')
-        min_valor = calcular_seguro(df_valido[coluna], 'min')
-        max_valor = calcular_seguro(df_valido[coluna], 'max')
-        desvio_padrao = calcular_seguro(df_valido[coluna], 'std')
-        curtose = calcular_seguro(df_valido[coluna], 'curtose')
-        assimetria = calcular_seguro(df_valido[coluna], 'assimetria')
+        media = calcular_seguro(coluna_valida, 'media')
+        mediana = calcular_seguro(coluna_valida, 'mediana')
+        min_valor = calcular_seguro(coluna_valida, 'min')
+        max_valor = calcular_seguro(coluna_valida, 'max')
+        desvio_padrao = calcular_seguro(coluna_valida, 'std')
+        curtose = calcular_seguro(coluna_valida, 'curtose')
+        assimetria = calcular_seguro(coluna_valida, 'assimetria')
         
         # Calcular percentis de forma segura
-        percentis = _calcular_percentis_seguros(df_valido[coluna], [10, 25, 50, 75, 90, 95, 99])
+        percentis = _calcular_percentis_seguros(coluna_valida, [10, 25, 50, 75, 90, 95, 99])
         
         # Calcular faixas de desempenho
         total_valido = len(df_valido)
@@ -317,29 +350,39 @@ def analisar_distribuicao_notas(
         conceitos = _calcular_conceitos(df_valido, coluna, total_valido)
         
         # Calcular intervalo de confiança para a média (95%)
-        intervalo_confianca = _calcular_intervalo_confianca(df_valido[coluna])
+        intervalo_confianca = _calcular_intervalo_confianca(coluna_valida)
         
-        # Calcular coeficiente de variação (%)
-        coef_variacao = (desvio_padrao / media * 100) if media > 0 else 0
+        # Calcular coeficiente de variação (%) com validação
+        if media > 0 and desvio_padrao > 0 and not np.isnan(desvio_padrao) and not np.isinf(desvio_padrao):
+            coef_variacao = (desvio_padrao / media * 100)
+        else:
+            coef_variacao = 0.0
         
-        # Retornar análise completa
+        # Validar se coef_variacao é finito
+        if not np.isfinite(coef_variacao):
+            coef_variacao = 0.0
+        
+        # Retornar análise completa com validações
         return {
             'total_valido': total_valido,
             'total_candidatos': total_candidatos,  # Total real incluindo ausentes
             'total_invalido': len(df_dados) - total_valido,
-            'media': round(media, 2),
-            'mediana': round(mediana, 2),
-            'min_valor': round(min_valor, 2),
-            'max_valor': round(max_valor, 2),
-            'desvio_padrao': round(desvio_padrao, 2),
-            'curtose': round(curtose, 4),
-            'assimetria': round(assimetria, 4),
-            'percentis': {k: round(v, 2) for k, v in percentis.items()},
-            'faixas': {k: round(v, 2) for k, v in faixas.items()},
-            'conceitos': {k: round(v, 2) for k, v in conceitos.items()},
-            'intervalo_confianca': [round(intervalo_confianca[0], 2), round(intervalo_confianca[1], 2)],
-            'coef_variacao': round(coef_variacao, 2),
-            'amplitude': round(max_valor - min_valor, 2)
+            'media': round(media, 2) if np.isfinite(media) else 0.0,
+            'mediana': round(mediana, 2) if np.isfinite(mediana) else 0.0,
+            'min_valor': round(min_valor, 2) if np.isfinite(min_valor) else 0.0,
+            'max_valor': round(max_valor, 2) if np.isfinite(max_valor) else 0.0,
+            'desvio_padrao': round(desvio_padrao, 2) if np.isfinite(desvio_padrao) else 0.0,
+            'curtose': round(curtose, 4) if np.isfinite(curtose) else 0.0,
+            'assimetria': round(assimetria, 4) if np.isfinite(assimetria) else 0.0,
+            'percentis': {k: round(v, 2) if np.isfinite(v) else 0.0 for k, v in percentis.items()},
+            'faixas': {k: round(v, 2) if np.isfinite(v) else 0.0 for k, v in faixas.items()},
+            'conceitos': {k: round(v, 2) if np.isfinite(v) else 0.0 for k, v in conceitos.items()},
+            'intervalo_confianca': [
+                round(intervalo_confianca[0], 2) if np.isfinite(intervalo_confianca[0]) else 0.0,
+                round(intervalo_confianca[1], 2) if np.isfinite(intervalo_confianca[1]) else 0.0
+            ],
+            'coef_variacao': round(coef_variacao, 2) if np.isfinite(coef_variacao) else 0.0,
+            'amplitude': round(max_valor - min_valor, 2) if np.isfinite(max_valor - min_valor) else 0.0
         }
     except Exception as e:
         print(f"Erro ao analisar distribuição de notas: {e}")
@@ -402,7 +445,18 @@ def _calcular_percentis_seguros(serie: pd.Series, pontos_percentis: List[int]) -
     Dict[int, float]: Dicionário com percentis calculados
     """
     try:
-        return {p: np.percentile(serie, p) for p in pontos_percentis}
+        # Converter para float64 para evitar overflow
+        if serie.dtype in ['float16', 'int16']:
+            serie = serie.astype('float64')
+        
+        # Remover valores inválidos
+        serie_limpa = serie.dropna()
+        serie_limpa = serie_limpa[np.isfinite(serie_limpa)]
+        
+        if len(serie_limpa) == 0:
+            return {p: 0.0 for p in pontos_percentis}
+        
+        return {p: np.percentile(serie_limpa, p) for p in pontos_percentis}
     except Exception as e:
         print(f"Erro ao calcular percentis: {e}")
         return {p: 0.0 for p in pontos_percentis}
@@ -516,11 +570,53 @@ def _calcular_intervalo_confianca(serie: pd.Series, nivel: float = 0.95) -> Tupl
     try:
         from scipy import stats
         
-        media = serie.mean()
-        erro_padrao = stats.sem(serie)
+        # Verificar se temos dados suficientes
+        if len(serie) < 2:
+            return (0.0, 0.0)
+        
+        # Converter para float64 para evitar overflow
+        if serie.dtype in ['float16', 'int16']:
+            serie = serie.astype('float64')
+        
+        # Remover valores nulos ou inválidos
+        serie_limpa = serie.dropna()
+        if len(serie_limpa) < 2:
+            return (0.0, 0.0)
+        
+        # Remover valores infinitos
+        serie_limpa = serie_limpa[np.isfinite(serie_limpa)]
+        if len(serie_limpa) < 2:
+            return (0.0, 0.0)
+        
+        media = serie_limpa.mean()
+        
+        # Verificar se a média é válida
+        if not np.isfinite(media):
+            return (0.0, 0.0)
+        
+        # Calcular erro padrão
+        try:
+            erro_padrao = stats.sem(serie_limpa)
+        except:
+            # Fallback manual
+            erro_padrao = serie_limpa.std(ddof=1) / np.sqrt(len(serie_limpa))
+        
+        # Verificar se o erro padrão é válido
+        if not np.isfinite(erro_padrao) or erro_padrao <= 0:
+            return (media, media)
         
         # Calcular intervalo de confiança
-        intervalo = stats.t.interval(nivel, len(serie)-1, loc=media, scale=erro_padrao)
+        try:
+            intervalo = stats.t.interval(nivel, len(serie_limpa)-1, loc=media, scale=erro_padrao)
+        except:
+            # Fallback simples
+            margem_erro = 1.96 * erro_padrao  # Aproximação para grandes amostras
+            intervalo = (media - margem_erro, media + margem_erro)
+        
+        # Verificar se o intervalo é válido
+        if not (np.isfinite(intervalo[0]) and np.isfinite(intervalo[1])):
+            return (media, media)
+            
         return intervalo
         
     except Exception as e:

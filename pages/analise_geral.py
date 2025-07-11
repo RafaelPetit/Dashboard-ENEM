@@ -546,7 +546,7 @@ def exibir_analise_regional(
                 agrupar_por_regiao
             )
             
-            if df_medias.empty:
+            if df_medias is None or df_medias.empty:
                 st.warning("Não há dados suficientes para análise regional com os filtros aplicados.")
                 return
         
