@@ -8,8 +8,8 @@ from utils.helpers.sidebar_filter import render_sidebar_filters
 
 # Configuração inicial da página
 st.set_page_config(
-    page_title="Dashboard ENEM Sul/Sudeste - Análise Acadêmica", 
-    page_icon="🌎", 
+    page_title="Dashboard ENEM Sudeste - Análise Acadêmica", 
+    page_icon="🏠", 
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -144,26 +144,30 @@ def clear_page_memory():
 # Inicializar session state
 init_session_state()
 
-# Renderizar filtros laterais centralizados (remove duplicidade)
-estados_selecionados, locais_selecionados = render_sidebar_filters()
 
 # Título principal com indicação regional
-st.title("🌎 Dashboard ENEM 2023 - Região Sul/Sudeste")
-st.markdown("#### _Plataforma de Análise Acadêmica para Pesquisa Educacional - Versão Sul_")
+st.title("🌎 Dashboard ENEM 2023 - Região Sudeste")
+st.markdown("#### Plataforma de Análise Acadêmica para Pesquisa Educacional - Versão Sudeste")
 
 # Aviso importante sobre a divisão regional
 st.markdown("""
 <div class="warning-card">
     <h4>📍 Cobertura Regional desta Plataforma</h4>
     <p>
-        Esta versão da plataforma contém dados das regiões <strong>Sul, Sudeste</strong> e parcialmente do <strong>Centro-Oeste</strong> 
-        (apenas Distrito Federal e Mato Grosso do Sul). Para análise das regiões <strong>Norte, Nordeste</strong> e demais estados do Centro-Oeste 
-        (Mato Grosso e Goiás), acesse a <strong>Versão Norte</strong> da plataforma.
+        Esta versão da plataforma contém dados das regiões <strong>Sudeste</strong>. Para análise das regiões <strong>Norte, Nordeste, Centro-Oeste e Sul</strong> , acesse as <strong> Versões abaixo</strong> da plataforma.
     </p>
-    <p><span class="region-badge">Sul</span><span class="region-badge">Sudeste</span><span class="region-badge">DF e MS</span></p>
     <p style="margin-top: 1rem;">
         <a href="https://enem-insights-norte.streamlit.app/" target="_blank" class="link-button">
-            🌐 Acessar Versão Norte (AC, AM, AP, PA, RO, RR, TO, AL, BA, CE, MA, PB, PE, PI, RN, SE, MT, GO)
+            🌐 Acessar Versão Norte (AC, AP, AM, PA, RO, RR, TO)
+        </a>
+            <a href="https://enem-insights-nordeste.streamlit.app/" target="_blank" class="link-button">
+            🌐 Acessar Versão Nordeste (AL, BA, CE, MA, PB, PE, PI, RN, SE)
+        </a>
+            <a href="https://enem-insights-centro-oeste.streamlit.app/" target="_blank" class="link-button">
+            🌐 Acessar Versão Centro-Oeste (DF, GO, MT, MS)
+        </a>
+            <a href="https://enem-insights-sul.streamlit.app/" target="_blank" class="link-button">
+            🌐 Acessar Versão Sul (PR, RS, SC)
         </a>
     </p>
 </div>
@@ -200,7 +204,7 @@ with main_col1:
         <h3>🏠 Análise Geral</h3>
         <p><span class="badge">Estatísticas Descritivas</span><span class="badge">Distribuições</span><span class="badge">Comparativos Regionais</span></p>
         <p>
-            Oferece uma visão abrangente e panorâmica do cenário educacional das regiões Sul e Sudeste no ENEM 2023. 
+            Oferece uma visão abrangente e panorâmica do cenário educacional das regiões Sudeste no ENEM 2023. 
             Este módulo implementa análises estatísticas descritivas robustas, incluindo métricas de tendência central, 
             dispersão e forma das distribuições, proporcionando insights fundamentais sobre os padrões de desempenho educacional.
         </p>
@@ -270,24 +274,7 @@ with main_col2:
     else:
         raise ValueError("filtros_dados não é um DataFrame válido.")
     
-    if estados_selecionados:
-        if len(estados_selecionados) == len(todos_estados):
-            st.info("🌎 **Escopo**: Todas as regiões disponíveis")
-        else:
-            st.info(f"📊 **Estados selecionados**: {len(estados_selecionados)}")
-            
-            # Mostrar detalhes da seleção
-            if len(locais_selecionados) <= 5:
-                for local in locais_selecionados:
-                    st.write(f"• {local}")
-            else:
-                st.write(f"• {locais_selecionados[0]}")
-                st.write(f"• {locais_selecionados[1]}")
-                st.write("• ...")
-                st.write(f"• {locais_selecionados[-1]}")
-                st.caption(f"_Total: {len(locais_selecionados)} locais_")
-    else:
-        st.warning("⚠️ Nenhum estado selecionado")
+    st.info("🌎 **Escopo**: Todas as regiões do Sudeste disponíveis")
     
     # Status do sistema
     st.markdown("""
@@ -298,12 +285,14 @@ with main_col2:
     
     # Métricas sobre o dataset
     col1, col2 = st.columns(2)
+
+
     with col1:
-        st.metric("Registros Regionais", "2.056.502", help="Candidatos das regiões Sul, Sudeste, DF e MS")
-        st.metric("Cobertura Regional", "48%", help="Percentual do território nacional coberto nesta versão")
+        st.metric("Registros Regionais", "1.305.362", help="Candidatos das regiões Sudeste")
+        st.metric("Cobertura Regional", "33,18%", help="Percentual do território nacional coberto nesta versão")
     
     with col2:
-        st.metric("Variáveis Analíticas", "82", help="Total de variáveis processadas e otimizadas")
+        st.metric("Variáveis Analíticas", "31", help="Total de variáveis processadas e otimizadas")
         st.metric("Processamento", st.session_state.last_data_update, help="Data da última otimização dos dados")
     
     # Estados incluídos nesta versão
@@ -314,11 +303,9 @@ with main_col2:
     """, unsafe_allow_html=True)
     
     st.markdown("""
-    **Sul:** RS, SC, PR  
     **Sudeste:** SP, RJ, MG, ES  
-    **Centro-Oeste:** DF, MS  
     
-    _Para análise de AC, AM, AP, PA, RO, RR, TO, AL, BA, CE, MA, PB, PE, PI, RN, SE, MT e GO, utilize a Versão Norte._
+    Para análise de Norte, Nordeste, Centro-Oeste e Sul utilize as versões abaixo:.
     """)
     
     # Card específico para redirecionamento à versão Norte
@@ -331,7 +318,16 @@ with main_col2:
         </p>
         <p style="text-align: center; margin-top: 1rem;">
             <a href="https://enem-insights-norte.streamlit.app/" target="_blank" class="link-button">
-                📊 Dashboard ENEM Norte/Nordeste
+                📊 Dashboard ENEM Norte
+            </a>
+            <a href="https://enem-insights-nordeste.streamlit.app/" target="_blank" class="link-button">
+                📊 Dashboard ENEM Nordeste
+            </a>
+            <a href="https://enem-insights-centro-oeste.streamlit.app/" target="_blank" class="link-button">
+                📊 Dashboard ENEM Centro-Oeste
+            </a>
+            <a href="https://enem-insights-sul.streamlit.app/" target="_blank" class="link-button">
+                📊 Dashboard ENEM Sul
             </a>
         </p>
         <p style="font-size: 12px; margin-top: 0.5rem; text-align: center;">
@@ -339,20 +335,6 @@ with main_col2:
         </p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Adicionar uma visualização simples para destacar um insight regional
-    st.markdown("""
-    <div class="feature-card">
-        <h3>💡 Insight Regional</h3>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    > **Descoberta Regional:**  
-    > As regiões Sul e Sudeste apresentam padrões distintos de desempenho que correlacionam significativamente com indicadores socioeconômicos regionais.
-    
-    Explore esses e outros insights na nossa plataforma científica.
-    """)
     
     # Guia rápido
     st.markdown("""
@@ -447,11 +429,9 @@ with footer_col2:
     <div style='text-align: center; color: #475569;'>
         <p style='font-size: 16px;'><b>Plataforma de Análise Científica do ENEM 2023</b></p>
         <p style='font-size: 14px; margin-top: 1rem;'>Projeto de pesquisa desenvolvido como contribuição científica 
-        para a compreensão dos fatores multidimensionais que influenciam o desempenho educacional nas regiões 
-        Sul e Sudeste do Brasil.</p>
+        para a compreensão dos fatores que influenciam o desempenho educacional.</p>
         <hr style='margin: 15px 0; border-color: #E2E8F0;'>
-        <p style='font-size: 12px;'>© 2025 - Licença Acadêmica para Pesquisa Científica</p>
-        <p style='font-size: 11px; margin-top: 5px;'>v2.1.0 - Sul/Sudeste Analytics Engine</p>
+        <p style='font-size: 11px; margin-top: 5px;'>v2.1.0 </p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -461,12 +441,10 @@ with footer_col3:
         <p style='font-size: 16px;'><b>Equipe de Pesquisa</b></p>
         <p style='font-size: 14px; margin-bottom: 5px; margin-top: 10px;'><b>Pesquisador Responsável:</b></p>
         <p style='font-size: 14px; margin-top: 0;'>Rafael Petit</p>
-        <p style='font-size: 12px; margin-top: -5px;'>Bacharelando em Ciência da Computação</p>
         <p style='font-size: 12px; margin-top: -2px;'>rpetit.dev@gmail.com</p>
         <p style='font-size: 14px; margin-bottom: 5px; margin-top: 15px;'><b>Orientador Científico:</b></p>
         <p style='font-size: 14px; margin-top: 0;'>Prof. Dr. César C. Xavier</p>
         <p style='font-size: 12px; margin-top: -5px;'>cesarcx@gmail.com</p>
-        <p style='font-size: 14px; margin-top: 15px;'><a href="https://github.com/usuario/repo" target="_blank">📚 Repositório Científico</a></p>
     </div>
     """, unsafe_allow_html=True)
 

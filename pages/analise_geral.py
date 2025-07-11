@@ -73,7 +73,7 @@ from utils.helpers.sidebar_filter import render_sidebar_filters
 # Configuração da página
 st.set_page_config(
     page_title="ENEM - Análise Geral",
-    page_icon="🏠",
+    page_icon="📊",
     layout="wide"
 )
 
