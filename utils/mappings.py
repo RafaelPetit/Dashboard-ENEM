@@ -1,4 +1,3 @@
-from typing import Dict, Any, List
 
 def get_mappings():
     """Retorna todos os mapeamentos usados no dashboard."""

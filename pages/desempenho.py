@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import gc
-from typing import Dict, List, Any, Optional, Union, Tuple
+from typing import List
 
 from utils.helpers.sidebar_filter import render_sidebar_filters
 
@@ -10,16 +9,15 @@ from utils.helpers.sidebar_filter import render_sidebar_filters
 from utils.tooltip import titulo_com_tooltip
 
 # Imports para gerenciamento de memória
-from utils.helpers.cache_utils import release_memory, optimized_cache
+from utils.helpers.cache_utils import release_memory
 
 # Imports para carregamento de dados
-from utils.data_loader import load_data_for_tab, filter_data_by_states
+from data.data_loader import load_data_for_tab, filter_data_by_states
 from utils.mappings import get_mappings
 
 # Imports para preparação de dados
 from utils.prepara_dados import (
     preparar_dados_comparativo, 
-    obter_ordem_categorias,
     preparar_dados_grafico_linha,
     preparar_dados_desempenho_geral,
     filtrar_dados_scatter,
@@ -40,9 +38,7 @@ from utils.visualizacao import (
 # Imports para estatísticas
 from utils.estatisticas import (
     calcular_correlacao_competencias,
-    gerar_estatisticas_descritivas,
     analisar_desempenho_por_estado,
-    calcular_estatisticas_comparativas
 )
 
 # Imports para explicações
@@ -62,6 +58,10 @@ from utils.expander.expander_desempenho import (
     criar_expander_relacao_competencias,
     criar_expander_desempenho_estados
 )
+
+import os
+os.environ["STREAMLIT_WATCH_USE_POLLING"] = "true"
+
 
 # Configuração da página
 st.set_page_config(

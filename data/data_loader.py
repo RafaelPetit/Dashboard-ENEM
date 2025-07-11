@@ -1,10 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from scipy import stats
 import gc
-import os
-from typing import Dict, List, Any, Optional, Union, Tuple
+from typing import Dict, List
 
 # ------------------------------------------------------------
 # FUNÇÕES DE CARREGAMENTO DE DADOS
@@ -31,11 +29,11 @@ def load_data_for_tab(tab_name: str, apenas_filtros: bool = False):
     try:
         # Para filtros, carregar apenas a coluna de UF do arquivo genérico
         if apenas_filtros:
-            return pd.read_parquet("sample_localizacao.parquet", 
+            return pd.read_parquet("data/sample_localizacao.parquet", 
                                   engine='pyarrow')
         
         # Carregar dados específicos da aba
-        dados_especificos = pd.read_parquet(f"sample_{tab_name.lower()}.parquet", engine='pyarrow')
+        dados_especificos = pd.read_parquet(f"data/sample_{tab_name.lower()}.parquet", engine='pyarrow')
         
         # Aplicar otimização de tipos de dados
         dados_especificos = optimize_dtypes(dados_especificos, tab_name)
@@ -205,7 +203,7 @@ def optimize_dtypes(df: pd.DataFrame, dtypes) -> pd.DataFrame:
         return df
     
     # Otimizar inteiros
-    arquivo_dtypes = f'dtypes_{dtypes}.json'
+    arquivo_dtypes = f'data/dtypes_{dtypes}.json'
 
     dtypes = pd.read_json(arquivo_dtypes, orient='index', typ='series')
 

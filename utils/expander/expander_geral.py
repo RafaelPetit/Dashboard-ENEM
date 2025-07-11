@@ -3,11 +3,9 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from typing import Dict, List, Any, Optional, Union, Tuple
-from utils.helpers.regiao_utils import obter_regiao_do_estado, obter_todas_regioes
+from typing import Dict, List, Any, Tuple
+from utils.helpers.regiao_utils import obter_regiao_do_estado
 from utils.estatisticas.analise_geral import (
-    analisar_distribuicao_notas, 
-    analisar_faltas,
     analisar_desempenho_por_faixa_nota,
     analisar_metricas_por_regiao
 )

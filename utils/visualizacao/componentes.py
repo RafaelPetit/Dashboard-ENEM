@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from typing import Dict, List, Any, Optional, Union, Tuple
+from typing import Dict, List, Any
 
 def criar_filtros_comparativo(
     df_resultados: pd.DataFrame, 

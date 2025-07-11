@@ -1,6 +1,5 @@
-import plotly.graph_objects as go
 import plotly.express as px
-from typing import Dict, Any, List, Optional
+from typing import List, Optional
 from plotly.graph_objs import Figure
 
 # Paletas de cores padrão

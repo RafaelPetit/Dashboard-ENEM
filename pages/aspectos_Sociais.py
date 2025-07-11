@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import gc
-from typing import Dict, List, Any, Optional, Union, Tuple, Callable
+from typing import List, Optional, Callable
 
 from utils.helpers.sidebar_filter import render_sidebar_filters
 
@@ -13,7 +12,7 @@ from utils.tooltip import titulo_com_tooltip
 from utils.helpers.cache_utils import release_memory, optimized_cache
 
 # Imports para carregamento de dados
-from utils.data_loader import load_data_for_tab, filter_data_by_states
+from data.data_loader import load_data_for_tab, filter_data_by_states
 from utils.mappings import get_mappings
 
 # Imports para preparação de dados
@@ -38,8 +37,6 @@ from utils.visualizacao import (
 from utils.estatisticas import (
     calcular_estatisticas_distribuicao,
     analisar_correlacao_categorias,
-    analisar_distribuicao_regional,
-    calcular_estatisticas_por_categoria
 )
 
 # Imports para explicações
@@ -47,9 +44,6 @@ from utils.explicacao import (
     get_tooltip_correlacao_aspectos,
     get_tooltip_distribuicao_aspectos,
     get_tooltip_aspectos_por_estado,
-    get_explicacao_heatmap,
-    get_explicacao_barras_empilhadas,
-    get_explicacao_sankey,
     get_explicacao_distribuicao,
     get_explicacao_aspectos_por_estado
 )
@@ -68,6 +62,10 @@ st.set_page_config(
     page_icon="👥",
     layout="wide"
 )
+
+import os
+os.environ["STREAMLIT_WATCH_USE_POLLING"] = "true"
+
 
 pd.options.display.float_format = '{:,.2f}'.format
 

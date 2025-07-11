@@ -1,21 +1,14 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
-from typing import Dict, List, Any, Optional, Union, Tuple
+from typing import Dict, Any
 from utils.estatisticas.analise_aspectos_sociais import (
     calcular_estatisticas_distribuicao,
     analisar_correlacao_categorias,
     analisar_distribuicao_regional,
-    calcular_estatisticas_por_categoria
 )
-from utils.explicacao.explicacao_aspectos_sociais import (
-    get_interpretacao_associacao,
-    get_interpretacao_variabilidade_regional,
-    get_analise_concentracao
-)
+
 from utils.mappings import get_mappings
-from utils.helpers.regiao_utils import obter_regiao_do_estado
 
 # Obter limiares dos mapeamentos centralizados
 mappings = get_mappings()

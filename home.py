@@ -3,8 +3,12 @@ import gc
 import pandas as pd
 
 from utils.mappings import get_mappings
-from utils.data_loader import load_data_for_tab
+from data.data_loader import load_data_for_tab
 from utils.helpers.sidebar_filter import render_sidebar_filters
+
+import os
+os.environ["STREAMLIT_WATCH_USE_POLLING"] = "true"
+
 
 # Configuração inicial da página
 st.set_page_config(

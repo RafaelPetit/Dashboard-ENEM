@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List
 
 # Mapeamento constante de regiões do Brasil para uso em múltiplas funções
 # SUDESTE REMOVIDO - dados já filtrados no dataset

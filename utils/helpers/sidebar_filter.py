@@ -1,6 +1,6 @@
 import streamlit as st
-from typing import List, Dict, Tuple
-from utils.data_loader import load_data_for_tab, agrupar_estados_em_regioes
+from typing import List, Tuple
+from data.data_loader import load_data_for_tab, agrupar_estados_em_regioes
 from utils.mappings import get_mappings
 
 @st.cache_data(ttl=600, max_entries=1)

@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import Dict, Tuple, Any, Optional, Union, List
+from typing import Dict, Tuple, Any, Optional, List
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function
 from utils.estatisticas.metricas_desempenho import calcular_indicadores_desigualdade
 from utils.mappings import get_mappings

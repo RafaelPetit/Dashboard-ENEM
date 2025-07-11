@@ -1,9 +1,8 @@
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Any, Union, Set
+from typing import Dict, List, Tuple, Any
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from utils.prepara_dados.validacao_dados import validar_completude_dados
-from utils.helpers.regiao_utils import obter_regiao_do_estado
 from utils.mappings import get_mappings
 
 # Obter mapeamentos e constantes

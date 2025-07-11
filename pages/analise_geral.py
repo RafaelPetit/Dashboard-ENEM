@@ -1,15 +1,15 @@
 import streamlit as st
 import pandas as pd
 import gc
-from typing import Dict, List, Any, Optional, Tuple, Union
+from typing import Dict, List, Any, Optional
 
 from utils.tooltip import titulo_com_tooltip, custom_metric_with_tooltip
 
 # Imports para gerenciamento de memória
-from utils.helpers.cache_utils import release_memory, optimized_cache
+from utils.helpers.cache_utils import release_memory
 
 # Imports para carregamento de dados
-from utils.data_loader import load_data_for_tab, filter_data_by_states
+from data.data_loader import load_data_for_tab, filter_data_by_states
 from utils.mappings import get_mappings
 
 # Imports para preparação de dados
@@ -39,7 +39,6 @@ from utils.explicacao import (
     get_tooltip_total_candidatos,
     get_tooltip_maior_media,
     get_tooltip_menor_media,
-    get_tooltip_estado_maior_media,
     get_tooltip_media_por_regiao,
     get_tooltip_comparativo_areas,
     get_tooltip_evasao,
@@ -55,8 +54,6 @@ from utils.estatisticas import (
     analisar_metricas_principais,
     analisar_distribuicao_notas,
     analisar_faltas,
-    analisar_desempenho_por_faixa_nota,
-    analisar_metricas_por_regiao
 )
 
 # Imports para expanders
@@ -69,6 +66,10 @@ from utils.expander import (
 )
 
 from utils.helpers.sidebar_filter import render_sidebar_filters
+
+import os
+os.environ["STREAMLIT_WATCH_USE_POLLING"] = "true"
+
 
 # Configuração da página
 st.set_page_config(

@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Tuple, Optional, Any
-from utils.data_loader import calcular_seguro
-from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
+from data.data_loader import calcular_seguro
+from utils.helpers.cache_utils import optimized_cache, memory_intensive_function
 from utils.helpers.regiao_utils import obter_regiao_do_estado
 from utils.mappings import get_mappings
 

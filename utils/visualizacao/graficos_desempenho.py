@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from scipy import stats
 import warnings
-from typing import Dict, List, Optional, Union, Tuple, Any
+from typing import Dict, Optional, Any
 from utils.visualizacao.config_graficos import aplicar_layout_padrao, cores_padrao
 from utils.helpers.cache_utils import memory_intensive_function
 from utils.mappings import get_mappings

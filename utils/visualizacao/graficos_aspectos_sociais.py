@@ -1,10 +1,9 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-import numpy as np
 from plotly.graph_objs import Figure
-from typing import Dict, List, Optional, Union, Tuple, Any, Set
-from utils.visualizacao.config_graficos import aplicar_layout_padrao, cores_padrao, aplicar_tema_grafico
+from typing import Dict, Tuple, Any
+from utils.visualizacao.config_graficos import cores_padrao
 from utils.helpers.cache_utils import memory_intensive_function
 from utils.mappings import get_mappings
 

@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Any, Optional, Union, Tuple
+from typing import Dict, Any, Optional
 from scipy.stats import chi2_contingency
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function
 from utils.mappings import get_mappings
