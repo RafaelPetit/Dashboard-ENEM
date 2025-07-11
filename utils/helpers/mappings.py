@@ -163,46 +163,59 @@ def get_mappings():
             "nome": "Tipo de Escola",
             "mapeamento": tipo_escola_mapping,
             "ordem": list(tipo_escola_mapping.values())
+        },
+
+        "NU_INFRAESTRUTURA": {
+            "nome": "Nível de Infraestrutura",
+            "mapeamento": infraestrutura_mapping,
+            "ordem": list(infraestrutura_mapping.values())
         }
     }
     # Variáveis sociais para a aba de Aspectos Sociais
     variaveis_sociais = {
-        "TP_COR_RACA": {"nome": "Raça/Cor", "mapeamento": race_mapping},
-        "TP_SEXO": {"nome": "Sexo", "mapeamento": sexo_mapping},
-        "TP_DEPENDENCIA_ADM_ESC": {"nome": "Tipo de Escola", "mapeamento": dependencia_escola_mapping},
-        "TP_FAIXA_ETARIA": {"nome": "Faixa Etária", "mapeamento": faixa_etaria_mapping},
-        "Q001": {"nome": "Escolaridade do Pai", "mapeamento": escolaridade_pai_mae_mapping},
-        "Q002": {"nome": "Escolaridade da Mãe", "mapeamento": escolaridade_pai_mae_mapping},
-        "Q006": {"nome": "Renda Familiar", "mapeamento": {
-            "A": "Nenhuma Renda",
-            "B": "Até R$ 1.320,00",
-            "C": "De R$ 1.320,01 até R$ 1.980,00",
-            "D": "De R$ 1.980,01 até R$ 2.640,00",
-            "E": "De R$ 2.640,01 até R$ 3.300,00",
-            "F": "De R$ 3.300,01 até R$ 3.960,00",
-            "G": "De R$ 3.960,01 até R$ 5.280,00",
-            "H": "De R$ 5.280,01 até R$ 6.600,00",
-            "I": "De R$ 6.600,01 até R$ 7.920,00",
-            "J": "De R$ 7.920,01 até R$ 9240,00",
-            "K": "De R$ 9.240,01 até R$ 10.560,00",
-            "L": "De R$ 10.560,01 até R$ 11.880,00",
-            "M": "De R$ 11.880,01 até R$ 13.200,00",
-            "N": "De R$ 13.200,01 até R$ 15.840,00",
-            "O": "De R$ 15.840,01 até R$19.800,00",
-            "P": "De R$ 19.800,01 até R$ 26.400,00",
-            "Q": "Acima de R$ 26.400,00"
-        }},
+        "TP_COR_RACA": {
+            "nome": "Raça/Cor", 
+            "mapeamento": race_mapping
+            },
+        "TP_SEXO": {
+            "nome": "Sexo", 
+            "mapeamento": sexo_mapping
+            },
+        "TP_DEPENDENCIA_ADM_ESC": {
+            "nome": "Tipo de Escola", 
+            "mapeamento": dependencia_escola_mapping
+            },
+        "TP_FAIXA_ETARIA": {
+            "nome": "Faixa Etária", 
+            "mapeamento": faixa_etaria_mapping
+            },
+        "Q001": {
+            "nome": "Escolaridade do Pai", 
+            "mapeamento": escolaridade_pai_mae_mapping
+            },
+        "Q002": {
+            "nome": "Escolaridade da Mãe", 
+            "mapeamento": escolaridade_pai_mae_mapping
+            },
+        "TP_FAIXA_SALARIAL": {
+            "nome": "Renda Familiar", 
+            "mapeamento":  faixa_salarial
+        },
         "Q005": {"nome": "Pessoas na Residência", "mapeamento": {
             i: str(i) for i in range(1, 22)
         }},
-        "TP_ST_CONCLUSAO": {"nome": "Situação do Ensino Médio", "mapeamento": {
-            1: "Já concluí o Ensino Médio",
-            2: "Concluirei em 2023",
-            3: "Concluirei após 2023",
-            4: "Não concluí/não estou cursando"
-        }},
-        "NU_INFRAESTRUTURA": {"nome": "Nível de Infraestrutura", "mapeamento": infraestrutura_mapping},
-        "Q025": {"nome": "Acesso à Internet", "mapeamento": acesso_internet_mapping}
+        "TP_ST_CONCLUSAO": {
+            "nome": "Situação do Ensino Médio", 
+            "mapeamento": conclusao_ensino_medio_mapping
+            },
+        "NU_INFRAESTRUTURA": {
+            "nome": "Nível de Infraestrutura", 
+            "mapeamento": infraestrutura_mapping
+            },
+        "Q025": {
+            "nome": "Acesso à Internet", 
+            "mapeamento": acesso_internet_mapping
+            }
     }
 
     regioes_mapping = {
@@ -223,14 +236,14 @@ def get_mappings():
     }
     
     MAPEAMENTO_FAIXAS_SALARIAIS = {
-        0: "0 - Nenhuma Renda",
-        1: "1 - Até 1 SM",
-        2: "2 - 1 a 2 SM",
-        3: "3 - 2 a 3 SM",
-        4: "4 - 3 a 5 SM",
-        5: "5 - 5 a 10 SM",
-        6: "6 - 10 a 20 SM",
-        7: "7 - Mais de 20 SM"
+        0: 'Nenhuma Renda',
+        1: 'Até 1 salário mínimo',
+        2: '1 a 2 salários mínimos',
+        3: '2 a 3 salários mínimos',
+        4: '3 a 5 salários mínimos',
+        5: '5 a 10 salários mínimos',
+        6: '10 a 20 salários mínimos',
+        7: ' > 20 salários mínimos'
     }
     
     LIMIARES = {

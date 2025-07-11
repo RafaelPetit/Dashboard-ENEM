@@ -279,7 +279,7 @@ def exibir_metricas_principais(
             label="Candidatos Inscritos",
             value=f"{metricas['total_candidatos']:,}".replace(',', '.'),
             explicacao=get_tooltip_total_candidatos(),
-            key="metrica_candidatos"
+            key=1
         )
     
     with col2:
@@ -287,7 +287,7 @@ def exibir_metricas_principais(
             label="Média Geral",
             value=formatar_numero_br(metricas['media_geral']),
             explicacao=get_tooltip_media_geral(),
-            key="metrica_media_geral"
+            key=2
         )
         
     with col3:
@@ -296,7 +296,7 @@ def exibir_metricas_principais(
             label="Maior Média",
             value=f"{formatar_numero_br(metricas['valor_maior_media_estado'])} ({metricas['estado_maior_media']})",
             explicacao=get_tooltip_maior_media(),
-            key="metrica_maior_media"
+            key=3
         )
     
     with col4:
@@ -305,7 +305,7 @@ def exibir_metricas_principais(
             label="Menor Média",
             value=f"{formatar_numero_br(metricas['valor_menor_media_estado'])} ({metricas['estado_menor_media']})",
             explicacao=get_tooltip_menor_media(),
-            key="metrica_menor_media",
+            key=4
         )
                 
     return metricas

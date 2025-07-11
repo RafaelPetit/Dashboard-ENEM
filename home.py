@@ -5,8 +5,6 @@ import pandas as pd
 from utils.helpers.mappings import get_mappings
 from data.data_loader import load_data_for_tab
 
-# import os
-# os.environ["STREAMLIT_WATCH_USE_POLLING"] = "true"
 
 
 # Configuração inicial da página
@@ -134,7 +132,7 @@ def init_session_state():
     
     # Data da última atualização
     if 'last_data_update' not in st.session_state:
-        st.session_state.last_data_update = "01/07/2025"
+        st.session_state.last_data_update = "11/07/2025"
 
 # Função para limpar cache e memória entre navegações
 def clear_page_memory():
@@ -149,7 +147,7 @@ init_session_state()
 
 
 # Título principal com indicação regional
-st.title("🌎 Dashboard ENEM 2023 - Região Sudeste")
+st.title("🌎 Dashboard ENEM 2023 - Região Norte")
 st.markdown("#### Plataforma de Análise Acadêmica para Pesquisa Educacional - Versão Sudeste")
 
 # Aviso importante sobre a divisão regional
@@ -157,20 +155,11 @@ st.markdown("""
 <div class="warning-card">
     <h4>📍 Cobertura Regional desta Plataforma</h4>
     <p>
-        Esta versão da plataforma contém dados das regiões <strong>Sudeste</strong>. Para análise das regiões <strong>Norte, Nordeste, Centro-Oeste e Sul</strong> , acesse as <strong> Versões abaixo</strong> da plataforma.
+        Esta versão da plataforma contém dados das regiões <strong>Sudeste, Sudeste e Centro-Oeste</strong>. Para análise das regiões <strong>Norte e Nordeste</strong> , acesse a <strong> Versão abaixo</strong> da plataforma.
     </p>
     <p style="margin-top: 1rem;">
         <a href="https://enem-insights-norte.streamlit.app/" target="_blank" class="link-button">
-            🌐 Acessar Versão Norte (AC, AP, AM, PA, RO, RR, TO)
-        </a>
-            <a href="https://enem-insights-nordeste.streamlit.app/" target="_blank" class="link-button">
-            🌐 Acessar Versão Nordeste (AL, BA, CE, MA, PB, PE, PI, RN, SE)
-        </a>
-            <a href="https://enem-insights-centro-oeste.streamlit.app/" target="_blank" class="link-button">
-            🌐 Acessar Versão Centro-Oeste (DF, GO, MT, MS)
-        </a>
-            <a href="https://enem-insights-sul.streamlit.app/" target="_blank" class="link-button">
-            🌐 Acessar Versão Sul (PR, RS, SC)
+            🌐 Acessar Versão Norte (AC, AP, AM, PA, RO, RR, TO, AL, BA, CE, MA, PB, PE, PI, RN, SE)
         </a>
     </p>
 </div>
@@ -207,7 +196,7 @@ with main_col1:
         <h3>🏠 Análise Geral</h3>
         <p><span class="badge">Estatísticas Descritivas</span><span class="badge">Distribuições</span><span class="badge">Comparativos Regionais</span></p>
         <p>
-            Oferece uma visão abrangente e panorâmica do cenário educacional das regiões Sudeste no ENEM 2023. 
+            Oferece uma visão abrangente e panorâmica do cenário educacional das regiões Sul, Sudeste e Centro-Oeste no ENEM 2023. 
             Este módulo implementa análises estatísticas descritivas robustas, incluindo métricas de tendência central, 
             dispersão e forma das distribuições, proporcionando insights fundamentais sobre os padrões de desempenho educacional.
         </p>
@@ -268,15 +257,6 @@ with main_col2:
     </div>
     """, unsafe_allow_html=True)
     
-    # Carregar dados dos filtros para obter todos os estados
-    filtros_dados = load_data_for_tab("localizacao", apenas_filtros=True)
-    
-    if isinstance(filtros_dados, pd.DataFrame):
-        # Coletamos apenas a coluna específica para economizar memória
-        todos_estados = filtros_dados["SG_UF_PROVA"].drop_duplicates().sort_values().tolist()
-    else:
-        raise ValueError("filtros_dados não é um DataFrame válido.")
-    
     st.info("🌎 **Escopo**: Todas as regiões do Sudeste disponíveis")
     
     # Status do sistema
@@ -291,8 +271,8 @@ with main_col2:
 
 
     with col1:
-        st.metric("Registros Regionais", "1.305.362", help="Candidatos das regiões Sudeste")
-        st.metric("Cobertura Regional", "33,18%", help="Percentual do território nacional coberto nesta versão")
+        st.metric("Registros Regionais", "2.056.502", help="Candidatos das regiões Sul, Sudeste e Centro-Oeste")
+        st.metric("Cobertura Regional", "52,29%", help="Percentual do território nacional coberto nesta versão")
     
     with col2:
         st.metric("Variáveis Analíticas", "31", help="Total de variáveis processadas e otimizadas")
@@ -306,9 +286,13 @@ with main_col2:
     """, unsafe_allow_html=True)
     
     st.markdown("""
+    **Sul:** PR, RS, SC
+                
     **Sudeste:** SP, RJ, MG, ES  
     
-    Para análise de Norte, Nordeste, Centro-Oeste e Sul utilize as versões abaixo:.
+    **Centro-Oeste:** DF, GO, MT, MS
+    
+    Para análise de Norte e Nordeste utilize as versões abaixo:.
     """)
     
     # Card específico para redirecionamento à versão Norte
@@ -316,21 +300,11 @@ with main_col2:
     <div class="info-card">
         <h3>🌐 Precisa Analisar Outras Regiões?</h3>
         <p>
-            Se você precisa analisar dados das regiões <strong>Norte, Nordeste</strong> ou dos estados 
-            <strong>MT e GO</strong> do Centro-Oeste, acesse nossa versão complementar:
+            Se você precisa analisar dados das regiões <strong>Norte, Nordeste</strong>, acesse nossa versão complementar:
         </p>
         <p style="text-align: center; margin-top: 1rem;">
             <a href="https://enem-insights-norte.streamlit.app/" target="_blank" class="link-button">
                 📊 Dashboard ENEM Norte
-            </a>
-            <a href="https://enem-insights-nordeste.streamlit.app/" target="_blank" class="link-button">
-                📊 Dashboard ENEM Nordeste
-            </a>
-            <a href="https://enem-insights-centro-oeste.streamlit.app/" target="_blank" class="link-button">
-                📊 Dashboard ENEM Centro-Oeste
-            </a>
-            <a href="https://enem-insights-sul.streamlit.app/" target="_blank" class="link-button">
-                📊 Dashboard ENEM Sul
             </a>
         </p>
         <p style="font-size: 12px; margin-top: 0.5rem; text-align: center;">
