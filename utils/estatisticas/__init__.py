@@ -1,4 +1,4 @@
-from .analise_desempenho import (
+from .estatistica_desempenho import (
     calcular_correlacao_competencias,
     gerar_estatisticas_descritivas,
     analisar_desempenho_por_estado,
@@ -11,7 +11,7 @@ from .metricas_desempenho import (
     calcular_indicadores_desigualdade
 )
 
-from .analise_aspectos_sociais import (
+from .estatisticas_aspectos_sociais import (
     calcular_estatisticas_distribuicao,
     analisar_correlacao_categorias,
     analisar_distribuicao_regional,
@@ -19,7 +19,7 @@ from .analise_aspectos_sociais import (
     analisar_tendencias_temporais
 )
 
-from .analise_geral import (
+from .estatistica_analise_geral import (
     analisar_metricas_principais,
     analisar_distribuicao_notas,
     analisar_faltas,

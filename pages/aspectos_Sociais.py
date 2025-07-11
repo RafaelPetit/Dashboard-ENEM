@@ -63,9 +63,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# import os
-# os.environ["STREAMLIT_WATCH_USE_POLLING"] = "true"
-
 
 pd.options.display.float_format = '{:,.2f}'.format
 

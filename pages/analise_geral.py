@@ -67,9 +67,6 @@ from utils.expander import (
 
 from utils.helpers.sidebar_filter import render_sidebar_filters
 
-# import os
-# os.environ["STREAMLIT_WATCH_USE_POLLING"] = "true"
-
 
 # Configuração da página
 st.set_page_config(

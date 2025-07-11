@@ -24,7 +24,7 @@ from .prepara_dados_aspectos_sociais import (
     preparar_dados_grafico_aspectos_por_estado
 )
 
-from .prepara_dados_geral import (
+from .prepara_dados_analise_geral import (
     preparar_dados_histograma,
     preparar_dados_grafico_faltas,
     preparar_dados_metricas_principais,
