@@ -207,6 +207,8 @@ def get_mappings():
 
     # Mapeamento de regiões - Norte, Nordeste e Centro Oeste (MS e DF) REMOVIDO do dataset
     regioes_mapping = {
+        "Norte": ['AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO'],
+        "Nordeste": ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'],
         "Sul": ["RS", "SC", "PR"],
         "Sudeste": ["SP", "RJ", "ES", "MG"],
         "Centro-Oeste": ["GO", "MT", "DF", "MS"],
