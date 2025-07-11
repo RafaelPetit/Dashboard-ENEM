@@ -4,10 +4,9 @@ import pandas as pd
 
 from utils.helpers.mappings import get_mappings
 from data.data_loader import load_data_for_tab
-from utils.helpers.sidebar_filter import render_sidebar_filters
 
-import os
-os.environ["STREAMLIT_WATCH_USE_POLLING"] = "true"
+# import os
+# os.environ["STREAMLIT_WATCH_USE_POLLING"] = "true"
 
 
 # Configuração inicial da página

@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from typing import Dict, Any
-from utils.estatisticas.analise_aspectos_sociais import (
+from utils.estatisticas.estatisticas_aspectos_sociais import (
     calcular_estatisticas_distribuicao,
     analisar_correlacao_categorias,
     analisar_distribuicao_regional,

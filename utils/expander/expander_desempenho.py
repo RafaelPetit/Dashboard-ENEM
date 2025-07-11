@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import warnings
 from typing import Dict, List, Any, Tuple
-from utils.estatisticas.analise_desempenho import analisar_desempenho_por_estado, calcular_estatisticas_comparativas
+from utils.estatisticas.estatistica_desempenho import analisar_desempenho_por_estado, calcular_estatisticas_comparativas
 from utils.helpers.mappings import get_mappings
 from utils.helpers.regiao_utils import obter_regiao_do_estado
 
