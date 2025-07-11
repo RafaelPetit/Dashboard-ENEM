@@ -1,7 +1,7 @@
 import streamlit as st
 from typing import List, Tuple
 from data.data_loader import load_data_for_tab, agrupar_estados_em_regioes
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 @st.cache_data(ttl=600, max_entries=1)
 def load_filter_data():

@@ -5,7 +5,7 @@ from plotly.graph_objs import Figure
 from typing import Dict, Tuple, Any
 from utils.visualizacao.config_graficos import cores_padrao
 from utils.helpers.cache_utils import memory_intensive_function
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 # Obter configurações de mapeamentos centralizados
 mappings = get_mappings()

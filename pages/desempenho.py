@@ -6,14 +6,14 @@ from typing import List
 from utils.helpers.sidebar_filter import render_sidebar_filters
 
 # Imports para tooltips e métricas
-from utils.tooltip import titulo_com_tooltip
+from utils.helpers.tooltip import titulo_com_tooltip
 
 # Imports para gerenciamento de memória
 from utils.helpers.cache_utils import release_memory
 
 # Imports para carregamento de dados
 from data.data_loader import load_data_for_tab, filter_data_by_states
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 # Imports para preparação de dados
 from utils.prepara_dados import (
@@ -105,33 +105,6 @@ def get_cached_data_desempenho(estados_selecionados: List[str]):
         try:
             # Carregar dados principais de desempenho
             dados_desempenho = load_data_for_tab("desempenho")
-            
-            # Para análise comparativa que precisa de mais variáveis, carregar dados de aspectos sociais
-            dados_aspectos = load_data_for_tab("aspectos_sociais")
-            
-            # Verificar se precisamos combinar dados
-            # Se desempenho não tem todas as colunas necessárias, tentar merge
-            colunas_demograficas_extras = ['TP_ESCOLA', 'TP_ESTADO_CIVIL', 'TP_ENSINO']
-            colunas_extras_disponiveis = [col for col in colunas_demograficas_extras 
-                                        if col in dados_aspectos.columns and col not in dados_desempenho.columns]
-            
-            if colunas_extras_disponiveis and not dados_aspectos.empty:
-                # Fazer merge para obter colunas extras (se possível)
-                colunas_merge = ['SG_UF_PROVA', 'TP_SEXO', 'TP_COR_RACA'] + colunas_extras_disponiveis
-                colunas_merge_disponiveis = [col for col in colunas_merge if col in dados_aspectos.columns]
-                
-                if len(colunas_merge_disponiveis) >= 3:  # Pelo menos 3 colunas para merge seguro
-                    try:
-                        dados_aspectos_limitados = dados_aspectos[colunas_merge_disponiveis].drop_duplicates()
-                        dados_combinados = dados_desempenho.merge(
-                            dados_aspectos_limitados, 
-                            on=['SG_UF_PROVA', 'TP_SEXO', 'TP_COR_RACA'], 
-                            how='left'
-                        )
-                        print(f"✅ Dados combinados: {len(dados_combinados)} registros com {len(colunas_extras_disponiveis)} colunas extras")
-                        return dados_combinados
-                    except Exception as e:
-                        print(f"⚠️ Erro ao combinar dados, usando apenas desempenho: {e}")
             
             return dados_desempenho
             

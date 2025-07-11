@@ -12,7 +12,7 @@ from utils.estatisticas.analise_geral import (
 from utils.explicacao.explicacao_geral import (
     get_interpretacao_distribuicao
 )
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 # Obter mapeamentos e constantes
 mappings = get_mappings()

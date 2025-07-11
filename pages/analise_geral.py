@@ -3,14 +3,14 @@ import pandas as pd
 import gc
 from typing import Dict, List, Any, Optional
 
-from utils.tooltip import titulo_com_tooltip, custom_metric_with_tooltip
+from utils.helpers.tooltip import titulo_com_tooltip, custom_metric_with_tooltip
 
 # Imports para gerenciamento de memória
 from utils.helpers.cache_utils import release_memory
 
 # Imports para carregamento de dados
 from data.data_loader import load_data_for_tab, filter_data_by_states
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 # Imports para preparação de dados
 from utils.prepara_dados import (

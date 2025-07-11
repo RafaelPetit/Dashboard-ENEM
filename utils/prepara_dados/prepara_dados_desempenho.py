@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple, Optional, Any, Union
 from data.data_loader import calcular_seguro
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from utils.prepara_dados.validacao_dados import validar_completude_dados
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 # Suprimir warnings específicos do pandas
 warnings.filterwarnings('ignore', message='The default of observed=False is deprecated')
@@ -762,7 +762,7 @@ def _agrupar_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
     DataFrame: DataFrame com dados agrupados por região
     """
     # Importar localmente para evitar importação circular
-    from utils.mappings import get_mappings
+    from utils.helpers.mappings import get_mappings
     mappings = get_mappings()
     regioes_mapping = mappings['regioes_mapping']
     

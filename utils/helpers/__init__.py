@@ -18,3 +18,11 @@ from .sidebar_filter import (
     render_sidebar_filters,
     load_filter_data
 )
+
+from .mappings import get_mappings
+
+
+from .sidebar_filter import (
+    render_sidebar_filters,
+    load_filter_data
+)

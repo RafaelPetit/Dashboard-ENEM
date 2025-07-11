@@ -3,7 +3,7 @@ import numpy as np
 from typing import Dict, List, Tuple, Any
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from utils.prepara_dados.validacao_dados import validar_completude_dados
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 # Obter mapeamentos e constantes
 mappings = get_mappings()
@@ -643,7 +643,7 @@ def _agrupar_por_regiao(
     DataFrame: DataFrame com dados agrupados por região
     """
     # Importar localmente para evitar importação circular
-    from utils.mappings import get_mappings
+    from utils.helpers.mappings import get_mappings
     from utils.helpers.regiao_utils import obter_regiao_do_estado
     
     mappings = get_mappings()

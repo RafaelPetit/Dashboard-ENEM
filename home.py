@@ -2,7 +2,7 @@ import streamlit as st
 import gc
 import pandas as pd
 
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 from data.data_loader import load_data_for_tab
 from utils.helpers.sidebar_filter import render_sidebar_filters
 

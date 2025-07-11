@@ -4,7 +4,7 @@ import pandas as pd
 from typing import Dict, List, Optional, Any
 from utils.visualizacao.config_graficos import aplicar_layout_padrao, cores_padrao
 from utils.helpers.cache_utils import memory_intensive_function, release_memory
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 # Obter mapeamentos e constantes
 mappings = get_mappings()

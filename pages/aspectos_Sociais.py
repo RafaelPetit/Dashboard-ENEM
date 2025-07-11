@@ -6,14 +6,14 @@ from typing import List, Optional, Callable
 from utils.helpers.sidebar_filter import render_sidebar_filters
 
 # Imports para tooltips e métricas
-from utils.tooltip import titulo_com_tooltip
+from utils.helpers.tooltip import titulo_com_tooltip
 
 # Imports para gerenciamento de memória
 from utils.helpers.cache_utils import release_memory, optimized_cache
 
 # Imports para carregamento de dados
 from data.data_loader import load_data_for_tab, filter_data_by_states
-from utils.mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 # Imports para preparação de dados
 from utils.prepara_dados import (
