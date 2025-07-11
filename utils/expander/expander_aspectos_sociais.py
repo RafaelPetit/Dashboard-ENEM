@@ -19,6 +19,7 @@ from utils.helpers.regiao_utils import obter_regiao_do_estado
 
 # Obter limiares dos mapeamentos centralizados
 mappings = get_mappings()
+mappings = get_mappings()
 LIMIARES_ESTATISTICOS = mappings.get('limiares_estatisticos', {})
 
 # Constantes para classificação de variabilidade
@@ -253,7 +254,7 @@ def criar_expander_dados_completos_estado(
     tipo_localidade: str = "estado"
 ) -> None:
     """
-    Cria um expander com tabela completa de dados por estado/região.
+    Cria um expander com análise completa e profissional dos dados por estado/região.
     
     Parâmetros:
     -----------
@@ -266,23 +267,438 @@ def criar_expander_dados_completos_estado(
     if df_dados is None or df_dados.empty:
         return
         
-    with st.expander(f"Ver tabela completa de dados por {tipo_localidade}"):
+    with st.expander(f"📊 Análise completa dos dados por {tipo_localidade}"):
         try:
             # Verificar se temos dados suficientes
             colunas_necessarias = ['Estado', 'Categoria', 'Percentual']
             if not all(col in df_dados.columns for col in colunas_necessarias):
-                st.warning(f"Dados insuficientes para tabela completa. Colunas necessárias não encontradas.")
+                st.warning(f"Dados insuficientes para análise completa. Colunas necessárias não encontradas.")
                 return
             
-            # Criar tabela pivô
-            df_pivot = _criar_tabela_pivot(df_dados, tipo_localidade)
+            # Seção 1: Resumo executivo
+            st.markdown("### 📈 Resumo Executivo")
+            _mostrar_resumo_executivo(df_dados, tipo_localidade)
             
-            # Verificar se temos um resultado válido
-            if df_pivot is None or df_pivot.empty:
-                st.warning("Não foi possível criar a tabela cruzada com os dados disponíveis.")
-                return
+            st.markdown("---")
+            
+            # Seção 2: Análise estatística por categoria
+            st.markdown("### 🔍 Análise Estatística por Categoria")
+            _mostrar_analise_estatistica_categorias(df_dados, tipo_localidade)
+            
+            st.markdown("---")
+            
+            # Seção 3: Ranking e disparidades regionais
+            st.markdown("### 🏆 Ranking e Disparidades Regionais")
+            _mostrar_ranking_disparidades(df_dados, tipo_localidade)
+            
+            st.markdown("---")
+            
+            # Seção 4: Insights e padrões identificados
+            st.markdown("### 💡 Insights e Padrões Identificados")
+            _mostrar_insights_padroes(df_dados, tipo_localidade)
+            
+            st.markdown("---")
+            
+            # Seção 5: Tabela interativa com filtros
+            st.markdown("### 📋 Dados Detalhados - Tabela Interativa")
+            _mostrar_tabela_interativa(df_dados, tipo_localidade)
+            
+            st.markdown("---")
+            
+            # Seção 6: Downloads e exportação
+            st.markdown("### 📥 Downloads e Exportação")
+            _mostrar_opcoes_download(df_dados, tipo_localidade)
+            
+        except Exception as e:
+            st.error(f"Erro ao gerar análise completa: {str(e)}")
+            # Fallback para a versão básica
+            st.warning("Exibindo versão simplificada dos dados:")
+            _mostrar_tabela_basica(df_dados, tipo_localidade)
+
+
+# Funções auxiliares para a análise completa de dados por estado/região
+
+def _mostrar_resumo_executivo(df_dados: pd.DataFrame, tipo_localidade: str) -> None:
+    """
+    Mostra um resumo executivo dos dados por estado/região.
+    """
+    try:
+        # Cálculos básicos
+        total_localidades = df_dados['Estado'].nunique()
+        total_categorias = df_dados['Categoria'].nunique()
+        
+        # Estatísticas gerais
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric(
+                label=f"Total de {tipo_localidade}s",
+                value=total_localidades
+            )
+        
+        with col2:
+            st.metric(
+                label="Categorias analisadas",
+                value=total_categorias
+            )
+        
+        with col3:
+            media_geral = df_dados['Percentual'].mean()
+            st.metric(
+                label="Percentual médio",
+                value=f"{media_geral:.1f}%"
+            )
+        
+        # Insights principais
+        st.markdown("**📋 Principais observações:**")
+        
+        # Encontrar extremos
+        max_valor = df_dados.loc[df_dados['Percentual'].idxmax()]
+        min_valor = df_dados.loc[df_dados['Percentual'].idxmin()]
+        
+        st.write(f"• **Maior percentual:** {max_valor['Percentual']:.1f}% ({max_valor['Categoria']} - {max_valor['Estado']})")
+        st.write(f"• **Menor percentual:** {min_valor['Percentual']:.1f}% ({min_valor['Categoria']} - {min_valor['Estado']})")
+        
+        # Variabilidade
+        coef_variacao = (df_dados['Percentual'].std() / df_dados['Percentual'].mean()) * 100
+        if coef_variacao < 20:
+            variabilidade = "baixa"
+        elif coef_variacao < 40:
+            variabilidade = "moderada"
+        else:
+            variabilidade = "alta"
+        
+        st.write(f"• **Variabilidade entre {tipo_localidade}s:** {variabilidade} (CV = {coef_variacao:.1f}%)")
+        
+    except Exception as e:
+        st.error(f"Erro ao gerar resumo executivo: {str(e)}")
+
+
+def _mostrar_analise_estatistica_categorias(df_dados: pd.DataFrame, tipo_localidade: str) -> None:
+    """
+    Mostra análise estatística detalhada por categoria.
+    """
+    try:
+        # Análise por categoria
+        categorias = df_dados['Categoria'].unique()
+        
+        if len(categorias) > 1:
+            categoria_selecionada = st.selectbox(
+                "Selecione uma categoria para análise detalhada:",
+                categorias,
+                key="analise_categoria_detalhada"
+            )
+            
+            df_categoria = df_dados[df_dados['Categoria'] == categoria_selecionada]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown(f"**Estatísticas de '{categoria_selecionada}':**")
                 
-            # Exibir tabela com formatação adequada
+                # Estatísticas descritivas
+                stats = df_categoria['Percentual'].describe()
+                st.write(f"• **Média:** {stats['mean']:.1f}%")
+                st.write(f"• **Mediana:** {stats['50%']:.1f}%")
+                st.write(f"• **Desvio padrão:** {stats['std']:.1f}%")
+                st.write(f"• **Amplitude:** {stats['max'] - stats['min']:.1f}%")
+                
+                # Percentis
+                st.markdown("**Percentis:**")
+                st.write(f"• P25: {stats['25%']:.1f}%")
+                st.write(f"• P75: {stats['75%']:.1f}%")
+                
+            with col2:
+                st.markdown(f"**{tipo_localidade.capitalize()}s extremos:**")
+                
+                # Top 3 e bottom 3
+                top_3 = df_categoria.nlargest(3, 'Percentual')
+                bottom_3 = df_categoria.nsmallest(3, 'Percentual')
+                
+                st.markdown("**🔝 Maiores percentuais:**")
+                for i, row in top_3.iterrows():
+                    st.write(f"• {row['Estado']}: {row['Percentual']:.1f}%")
+                
+                st.markdown("**🔻 Menores percentuais:**")
+                for i, row in bottom_3.iterrows():
+                    st.write(f"• {row['Estado']}: {row['Percentual']:.1f}%")
+        
+        else:
+            st.info("Análise disponível apenas quando há múltiplas categorias.")
+    
+    except Exception as e:
+        st.error(f"Erro ao gerar análise estatística: {str(e)}")
+
+
+def _mostrar_ranking_disparidades(df_dados: pd.DataFrame, tipo_localidade: str) -> None:
+    """
+    Mostra ranking completo e análise de disparidades.
+    """
+    try:
+        # Calcular médias por estado/região
+        df_medias = df_dados.groupby('Estado')['Percentual'].agg(['mean', 'std', 'count']).reset_index()
+        df_medias.columns = ['Estado', 'Media', 'Desvio', 'Categorias']
+        df_medias = df_medias.sort_values('Media', ascending=False)
+        
+        # Ranking
+        st.markdown(f"**🏆 Ranking de {tipo_localidade}s por percentual médio:**")
+        
+        # Dividir em grupos
+        total = len(df_medias)
+        tercil_size = total // 3
+        
+        # Primeiro tercil (melhores)
+        top_tercil = df_medias.head(tercil_size)
+        st.markdown("**🥇 Primeiro tercil (maiores percentuais):**")
+        for i, row in top_tercil.iterrows():
+            st.write(f"• {row['Estado']}: {row['Media']:.1f}% (±{row['Desvio']:.1f}%)")
+        
+        # Último tercil (menores)
+        bottom_tercil = df_medias.tail(tercil_size)
+        st.markdown("**🥉 Último tercil (menores percentuais):**")
+        for i, row in bottom_tercil.iterrows():
+            st.write(f"• {row['Estado']}: {row['Media']:.1f}% (±{row['Desvio']:.1f}%)")
+        
+        # Análise de disparidades
+        st.markdown("**⚖️ Análise de disparidades:**")
+        
+        maior_media = df_medias['Media'].max()
+        menor_media = df_medias['Media'].min()
+        razao_disparidade = maior_media / menor_media if menor_media > 0 else 0
+        
+        st.write(f"• **Razão de disparidade:** {razao_disparidade:.2f}x")
+        st.write(f"• **Diferença absoluta:** {maior_media - menor_media:.1f} pontos percentuais")
+        
+        # Classificação da disparidade
+        if razao_disparidade < 1.5:
+            nivel_disparidade = "baixa"
+        elif razao_disparidade < 2.5:
+            nivel_disparidade = "moderada"
+        else:
+            nivel_disparidade = "alta"
+        
+        st.write(f"• **Nível de disparidade:** {nivel_disparidade}")
+        
+    except Exception as e:
+        st.error(f"Erro ao gerar ranking: {str(e)}")
+
+
+def _mostrar_insights_padroes(df_dados: pd.DataFrame, tipo_localidade: str) -> None:
+    """
+    Mostra insights e padrões identificados nos dados.
+    """
+    try:
+        st.markdown("**🔍 Análise de padrões regionais:**")
+        
+        # Análise por região (se for por estado)
+        if tipo_localidade.lower() == "estado":
+            df_com_regiao = _adicionar_regiao_aos_estados(df_dados)
+            
+            if 'Regiao' in df_com_regiao.columns:
+                analise_regional = df_com_regiao.groupby('Regiao')['Percentual'].agg(['mean', 'std']).reset_index()
+                analise_regional.columns = ['Regiao', 'Media', 'Desvio']
+                analise_regional = analise_regional.sort_values('Media', ascending=False)
+                
+                st.markdown("**📍 Padrões por região:**")
+                for i, row in analise_regional.iterrows():
+                    st.write(f"• **{row['Regiao']}:** {row['Media']:.1f}% (±{row['Desvio']:.1f}%)")
+                
+                # Identificar região com maior variabilidade
+                regiao_mais_variavel = analise_regional.loc[analise_regional['Desvio'].idxmax()]
+                st.write(f"• **Região com maior variabilidade interna:** {regiao_mais_variavel['Regiao']}")
+        
+        # Análise de distribuição
+        st.markdown("**📊 Características da distribuição:**")
+        
+        # Teste de normalidade simplificado
+        percentuais = df_dados['Percentual'].values
+        media = percentuais.mean()
+        mediana = np.median(percentuais)
+        
+        if abs(media - mediana) < 1:
+            distribuicao = "simétrica"
+        elif media > mediana:
+            distribuicao = "assimétrica à direita"
+        else:
+            distribuicao = "assimétrica à esquerda"
+        
+        st.write(f"• **Formato da distribuição:** {distribuicao}")
+        
+        # Concentração
+        q1 = np.percentile(percentuais, 25)
+        q3 = np.percentile(percentuais, 75)
+        iqr = q3 - q1
+        
+        st.write(f"• **Amplitude interquartil:** {iqr:.1f}%")
+        
+        # Outliers
+        limite_superior = q3 + 1.5 * iqr
+        limite_inferior = q1 - 1.5 * iqr
+        
+        outliers = df_dados[(df_dados['Percentual'] > limite_superior) | 
+                           (df_dados['Percentual'] < limite_inferior)]
+        
+        if len(outliers) > 0:
+            st.write(f"• **Valores atípicos identificados:** {len(outliers)}")
+            st.markdown("**🚨 Casos atípicos:**")
+            for i, row in outliers.iterrows():
+                st.write(f"  - {row['Estado']} ({row['Categoria']}): {row['Percentual']:.1f}%")
+        else:
+            st.write("• **Valores atípicos:** Nenhum identificado")
+        
+    except Exception as e:
+        st.error(f"Erro ao gerar insights: {str(e)}")
+
+
+def _mostrar_tabela_interativa(df_dados: pd.DataFrame, tipo_localidade: str) -> None:
+    """
+    Mostra tabela interativa com filtros e formatação.
+    """
+    try:
+        # Filtros interativos
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Filtro por categoria
+            categorias = ['Todas'] + sorted(df_dados['Categoria'].unique().tolist())
+            categoria_filtro = st.selectbox(
+                "Filtrar por categoria:",
+                categorias,
+                key="filtro_categoria_tabela"
+            )
+        
+        with col2:
+            # Filtro por faixa de percentual
+            min_val = float(df_dados['Percentual'].min())
+            max_val = float(df_dados['Percentual'].max())
+            
+            faixa_percentual = st.slider(
+                "Faixa de percentual:",
+                min_value=min_val,
+                max_value=max_val,
+                value=(min_val, max_val),
+                step=0.1,
+                key="filtro_percentual_tabela"
+            )
+        
+        # Aplicar filtros
+        df_filtrado = df_dados.copy()
+        
+        if categoria_filtro != 'Todas':
+            df_filtrado = df_filtrado[df_filtrado['Categoria'] == categoria_filtro]
+        
+        df_filtrado = df_filtrado[
+            (df_filtrado['Percentual'] >= faixa_percentual[0]) & 
+            (df_filtrado['Percentual'] <= faixa_percentual[1])
+        ]
+        
+        # Ordenação
+        ordenacao = st.radio(
+            "Ordenar por:",
+            ["Estado", "Categoria", "Percentual (crescente)", "Percentual (decrescente)"],
+            horizontal=True,
+            key="ordenacao_tabela"
+        )
+        
+        if ordenacao == "Estado":
+            df_filtrado = df_filtrado.sort_values('Estado')
+        elif ordenacao == "Categoria":
+            df_filtrado = df_filtrado.sort_values('Categoria')
+        elif ordenacao == "Percentual (crescente)":
+            df_filtrado = df_filtrado.sort_values('Percentual')
+        else:
+            df_filtrado = df_filtrado.sort_values('Percentual', ascending=False)
+        
+        # Exibir tabela
+        st.dataframe(
+            df_filtrado,
+            column_config={
+                'Estado': st.column_config.TextColumn(
+                    tipo_localidade.capitalize(),
+                    help=f"Nome do {tipo_localidade}"
+                ),
+                'Categoria': st.column_config.TextColumn(
+                    "Categoria",
+                    help="Categoria do aspecto social"
+                ),
+                'Percentual': st.column_config.NumberColumn(
+                    "Percentual",
+                    help="Percentual de candidatos nesta categoria",
+                    format="%.1f%%"
+                )
+            },
+            height=400,
+            use_container_width=True
+        )
+        
+        # Estatísticas da tabela filtrada
+        if len(df_filtrado) > 0:
+            st.caption(f"📊 Exibindo {len(df_filtrado)} registros de {len(df_dados)} totais")
+        else:
+            st.warning("Nenhum registro encontrado com os filtros aplicados.")
+        
+    except Exception as e:
+        st.error(f"Erro ao gerar tabela interativa: {str(e)}")
+
+
+def _mostrar_opcoes_download(df_dados: pd.DataFrame, tipo_localidade: str) -> None:
+    """
+    Mostra opções de download e exportação.
+    """
+    try:
+        st.markdown("**💾 Opções de download:**")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Download da tabela completa
+            csv_completo = df_dados.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📄 Baixar dados completos (CSV)",
+                data=csv_completo,
+                file_name=f"aspectos_sociais_{tipo_localidade}_completo.csv",
+                mime="text/csv",
+                key="download_completo"
+            )
+        
+        with col2:
+            # Download da tabela pivô
+            try:
+                df_pivot = _criar_tabela_pivot(df_dados, tipo_localidade)
+                if df_pivot is not None and not df_pivot.empty:
+                    csv_pivot = df_pivot.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        label="📊 Baixar tabela cruzada (CSV)",
+                        data=csv_pivot,
+                        file_name=f"aspectos_sociais_{tipo_localidade}_pivot.csv",
+                        mime="text/csv",
+                        key="download_pivot"
+                    )
+            except Exception:
+                st.info("Tabela cruzada não disponível para download")
+        
+        # Informações sobre os dados
+        st.markdown("**ℹ️ Informações sobre os dados:**")
+        st.write(f"• **Total de registros:** {len(df_dados)}")
+        st.write(f"• **{tipo_localidade.capitalize()}s únicos:** {df_dados['Estado'].nunique()}")
+        st.write(f"• **Categorias únicas:** {df_dados['Categoria'].nunique()}")
+        st.write(f"• **Período de coleta:** ENEM 2023")
+        
+    except Exception as e:
+        st.error(f"Erro ao gerar opções de download: {str(e)}")
+
+
+def _mostrar_tabela_basica(df_dados: pd.DataFrame, tipo_localidade: str) -> None:
+    """
+    Mostra versão básica da tabela (fallback).
+    """
+    try:
+        st.markdown("**📋 Tabela básica de dados:**")
+        
+        # Criar tabela pivô simples
+        df_pivot = _criar_tabela_pivot(df_dados, tipo_localidade)
+        
+        if df_pivot is not None and not df_pivot.empty:
             st.dataframe(
                 df_pivot,
                 column_config={
@@ -291,19 +707,12 @@ def criar_expander_dados_completos_estado(
                 },
                 height=400
             )
-            
-            # Opção para download
-            csv = df_pivot.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                f"Download dos dados por {tipo_localidade} (CSV)",
-                csv,
-                f"aspectos_sociais_por_{tipo_localidade}.csv",
-                "text/csv",
-                key=f'download_{tipo_localidade}_csv'
-            )
-            
-        except Exception as e:
-            st.error(f"Erro ao gerar tabela completa: {str(e)}")
+        else:
+            # Fallback para tabela simples
+            st.dataframe(df_dados, height=400)
+        
+    except Exception as e:
+        st.error(f"Erro ao exibir tabela básica: {str(e)}")
 
 
 # Funções auxiliares para análise de correlação
@@ -381,53 +790,39 @@ def _mostrar_analise_categorias(
     """
     # Verificar se temos dados válidos
     if df_correlacao is None or df_correlacao.empty:
+        st.warning("Dados insuficientes para análise de categorias.")
         return
     
     if var_x_plot not in df_correlacao.columns or var_y_plot not in df_correlacao.columns:
+        st.warning("Variáveis não encontradas nos dados.")
         return
     
     try:
-        st.write("#### Destaques por categoria:")
+        st.write("#### Análise das combinações de categorias:")
         
-        # Calcular tabela cruzada com contagem
-        tabela_cruzada = pd.crosstab(
+        # Criar tabela de contingência
+        tabela_contingencia = pd.crosstab(
+            df_correlacao[var_x_plot], 
+            df_correlacao[var_y_plot],
+            margins=True
+        )
+        
+        st.write("**Tabela de contingência:**")
+        st.dataframe(tabela_contingencia, use_container_width=True)
+        
+        # Mostrar percentuais
+        tabela_percentuais = pd.crosstab(
             df_correlacao[var_x_plot], 
             df_correlacao[var_y_plot], 
             normalize='index'
         ) * 100
         
-        # Verificar se temos uma tabela válida
-        if tabela_cruzada.empty:
-            st.warning("Dados insuficientes para análise por categoria.")
-            return
+        st.write("**Percentuais por linha:**")
+        st.dataframe(tabela_percentuais.round(1), use_container_width=True)
         
-        # Destacar combinações mais notáveis
-        max_valores = {}
-        for cat_x in tabela_cruzada.index:
-            # Encontrar a categoria_y com maior associação
-            if cat_x in tabela_cruzada.index:
-                max_cat_y = tabela_cruzada.loc[cat_x].idxmax()
-                max_valor = tabela_cruzada.loc[cat_x, max_cat_y]
-                max_valores[cat_x] = (max_cat_y, max_valor)
-        
-        # Mostrar as associações mais fortes (até 3)
-        sorted_cats = sorted(max_valores.items(), key=lambda x: x[1][1], reverse=True)[:3]
-        
-        for cat_x, (cat_y, valor) in sorted_cats:
-            st.write(f"• **{cat_x}**: {valor:.1f}% estão na categoria **{cat_y}** de {variaveis_sociais[var_y]['nome']}")
-        
-        # Opção para ver todas as combinações
-        if len(max_valores) > 3:
-            if st.checkbox("Ver todas as combinações", key="ver_todas_combinacoes"):
-                st.write("#### Todas as combinações mais fortes:")
-                for cat_x, (cat_y, valor) in sorted_cats[3:]:
-                    st.write(f"• **{cat_x}**: {valor:.1f}% estão na categoria **{cat_y}** de {variaveis_sociais[var_y]['nome']}")
-    
     except Exception as e:
-        st.warning(f"Não foi possível realizar análise por categorias: {str(e)}")
+        st.error(f"Erro ao gerar análise de categorias: {str(e)}")
 
-
-# Funções auxiliares para análise de distribuição
 
 def _mostrar_estatisticas_principais_distribuicao(
     estatisticas: Dict[str, Any], 
@@ -448,23 +843,13 @@ def _mostrar_estatisticas_principais_distribuicao(
     
     # Categoria mais frequente
     if estatisticas.get('categoria_mais_frequente') is not None:
-        cat_mais = estatisticas['categoria_mais_frequente']
-        if isinstance(cat_mais, pd.Series) and 'Categoria' in cat_mais.index and 'Quantidade' in cat_mais.index:
-            st.write(
-                f"**Categoria mais frequente:** {cat_mais['Categoria']} " + 
-                f"({cat_mais['Quantidade']:,} candidatos - " + 
-                f"{cat_mais.get('Percentual', 0):.1f}%)"
-            )
+        mais_freq = estatisticas['categoria_mais_frequente']
+        st.write(f"**Categoria mais frequente:** {mais_freq['Categoria']} ({mais_freq['Quantidade']:,} candidatos)")
     
     # Categoria menos frequente
     if estatisticas.get('categoria_menos_frequente') is not None:
-        cat_menos = estatisticas['categoria_menos_frequente']
-        if isinstance(cat_menos, pd.Series) and 'Categoria' in cat_menos.index and 'Quantidade' in cat_menos.index:
-            st.write(
-                f"**Categoria menos frequente:** {cat_menos['Categoria']} " + 
-                f"({cat_menos['Quantidade']:,} candidatos - " + 
-                f"{cat_menos.get('Percentual', 0):.1f}%)"
-            )
+        menos_freq = estatisticas['categoria_menos_frequente']
+        st.write(f"**Categoria menos frequente:** {menos_freq['Categoria']} ({menos_freq['Quantidade']:,} candidatos)")
     
     # Número de categorias
     st.write(f"**Número de categorias:** {estatisticas.get('num_categorias', 0)}")
@@ -472,9 +857,9 @@ def _mostrar_estatisticas_principais_distribuicao(
     # Média e mediana
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Média por categoria", f"{estatisticas.get('media', 0):,.1f}")
+        st.write(f"**Média:** {estatisticas.get('media', 0):,.1f}")
     with col2:
-        st.metric("Mediana", f"{estatisticas.get('mediana', 0):,.1f}")
+        st.write(f"**Mediana:** {estatisticas.get('mediana', 0):,.1f}")
 
 
 def _mostrar_analise_concentracao_equidade(
@@ -496,36 +881,16 @@ def _mostrar_analise_concentracao_equidade(
     st.write(f"**Índice de concentração:** {indice:.4f}")
     st.write(f"**Classificação:** {estatisticas.get('classificacao_concentracao', 'Não disponível')}")
     
-    # Análise de concentração contextualizada
-    analise_concentracao = get_analise_concentracao(indice, nome_aspecto)
-    st.write(analise_concentracao)
-    
     # Razão entre maior e menor categoria
     if (estatisticas.get('categoria_mais_frequente') is not None and 
         estatisticas.get('categoria_menos_frequente') is not None):
-        
-        cat_mais = estatisticas['categoria_mais_frequente']
-        cat_menos = estatisticas['categoria_menos_frequente']
-        
-        if (isinstance(cat_mais, pd.Series) and isinstance(cat_menos, pd.Series) and 
-            'Quantidade' in cat_mais.index and 'Quantidade' in cat_menos.index and 
-            cat_menos['Quantidade'] > 0):
-            
-            razao = cat_mais['Quantidade'] / cat_menos['Quantidade']
-            st.write(f"**Razão entre maior e menor categoria:** {razao:.1f}x")
+        razao = estatisticas.get('razao_max_min', 0)
+        st.write(f"**Razão maior/menor:** {razao:.2f}x")
     
     # Coeficiente de variação
     if 'coef_variacao' in estatisticas:
         cv = estatisticas['coef_variacao']
-        st.write(f"**Coeficiente de variação:** {cv:.2f}%")
-        
-        # Interpretar variabilidade
-        if cv < LIMITE_VARIABILIDADE_BAIXA:
-            st.write("**Interpretação:** Baixa variabilidade entre categorias")
-        elif cv < LIMITE_VARIABILIDADE_MODERADA:
-            st.write("**Interpretação:** Variabilidade moderada entre categorias")
-        else:
-            st.write("**Interpretação:** Alta variabilidade entre categorias")
+        st.write(f"**Coeficiente de variação:** {cv:.1f}%")
 
 
 def _mostrar_analise_concentracao_percentual(contagem_aspecto: pd.DataFrame) -> None:
@@ -534,45 +899,31 @@ def _mostrar_analise_concentracao_percentual(contagem_aspecto: pd.DataFrame) -> 
     """
     # Verificar se temos dados válidos
     if contagem_aspecto is None or contagem_aspecto.empty:
+        st.warning("Dados insuficientes para análise de concentração percentual.")
         return
     
     if 'Percentual' not in contagem_aspecto.columns:
+        st.warning("Coluna 'Percentual' não encontrada nos dados.")
         return
         
     try:
-        # Verificar se temos mais de uma categoria para análise
-        if len(contagem_aspecto) > 1:
-            # Ordenar por quantidade e calcular percentual acumulado
-            contagem_sorted = contagem_aspecto.sort_values('Quantidade', ascending=False).copy()
-            contagem_sorted['Percentual Acumulado'] = contagem_sorted['Percentual'].cumsum()
-            
-            # Encontrar concentração em 50% e 80%
-            percentual_50 = next((i+1 for i, val in enumerate(contagem_sorted['Percentual Acumulado']) 
-                                if val >= 50), len(contagem_sorted))
-            percentual_80 = next((i+1 for i, val in enumerate(contagem_sorted['Percentual Acumulado']) 
-                                if val >= 80), len(contagem_sorted))
-            
-            # Análise de concentração
-            st.write(f"**Concentração de candidatos:**")
-            st.write(f"• {percentual_50} de {len(contagem_sorted)} categorias representam 50% dos candidatos")
-            st.write(f"• {percentual_80} de {len(contagem_sorted)} categorias representam 80% dos candidatos")
-            
-            # Opção para visualizar percentuais acumulados
-            if st.checkbox("Ver percentuais acumulados", key="ver_percentuais_acumulados"):
-                st.dataframe(
-                    contagem_sorted[['Categoria', 'Quantidade', 'Percentual', 'Percentual Acumulado']],
-                    column_config={
-                        'Quantidade': st.column_config.NumberColumn('Quantidade', format="%d"),
-                        'Percentual': st.column_config.NumberColumn('Percentual (%)', format="%.2f%%"),
-                        'Percentual Acumulado': st.column_config.NumberColumn('Acumulado (%)', format="%.2f%%")
-                    }
-                )
-    
+        st.write("### Análise de concentração")
+        
+        # Ordenar por percentual decrescente
+        df_ordenado = contagem_aspecto.sort_values('Percentual', ascending=False)
+        
+        # Calcular percentual acumulado
+        df_ordenado['Percentual_Acumulado'] = df_ordenado['Percentual'].cumsum()
+        
+        # Mostrar os top 3
+        st.write("**Top 3 categorias (percentual acumulado):**")
+        top_3 = df_ordenado.head(3)
+        for i, row in top_3.iterrows():
+            st.write(f"• {row['Categoria']}: {row['Percentual']:.1f}% (acumulado: {row['Percentual_Acumulado']:.1f}%)")
+        
     except Exception as e:
-        st.warning(f"Não foi possível calcular concentração percentual: {str(e)}")
+        st.error(f"Erro ao gerar análise de concentração percentual: {str(e)}")
 
-
-# Funções auxiliares para análise regional
 
 def _configurar_titulo_analise_regional(
     df_dados: pd.DataFrame, 
@@ -591,17 +942,14 @@ def _configurar_titulo_analise_regional(
     
     # Opção para selecionar categoria diferente
     if len(categorias_disponiveis) > 1:
-        categoria_atual = st.selectbox(
-            f"Selecione uma categoria de {nome_aspecto} para análise detalhada:",
+        st.selectbox(
+            "Categoria em análise:",
             categorias_disponiveis,
             index=categorias_disponiveis.index(categoria_selecionada) if categoria_selecionada in categorias_disponiveis else 0,
-            key=f"categoria_regional_{aspecto_social}"
+            key="categoria_analise_regional"
         )
-        
-        if categoria_atual != categoria_selecionada:
-            st.info(f"Você selecionou a categoria '{categoria_atual}'. Clique novamente em 'Ver análise regional detalhada' abaixo do gráfico para atualizar a análise.")
     else:
-        st.write(f"**Categoria selecionada:** {categoria_selecionada}")
+        st.write(f"**Categoria em análise:** {categoria_selecionada}")
 
 
 def _mostrar_estatisticas_regionais(
@@ -623,16 +971,13 @@ def _mostrar_estatisticas_regionais(
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("Média nacional", f"{analise['percentual_medio']:.1f}%")
-        st.metric("Desvio padrão", f"{analise['desvio_padrao']:.1f}%")
+        st.metric("Percentual médio", f"{analise['percentual_medio']:.1f}%")
     
     with col2:
-        st.metric("Valor máximo", f"{analise.get('amplitude', 0) + analise['percentual_medio']:.1f}%")
-        st.metric("Valor mínimo", f"{analise['percentual_medio'] - analise.get('amplitude', 0)/2:.1f}%")
+        st.metric("Desvio padrão", f"{analise['desvio_padrao']:.1f}%")
     
     with col3:
-        st.metric("Amplitude", f"{analise.get('amplitude', 0):.1f}%")
-        st.metric("Coef. variação", f"{analise.get('coef_variacao', 0):.1f}%")
+        st.metric("Coef. variação", f"{analise['coef_variacao']:.1f}%")
     
     # Verificar estados com valores extremos
     _mostrar_localidades_extremas(analise, tipo_localidade)
@@ -668,9 +1013,7 @@ def _mostrar_localidades_extremas(
     if (isinstance(maior, pd.Series) and isinstance(menor, pd.Series) and 
         'Percentual' in maior.index and 'Percentual' in menor.index):
         diferenca = maior['Percentual'] - menor['Percentual']
-        diferenca_percentual = (diferenca / menor['Percentual'] * 100) if menor['Percentual'] > 0 else 0
-        
-        st.write(f"• **Diferença:** {diferenca:.1f} pontos percentuais ({diferenca_percentual:.1f}% superior)")
+        st.write(f"• **Diferença:** {diferenca:.1f} pontos percentuais")
 
 
 def _mostrar_variabilidade_regional(
@@ -685,7 +1028,7 @@ def _mostrar_variabilidade_regional(
     
     # Verificar se temos dados para análise
     if analise is None or 'coef_variacao' not in analise:
-        st.warning("Dados insuficientes para análise de variabilidade regional.")
+        st.warning("Dados insuficientes para análise de variabilidade.")
         return
     
     # Exibir classificação de variabilidade
@@ -694,18 +1037,9 @@ def _mostrar_variabilidade_regional(
     # Interpretar disparidade
     st.write(f"**Nível de disparidade regional:** {analise.get('disparidade', 'Indefinida')}")
     
-    # Usar a função de interpretação contextualizada
-    interpretacao = get_interpretacao_variabilidade_regional(
-        analise['coef_variacao'], 
-        nome_aspecto, 
-        categoria_selecionada
-    )
-    st.write(interpretacao)
-    
     # Informação sobre índice de Gini
     if 'indice_gini' in analise:
-        st.write(f"**Índice de Gini regional:** {analise['indice_gini']:.4f}")
-        st.write("*Valores mais próximos de 1 indicam maior desigualdade na distribuição regional*")
+        st.write(f"**Índice de Gini:** {analise['indice_gini']:.4f}")
 
 
 def _mostrar_ranking_localidades(
@@ -721,56 +1055,24 @@ def _mostrar_ranking_localidades(
     
     # Verificar se temos dados válidos
     if df_dados is None or df_dados.empty:
-        st.warning(f"Dados insuficientes para ranking de {tipo_localidade}s.")
+        st.warning("Dados insuficientes para ranking.")
         return
     
     try:
-        # Filtrar dados para a categoria selecionada
-        df_categoria = df_dados[df_dados['Categoria'] == categoria_selecionada].copy()
+        # Filtrar pela categoria selecionada
+        df_categoria = df_dados[df_dados['Categoria'] == categoria_selecionada]
         
-        if df_categoria.empty:
-            st.warning(f"Sem dados para a categoria '{categoria_selecionada}'.")
-            return
+        # Ordenar por percentual decrescente
+        df_ranking = df_categoria.sort_values('Percentual', ascending=False)
         
-        # Ordenar por percentual
-        df_ranking = df_categoria.sort_values('Percentual', ascending=False)[['Estado', 'Percentual']]
+        # Mostrar top 10
+        st.write("**Top 10:**")
+        top_10 = df_ranking.head(10)
+        for i, row in top_10.iterrows():
+            st.write(f"{i+1}. {row['Estado']}: {row['Percentual']:.1f}%")
         
-        # Adicionar classificação relativa à média
-        media = analise.get('percentual_medio', df_ranking['Percentual'].mean())
-        
-        df_ranking['Comparação à média'] = df_ranking['Percentual'].apply(
-            lambda x: "Acima da média" if x > media + 1 else 
-                     ("Na média" if abs(x - media) <= 1 else "Abaixo da média")
-        )
-        
-        # Renomear colunas para melhor legibilidade
-        df_ranking = df_ranking.rename(columns={
-            'Estado': tipo_localidade.capitalize(),
-            'Percentual': 'Percentual (%)'
-        })
-        
-        # Adicionar índice a partir de 1
-        df_ranking = df_ranking.reset_index(drop=True)
-        df_ranking.index = df_ranking.index + 1
-        
-        # Exibir o ranking
-        st.dataframe(
-            df_ranking,
-            column_config={
-                'Percentual (%)': st.column_config.NumberColumn(
-                    'Percentual (%)',
-                    format="%.1f%%"
-                ),
-                'Comparação à média': st.column_config.TextColumn(
-                    'Comparação à média',
-                    width="medium"
-                )
-            },
-            hide_index=False
-        )
-    
     except Exception as e:
-        st.warning(f"Erro ao gerar ranking: {str(e)}")
+        st.error(f"Erro ao gerar ranking: {str(e)}")
 
 
 def _mostrar_analise_por_regiao(
@@ -783,58 +1085,33 @@ def _mostrar_analise_por_regiao(
     """
     # Verificar se temos dados válidos
     if df_dados is None or df_dados.empty:
+        st.warning("Dados insuficientes para análise por região.")
         return
     
     try:
-        # Filtrar para a categoria selecionada
-        df_categoria = df_dados[df_dados['Categoria'] == categoria_selecionada].copy()
-        
-        if len(df_categoria) < 5:  # Precisamos de pelo menos alguns estados
-            return
-        
         st.write("#### Análise por região:")
         
         # Adicionar informação de região
-        df_regioes = _adicionar_regiao_aos_estados(df_categoria)
+        df_com_regiao = _adicionar_regiao_aos_estados(df_dados)
         
-        # Verificar se conseguimos adicionar regiões
-        if 'Região' not in df_regioes.columns:
-            st.warning("Não foi possível realizar análise por região.")
+        if 'Região' not in df_com_regiao.columns:
+            st.warning("Informação de região não disponível.")
             return
         
+        # Filtrar pela categoria selecionada
+        df_categoria = df_com_regiao[df_com_regiao['Categoria'] == categoria_selecionada]
+        
         # Agrupar por região
-        df_por_regiao = df_regioes.groupby('Região')['Percentual'].mean().reset_index()
-        df_por_regiao = df_por_regiao.sort_values('Percentual', ascending=False)
+        analise_regional = df_categoria.groupby('Região')['Percentual'].agg(['mean', 'std', 'count']).reset_index()
+        analise_regional.columns = ['Região', 'Média', 'Desvio', 'Estados']
+        analise_regional = analise_regional.sort_values('Média', ascending=False)
         
-        # Gráfico de barras por região
-        fig = px.bar(
-            df_por_regiao,
-            x='Região',
-            y='Percentual',
-            text_auto='.1f',
-            title=f"Média de '{categoria_selecionada}' por região",
-            labels={'Percentual': 'Percentual (%)', 'Região': 'Região'},
-            color_discrete_sequence=['#3366CC']
-        )
+        # Mostrar resultados
+        for i, row in analise_regional.iterrows():
+            st.write(f"• **{row['Região']}:** {row['Média']:.1f}% (±{row['Desvio']:.1f}%, {row['Estados']} estados)")
         
-        fig.update_layout(
-            yaxis=dict(ticksuffix='%'),
-            plot_bgcolor='white',
-            height=400
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Análise textual da distribuição regional
-        if len(df_por_regiao) > 1:
-            maior_regiao = df_por_regiao.iloc[0]['Região']
-            menor_regiao = df_por_regiao.iloc[-1]['Região']
-            
-            st.write(f"**Maior concentração:** {maior_regiao} ({df_por_regiao.iloc[0]['Percentual']:.1f}%)")
-            st.write(f"**Menor concentração:** {menor_regiao} ({df_por_regiao.iloc[-1]['Percentual']:.1f}%)")
-    
     except Exception as e:
-        st.warning(f"Não foi possível realizar análise por região: {str(e)}")
+        st.error(f"Erro ao gerar análise por região: {str(e)}")
 
 
 def _criar_tabela_pivot(
