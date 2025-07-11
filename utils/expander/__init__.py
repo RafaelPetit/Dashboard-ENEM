@@ -11,7 +11,7 @@ from .expander_aspectos_sociais import (
     criar_expander_dados_completos_estado
 )
 
-from .expander_geral import (
+from .expander_analise_geral import (
     criar_expander_analise_histograma,
     criar_expander_analise_faltas,
     criar_expander_analise_faixas_desempenho,
