@@ -597,8 +597,7 @@ def _ordenar_dados_por_categoria(df: pd.DataFrame, categoria: str) -> pd.DataFra
         return df_ordenado.sort_values('Estado')
     
     except Exception as e:
-        print(f"Erro ao ordenar dados por categoria: {e}")
-        return df  # Retornar DataFrame original em caso de erro
+        return df
 
 def exibir_secao_visualizacao(
     titulo: str, 

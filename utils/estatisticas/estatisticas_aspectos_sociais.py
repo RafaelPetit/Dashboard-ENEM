@@ -92,7 +92,6 @@ def calcular_estatisticas_distribuicao(
             entropia = -np.sum(proporcoes_validas * np.log2(proporcoes_validas))
             entropia_normalizada = entropia / np.log2(len(proporcoes_validas)) if len(proporcoes_validas) > 0 else 0
         except Exception as e:
-            print(f"Erro ao calcular entropia: {e}")
             entropia = 0
             entropia_normalizada = 0
         
@@ -132,7 +131,6 @@ def calcular_estatisticas_distribuicao(
         }
     
     except Exception as e:
-        print(f"Erro ao calcular estatísticas de distribuição: {e}")
         return _criar_estatisticas_distribuicao_vazias()
 
 
@@ -191,13 +189,11 @@ def analisar_correlacao_categorias(
     
     # Verificar se as variáveis existem no DataFrame
     if var_x_plot not in df_correlacao.columns or var_y_plot not in df_correlacao.columns:
-        print(f"Variáveis não encontradas no DataFrame: {var_x_plot}, {var_y_plot}")
         return _criar_resultado_correlacao_vazio()
     
     # Verificar se temos amostras suficientes
     min_amostras = LIMIARES_PROCESSAMENTO.get('min_amostras_correlacao', 100)
     if len(df_correlacao) < min_amostras:
-        print(f"Amostras insuficientes para análise de correlação: {len(df_correlacao)} < {min_amostras}")
         return _criar_resultado_correlacao_vazio('Amostras insuficientes')
     
     try:
@@ -206,7 +202,6 @@ def analisar_correlacao_categorias(
         
         # Verificar se ainda temos dados suficientes após a limpeza
         if len(df_valido) < min_amostras:
-            print(f"Amostras insuficientes após remoção de valores ausentes: {len(df_valido)} < {min_amostras}")
             return _criar_resultado_correlacao_vazio('Amostras insuficientes após limpeza')
         
         # Criar tabela de contingência
@@ -214,7 +209,6 @@ def analisar_correlacao_categorias(
         
         # Verificar se a tabela tem dimensões suficientes
         if tabela_contingencia.shape[0] <= 1 or tabela_contingencia.shape[1] <= 1:
-            print(f"Tabela de contingência inadequada: {tabela_contingencia.shape}")
             return _criar_resultado_correlacao_vazio('Categorias insuficientes')
         
         # Calcular qui-quadrado e coeficiente de contingência
@@ -238,7 +232,6 @@ def analisar_correlacao_categorias(
         
         # Verificar se os resultados são números válidos
         if not all(np.isfinite([chi2, p_valor, coef_normalizado, v_cramer])):
-            print("Resultados de correlação contêm valores não finitos")
             # Tentar corrigir valores inválidos
             chi2 = chi2 if np.isfinite(chi2) else 0
             p_valor = p_valor if np.isfinite(p_valor) else 1
@@ -291,7 +284,6 @@ def analisar_correlacao_categorias(
         }
     
     except Exception as e:
-        print(f"Erro ao analisar correlação entre categorias: {e}")
         return _criar_resultado_correlacao_vazio(f"Erro: {str(e)}")
 
 
@@ -428,7 +420,6 @@ def analisar_distribuicao_regional(
     # Verificar se temos as colunas necessárias
     colunas_necessarias = ['Estado', 'Categoria', 'Percentual']
     if not all(col in df_por_estado.columns for col in colunas_necessarias):
-        print(f"Colunas necessárias não encontradas. Disponíveis: {df_por_estado.columns.tolist()}")
         return _criar_resultado_regional_vazio()
     
     try:
@@ -438,7 +429,6 @@ def analisar_distribuicao_regional(
             
             # Verificar se a categoria existe nos dados
             if df_analise.empty:
-                print(f"Categoria '{categoria}' não encontrada nos dados")
                 return _criar_resultado_regional_vazio()
         else:
             # Se não houver categoria específica, usamos todo o dataframe
@@ -446,7 +436,6 @@ def analisar_distribuicao_regional(
         
         # Verificar se temos dados para análise
         if df_analise.empty or len(df_analise) < 3:  # Mínimo de 3 estados para análise significativa
-            print(f"Dados insuficientes para análise regional: {len(df_analise)} estados")
             return _criar_resultado_regional_vazio()
         
         # Calcular estatísticas básicas
@@ -474,7 +463,6 @@ def analisar_distribuicao_regional(
         
         # Verificar se encontramos estados válidos
         if maior_percentual is None or menor_percentual is None:
-            print("Não foi possível identificar estados com valores extremos")
             return _criar_resultado_regional_vazio()
         
         # Calcular percentil 75 e 25 para identificar estados acima/abaixo da média
@@ -508,7 +496,6 @@ def analisar_distribuicao_regional(
                 s = np.sum(idx * valores_ordenados)
                 indice_gini = 2 * s / (n * np.sum(valores_ordenados)) - (n + 1) / n
         except Exception as e:
-            print(f"Erro ao calcular índice de Gini: {e}")
             indice_gini = 0
         
         # Retornar análise
@@ -528,7 +515,6 @@ def analisar_distribuicao_regional(
         }
     
     except Exception as e:
-        print(f"Erro ao analisar distribuição regional: {e}")
         return _criar_resultado_regional_vazio(f"Erro: {str(e)}")
 
 
@@ -616,7 +602,6 @@ def calcular_estatisticas_por_categoria(
     # Verificar se temos as colunas necessárias
     colunas_necessarias = ['Estado', 'Categoria', 'Percentual']
     if not all(col in df_por_estado.columns for col in colunas_necessarias):
-        print(f"Colunas necessárias não encontradas. Disponíveis: {df_por_estado.columns.tolist()}")
         return {}
     
     try:
@@ -653,7 +638,6 @@ def calcular_estatisticas_por_categoria(
         return resultados
     
     except Exception as e:
-        print(f"Erro ao calcular estatísticas por categoria: {e}")
         return {}
 
 
@@ -757,5 +741,4 @@ def analisar_tendencias_temporais(
         }
     
     except Exception as e:
-        print(f"Erro ao analisar tendências temporais: {e}")
         return {'tendencia': 'erro', 'mensagem': f'Erro na análise: {str(e)}'}

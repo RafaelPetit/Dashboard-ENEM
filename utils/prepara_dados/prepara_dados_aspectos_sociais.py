@@ -48,12 +48,6 @@ def preparar_dados_correlacao(
         limiar_completude=LIMIARES_PROCESSAMENTO['min_completude_dados']
     )
     
-    if not dados_validos:
-        # Log de colunas com baixa completude
-        colunas_problema = [col for col, taxa in taxas_completude.items() 
-                           if taxa < LIMIARES_PROCESSAMENTO['min_completude_dados']]
-        print(f"Aviso: Baixa completude nas colunas: {colunas_problema}")
-    
     # Selecionar apenas colunas necessárias para economizar memória
     df_correlacao = microdados[colunas_necessarias].copy()
     
@@ -93,14 +87,7 @@ def aplicar_mapeamento(
     str
         Nome da coluna a ser usada para plotagem
     """
-    # Verificar se a variável existe no DataFrame e no dicionário de mapeamentos
-    if variavel not in df.columns:
-        print(f"Aviso: Variável '{variavel}' não encontrada no DataFrame")
-        return variavel
     
-    if variavel not in variaveis_sociais:
-        print(f"Aviso: Variável '{variavel}' não encontrada no dicionário de mapeamentos")
-        return variavel
     
     # Verificar se precisamos aplicar mapeamento (se não for já do tipo object/string)
     if "mapeamento" in variaveis_sociais[variavel] and df[variavel].dtype != 'object':
@@ -119,7 +106,6 @@ def aplicar_mapeamento(
             
             return coluna_nome
         except Exception as e:
-            print(f"Erro ao aplicar mapeamento para '{variavel}': {e}")
             return variavel
     
     return variavel
@@ -150,7 +136,6 @@ def preparar_dados_distribuicao(
     """
     # Verificar se temos dados suficientes
     if microdados.empty or aspecto_social not in microdados.columns:
-        print(f"Aviso: Aspecto social '{aspecto_social}' não encontrado nos dados")
         return pd.DataFrame(), aspecto_social
     
     # Selecionar apenas a coluna necessária para economizar memória
@@ -201,7 +186,6 @@ def contar_candidatos_por_categoria(
         
         return contagem
     except Exception as e:
-        print(f"Erro ao contar candidatos por categoria: {e}")
         return pd.DataFrame(columns=['Categoria', 'Quantidade', 'Percentual'])
 
 
@@ -279,7 +263,6 @@ def ordenar_categorias(
         return contagem_aspecto.sort_values('Quantidade', ascending=False)
     
     except Exception as e:
-        print(f"Erro ao ordenar categorias: {e}")
         return contagem_aspecto  # Retornar dados sem ordenação em caso de erro
 
 
@@ -308,7 +291,6 @@ def preparar_dados_heatmap(
     """
     # Verificar se temos dados válidos
     if df_correlacao.empty or var_x_plot not in df_correlacao.columns or var_y_plot not in df_correlacao.columns:
-        print(f"Aviso: Dados insuficientes para criar heatmap")
         return pd.DataFrame()
     
     try:
@@ -338,7 +320,6 @@ def preparar_dados_heatmap(
         return normalized_pivot
     
     except Exception as e:
-        print(f"Erro ao preparar dados para heatmap: {e}")
         return pd.DataFrame()
 
 
@@ -367,7 +348,6 @@ def preparar_dados_barras_empilhadas(
     """
     # Verificar se temos dados válidos
     if df_correlacao.empty or var_x_plot not in df_correlacao.columns or var_y_plot not in df_correlacao.columns:
-        print(f"Aviso: Dados insuficientes para criar barras empilhadas")
         return pd.DataFrame()
     
     try:
@@ -399,7 +379,6 @@ def preparar_dados_barras_empilhadas(
         return df_barras
     
     except Exception as e:
-        print(f"Erro ao preparar dados para barras empilhadas: {e}")
         return pd.DataFrame()
 
 
@@ -428,7 +407,6 @@ def preparar_dados_sankey(
     """
     # Verificar se temos dados válidos
     if df_correlacao.empty or var_x_plot not in df_correlacao.columns or var_y_plot not in df_correlacao.columns:
-        print(f"Aviso: Dados insuficientes para criar diagrama Sankey")
         return [], [], [], []
     
     try:
@@ -457,7 +435,6 @@ def preparar_dados_sankey(
         return labels, source, target, value
     
     except Exception as e:
-        print(f"Erro ao preparar dados para diagrama Sankey: {e}")
         return [], [], [], []
 
 
@@ -496,12 +473,10 @@ def preparar_dados_grafico_aspectos_por_estado(
     
     # Verificar se as colunas necessárias existem
     if aspecto_social not in microdados_estados.columns or 'SG_UF_PROVA' not in microdados_estados.columns:
-        print(f"Aviso: Colunas necessárias não encontradas nos dados")
         return pd.DataFrame()
     
     # Verificar se o aspecto social está no dicionário de variáveis
     if aspecto_social not in variaveis_sociais:
-        print(f"Aviso: Aspecto social '{aspecto_social}' não encontrado no dicionário de variáveis")
         return pd.DataFrame()
     
     try:
@@ -532,7 +507,6 @@ def preparar_dados_grafico_aspectos_por_estado(
         return df_resultado
     
     except Exception as e:
-        print(f"Erro ao preparar dados para gráfico de aspectos por estado: {e}")
         return pd.DataFrame()
 
 
@@ -574,7 +548,6 @@ def _processar_aspectos_por_estado(
     try:
         grupos_estado = df.groupby('SG_UF_PROVA')
     except Exception as e:
-        print(f"Erro ao agrupar por estado: {e}")
         return resultados
     
     # Obter categorias do aspecto social
@@ -683,5 +656,4 @@ def _agrupar_por_regiao(
         return df_agrupado
     
     except Exception as e:
-        print(f"Erro ao agrupar por região: {e}")
-        return df  # Retornar dados originais em caso de erro
+        return df  

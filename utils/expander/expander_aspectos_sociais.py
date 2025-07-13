@@ -1151,7 +1151,6 @@ def _criar_tabela_pivot(
         return df_pivot
     
     except Exception as e:
-        print(f"Erro ao criar tabela pivô: {e}")
         return pd.DataFrame()
 
 
@@ -1192,7 +1191,6 @@ def _adicionar_regiao_aos_estados(df: pd.DataFrame) -> pd.DataFrame:
         return df_com_regiao
     
     except Exception as e:
-        print(f"Erro ao adicionar região aos estados: {e}")
         return df
 
 
