@@ -146,20 +146,22 @@ def clear_page_memory():
 init_session_state()
 
 
+# ...existing code...
+
 # Título principal com indicação regional
-st.title("🌎 Dashboard ENEM 2023 - Região Norte")
-st.markdown("#### Plataforma de Análise Acadêmica para Pesquisa Educacional - Versão Sudeste")
+st.title("🌎 Dashboard ENEM 2023 - Região Norte/Nordeste")
+st.markdown("#### Plataforma de Análise Acadêmica para Pesquisa Educacional - Versão Norte/Nordeste")
 
 # Aviso importante sobre a divisão regional
 st.markdown("""
 <div class="warning-card">
     <h4>📍 Cobertura Regional desta Plataforma</h4>
     <p>
-        Esta versão da plataforma contém dados das regiões <strong>Sudeste, Sudeste e Centro-Oeste</strong>. Para análise das regiões <strong>Norte e Nordeste</strong> , acesse a <strong> Versão abaixo</strong> da plataforma.
+        Esta versão da plataforma contém dados das regiões <strong>Norte e Nordeste</strong>. Para análise das regiões <strong>Sudeste, Sul e Centro-Oeste</strong>, acesse a <strong> Versão abaixo</strong> da plataforma.
     </p>
     <p style="margin-top: 1rem;">
-        <a href="https://enem-insights-norte.streamlit.app/" target="_blank" class="link-button">
-            🌐 Acessar Versão Norte (AC, AP, AM, PA, RO, RR, TO, AL, BA, CE, MA, PB, PE, PI, RN, SE)
+        <a href="https://enem-insights-sul.streamlit.app/" target="_blank" class="link-button">
+            🌐 Acessar Versão Sudeste/Sul/Centro-Oeste (SP, RJ, MG, ES, PR, RS, SC, DF, GO, MT, MS)
         </a>
     </p>
 </div>
@@ -196,7 +198,7 @@ with main_col1:
         <h3>🏠 Análise Geral</h3>
         <p><span class="badge">Estatísticas Descritivas</span><span class="badge">Distribuições</span><span class="badge">Comparativos Regionais</span></p>
         <p>
-            Oferece uma visão abrangente e panorâmica do cenário educacional das regiões Sul, Sudeste e Centro-Oeste no ENEM 2023. 
+            Oferece uma visão abrangente e panorâmica do cenário educacional das regiões Norte e Nordeste no ENEM 2023. 
             Este módulo implementa análises estatísticas descritivas robustas, incluindo métricas de tendência central, 
             dispersão e forma das distribuições, proporcionando insights fundamentais sobre os padrões de desempenho educacional.
         </p>
@@ -257,7 +259,7 @@ with main_col2:
     </div>
     """, unsafe_allow_html=True)
     
-    st.info("🌎 **Escopo**: Todas as regiões do Sudeste disponíveis")
+    st.info("🌎 **Escopo**: Todas as regiões do Norte e Nordeste disponíveis")
     
     # Status do sistema
     st.markdown("""
@@ -271,8 +273,8 @@ with main_col2:
 
 
     with col1:
-        st.metric("Registros Regionais", "2.056.502", help="Candidatos das regiões Sul, Sudeste e Centro-Oeste")
-        st.metric("Cobertura Regional", "52,29%", help="Percentual do território nacional coberto nesta versão")
+        st.metric("Registros Regionais", "1.877.453", help="Candidatos das regiões Norte e Nordeste")
+        st.metric("Cobertura Regional", "47,72%", help="Percentual do território nacional coberto nesta versão")
     
     with col2:
         st.metric("Variáveis Analíticas", "31", help="Total de variáveis processadas e otimizadas")
@@ -286,25 +288,23 @@ with main_col2:
     """, unsafe_allow_html=True)
     
     st.markdown("""
-    **Sul:** PR, RS, SC
+    **Norte:** AC, AP, AM, PA, RO, RR, TO
                 
-    **Sudeste:** SP, RJ, MG, ES  
+    **Nordeste:** AL, BA, CE, MA, PB, PE, PI, RN, SE  
     
-    **Centro-Oeste:** DF, GO, MT, MS
-    
-    Para análise de Norte e Nordeste utilize as versões abaixo:.
+    Para análise de Sudeste, Sul e Centro-Oeste utilize as versões abaixo:.
     """)
     
-    # Card específico para redirecionamento à versão Norte
+    # Card específico para redirecionamento à versão Sudeste/Sul/Centro-Oeste
     st.markdown("""
     <div class="info-card">
         <h3>🌐 Precisa Analisar Outras Regiões?</h3>
         <p>
-            Se você precisa analisar dados das regiões <strong>Norte, Nordeste</strong>, acesse nossa versão complementar:
+            Se você precisa analisar dados das regiões <strong>Sudeste, Sul e Centro-Oeste</strong>, acesse nossa versão complementar:
         </p>
         <p style="text-align: center; margin-top: 1rem;">
-            <a href="https://enem-insights-norte.streamlit.app/" target="_blank" class="link-button">
-                📊 Dashboard ENEM Norte
+            <a href="https://enem-insights-sul.streamlit.app/" target="_blank" class="link-button">
+                📊 Dashboard ENEM Sudeste/Sul/Centro-Oeste
             </a>
         </p>
         <p style="font-size: 12px; margin-top: 0.5rem; text-align: center;">
@@ -326,9 +326,9 @@ with main_col2:
     3. **Interaja com as visualizações** para explorar dados específicos
     4. **Expanda as seções** para acessar análises estatísticas detalhadas
     5. **Interprete os resultados** com auxílio das explicações contextuais
-    6. **Aplique os insights** em suas pesquisas ou decisões educacionais
-    """)
-
+    6. **Aplique os insights** em suas pesquisas
+                """)
+    
 # Arquitetura técnica e metodológica
 st.markdown("---")
 st.markdown("### 🏗️ Arquitetura Técnica e Metodologia Científica")
