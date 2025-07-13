@@ -1,11 +1,10 @@
 import pandas as pd
 from typing import Dict, List
+from mappings import get_mappings
 
-REGIOES_BRASIL = {
-    'Centro-Oeste': ['DF', 'GO', 'MS', 'MT'],
-    'Sul': ['PR', 'RS', 'SC'],
-    'Sudeste': ['ES', 'MG', 'RJ', 'SP'],
-}
+mappings = get_mappings()
+
+REGIOES_BRASIL = mappings['regioes_mapping']
 
 # Mapeamento inverso para uso eficiente
 ESTADO_PARA_REGIAO = {estado: regiao for regiao, estados in REGIOES_BRASIL.items() for estado in estados}
