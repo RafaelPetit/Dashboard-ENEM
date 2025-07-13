@@ -600,7 +600,7 @@ def preparar_dados_evasao(
                 df_resultado['Métrica'], 
                 categories=['Presentes', 'Faltantes Dia 1', 'Faltantes Dia 2', 'Faltantes Ambos']
             )
-            
+        return df_resultado
     except Exception as e:
         print(f"Erro ao preparar dados de evasão: {e}")
         return pd.DataFrame(columns=['Estado', 'Métrica', 'Valor'])
