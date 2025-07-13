@@ -161,7 +161,7 @@ st.markdown("""
     </p>
     <p style="margin-top: 1rem;">
         <a href="https://enem-insights-sul.streamlit.app/" target="_blank" class="link-button">
-            🌐 Acessar Versão Sudeste/Sul/Centro-Oeste (SP, RJ, MG, ES, PR, RS, SC, DF, GO, MT, MS)
+            🌐 Acessar Versão Sul (SP, RJ, MG, ES, PR, RS, SC, DF, GO, MT, MS)
         </a>
     </p>
 </div>
@@ -304,7 +304,7 @@ with main_col2:
         </p>
         <p style="text-align: center; margin-top: 1rem;">
             <a href="https://enem-insights-sul.streamlit.app/" target="_blank" class="link-button">
-                📊 Dashboard ENEM Sudeste/Sul/Centro-Oeste
+                📊 Dashboard ENEM Sul
             </a>
         </p>
         <p style="font-size: 12px; margin-top: 0.5rem; text-align: center;">
