@@ -119,6 +119,6 @@ def render_sidebar_filters() -> Tuple[List[str], List[str]]:
     # Adicionar botão para ir ao Home
     st.sidebar.markdown("---")
     if st.sidebar.button("🏠 Retornar à Página Inicial", use_container_width=True, key="sidebar_home_button"):
-        st.switch_page("Pagina_Inicial.py")
+        st.switch_page("Página_Inicial.py")
     
     return estados_selecionados, locais_selecionados

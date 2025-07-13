@@ -1,8 +1,9 @@
 import pandas as pd
 from typing import Dict, List
-from mappings import get_mappings
+from utils.helpers.mappings import get_mappings
 
 mappings = get_mappings()
+
 REGIOES_BRASIL = mappings['regioes_mapping']
 
 # Mapeamento inverso para uso eficiente
