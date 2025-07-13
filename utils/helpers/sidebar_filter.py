@@ -36,7 +36,7 @@ def render_sidebar_filters() -> Tuple[List[str], List[str]]:
     
     # Checkbox para selecionar todo o Brasil
     selecionar_brasil = st.sidebar.checkbox(
-        "🇧🇷 Brasil (todos os estados)", 
+        "Sul, Sudeste e Centro-Oeste do Brasil (Todos os estados)", 
         value=True, 
         key="sidebar_brasil_checkbox"
     )
@@ -108,7 +108,7 @@ def render_sidebar_filters() -> Tuple[List[str], List[str]]:
     # Mostrar resumo dos filtros
     if estados_selecionados:
         if len(estados_selecionados) == len(todos_estados):
-            st.sidebar.success("✅ Dados de todo o Brasil")
+            st.sidebar.success("✅ Dados de todo o Sul, Sudeste e Centro-Oeste do Brasil selecionados")
         else:
             if regioes_selecionadas:
                 st.sidebar.success(f"✅ Regiões: {', '.join(regioes_selecionadas)}")
@@ -119,6 +119,6 @@ def render_sidebar_filters() -> Tuple[List[str], List[str]]:
     # Adicionar botão para ir ao Home
     st.sidebar.markdown("---")
     if st.sidebar.button("🏠 Voltar ao Home", use_container_width=True, key="sidebar_home_button"):
-        st.switch_page("home.py")
+        st.switch_page("Página_Inicial.py")
     
     return estados_selecionados, locais_selecionados

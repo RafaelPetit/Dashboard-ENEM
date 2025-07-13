@@ -117,7 +117,6 @@ def analisar_metricas_principais(
             'totais_por_regiao': totais_por_regiao
         }
     except Exception as e:
-        print(f"Erro ao analisar métricas principais: {e}")
         return _criar_metricas_principais_vazias()
 
 
@@ -226,7 +225,6 @@ def _calcular_medias_estados_competencias(
         }
         
     except Exception as e:
-        print(f"Erro ao calcular médias por estado e competência: {e}")
         return {
             'todas_medias': [],
             'medias_por_estado': {},
@@ -266,7 +264,6 @@ def _calcular_totais_por_regiao(df: pd.DataFrame) -> Dict[str, int]:
         return contagem
         
     except Exception as e:
-        print(f"Erro ao calcular totais por região: {e}")
         return {}
 
 
@@ -385,7 +382,6 @@ def analisar_distribuicao_notas(
             'amplitude': round(max_valor - min_valor, 2) if np.isfinite(max_valor - min_valor) else 0.0
         }
     except Exception as e:
-        print(f"Erro ao analisar distribuição de notas: {e}")
         return _criar_analise_distribuicao_vazia()
 
 
@@ -458,7 +454,6 @@ def _calcular_percentis_seguros(serie: pd.Series, pontos_percentis: List[int]) -
         
         return {p: np.percentile(serie_limpa, p) for p in pontos_percentis}
     except Exception as e:
-        print(f"Erro ao calcular percentis: {e}")
         return {p: 0.0 for p in pontos_percentis}
 
 
@@ -497,7 +492,6 @@ def _calcular_faixas_desempenho(df: pd.DataFrame, coluna: str, total: int) -> Di
             '900 ou mais': len(df[df[coluna] >= 900]) / total * 100
         }
     except Exception as e:
-        print(f"Erro ao calcular faixas de desempenho: {e}")
         return {
             'Abaixo de 300': 0.0,
             '300 a 500': 0.0,
@@ -542,7 +536,6 @@ def _calcular_conceitos(df: pd.DataFrame, coluna: str, total: int) -> Dict[str, 
             'Excelente (850 ou mais)': len(df[df[coluna] >= 850]) / total * 100
         }
     except Exception as e:
-        print(f"Erro ao calcular conceitos: {e}")
         return {
             'Insuficiente (abaixo de 450)': 0.0,
             'Regular (450 a 600)': 0.0,
@@ -620,7 +613,6 @@ def _calcular_intervalo_confianca(serie: pd.Series, nivel: float = 0.95) -> Tupl
         return intervalo
         
     except Exception as e:
-        print(f"Erro ao calcular intervalo de confiança: {e}")
         return (0.0, 0.0)
 
 
@@ -758,7 +750,6 @@ def analisar_faltas(
             'estados_menor_evasao': estados_menor_evasao
         }
     except Exception as e:
-        print(f"Erro ao analisar faltas: {e}")
         return _criar_analise_faltas_vazia()
 
 
@@ -857,7 +848,6 @@ def _identificar_estados_maior_evasao(df: pd.DataFrame, top_n: int = 3) -> List[
         return resultado
         
     except Exception as e:
-        print(f"Erro ao identificar estados com maior evasão: {e}")
         return []
 
 
@@ -896,7 +886,6 @@ def _identificar_estados_menor_evasao(df: pd.DataFrame, top_n: int = 3) -> List[
         return resultado
         
     except Exception as e:
-        print(f"Erro ao identificar estados com menor evasão: {e}")
         return []
 
 
@@ -996,7 +985,6 @@ def analisar_desempenho_por_faixa_nota(
         }
         
     except Exception as e:
-        print(f"Erro ao analisar desempenho por faixa: {e}")
         return {
             'contagem': {},
             'percentual': {},
@@ -1074,5 +1062,4 @@ def analisar_metricas_por_regiao(
         return resultados
         
     except Exception as e:
-        print(f"Erro ao analisar métricas por região: {e}")
         return {}

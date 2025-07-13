@@ -724,7 +724,7 @@ def exibir_analise_evasao(
                 )
                 
                 if ordenar:
-                    metricas_opcoes = ["Presentes", "Faltantes Dia 1", "Faltantes Dia 2", "Faltantes Ambos"]
+                    metricas_opcoes = ["Presentes", "Faltantes somente Dia 1", "Faltantes somente Dia 2", "Faltantes Ambos"]
                     metrica_ordenacao = st.selectbox(
                         "Ordenar por:",
                         options=metricas_opcoes,

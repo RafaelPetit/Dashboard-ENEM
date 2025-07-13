@@ -106,7 +106,6 @@ def get_cached_data_desempenho(estados_selecionados: List[str]):
             return dados_desempenho
             
         except Exception as e:
-            print(f"Erro ao carregar dados de desempenho: {e}")
             return pd.DataFrame()
     
     # Usar string dos estados como chave para cache

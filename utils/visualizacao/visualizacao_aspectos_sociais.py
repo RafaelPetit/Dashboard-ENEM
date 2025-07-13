@@ -111,7 +111,6 @@ def criar_grafico_heatmap(
         return fig, explicacao
     
     except Exception as e:
-        print(f"Erro ao criar heatmap: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
 
 # Corrigir a função criar_grafico_barras_empilhadas
@@ -204,7 +203,6 @@ def criar_grafico_barras_empilhadas(
         return fig, explicacao
     
     except Exception as e:
-        print(f"Erro ao criar gráfico de barras empilhadas: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
 
 @memory_intensive_function
@@ -315,7 +313,6 @@ def criar_grafico_sankey(
         return fig, explicacao
     
     except Exception as e:
-        print(f"Erro ao criar diagrama Sankey: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
 
 
@@ -381,7 +378,6 @@ def criar_grafico_distribuicao(
         return fig
     
     except Exception as e:
-        print(f"Erro ao criar gráfico de distribuição: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -475,7 +471,6 @@ def criar_grafico_aspectos_por_estado(
         return fig
     
     except Exception as e:
-        print(f"Erro ao criar gráfico por estado/região: {e}")
         return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 

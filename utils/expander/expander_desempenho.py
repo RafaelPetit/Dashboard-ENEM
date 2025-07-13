@@ -773,7 +773,6 @@ def calcular_estatisticas_competencia(
             'q75': valores_validos.quantile(0.75)
         }
     except Exception as e:
-        print(f"Erro ao calcular estatísticas: {e}")
         return {
             'média': 0,
             'mediana': 0,
@@ -813,5 +812,4 @@ def adicionar_regiao_aos_estados(df: pd.DataFrame) -> pd.DataFrame:
         
         return df_com_regiao
     except Exception as e:
-        print(f"Erro ao adicionar região aos estados: {e}")
         return df

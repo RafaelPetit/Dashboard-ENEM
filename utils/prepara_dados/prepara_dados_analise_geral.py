@@ -40,25 +40,18 @@ def preparar_dados_histograma(
     """
     # Verificar se temos dados válidos
     if df is None or df.empty or coluna not in df.columns:
-        print(f"Aviso: DataFrame vazio ou coluna {coluna} ausente")
         return pd.DataFrame(), coluna, competencia_mapping.get(coluna, coluna)
     
     try:
         # Filtrar valores inválidos (notas -1 e 0) para análises mais precisas
         df_valido = df[(df[coluna] > 0) & (df[coluna].notna())].copy()
-        
         # Converter para float32 para economizar memória
         if not df_valido.empty:
             df_valido[coluna] = df_valido[coluna].astype('float32')
-            
-        # Otimizar tipos de dados
-        
         # Obter nome amigável da área de conhecimento
         nome_area = competencia_mapping.get(coluna, coluna)
-        
         return df_valido, coluna, nome_area
     except Exception as e:
-        print(f"Erro ao preparar dados para histograma: {e}")
         return pd.DataFrame(), coluna, competencia_mapping.get(coluna, coluna)
 
 
@@ -86,46 +79,28 @@ def preparar_dados_grafico_faltas(
     """
     # Verificar se temos dados válidos
     if microdados_estados is None or microdados_estados.empty:
-        print("Aviso: DataFrame de microdados vazio")
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
     
     # Verificar se temos estados selecionados
     if not estados_selecionados:
-        print("Aviso: Nenhum estado selecionado")
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
     
     # Verificar se temos a coluna de UF
     if 'SG_UF_PROVA' not in microdados_estados.columns:
-        print("Erro: Coluna 'SG_UF_PROVA' não encontrada nos dados")
-        print(f"Colunas disponíveis: {list(microdados_estados.columns)[:10]}...")
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
         
     # Verificar se temos a coluna de presença geral
     if 'TP_PRESENCA_GERAL' not in microdados_estados.columns:
-        print("Erro: Coluna 'TP_PRESENCA_GERAL' não encontrada nos dados")
-        print(f"Colunas disponíveis: {list(microdados_estados.columns)[:10]}...")
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
     
     # Verificar se os estados selecionados existem nos dados
     estados_nos_dados = microdados_estados['SG_UF_PROVA'].unique()
     estados_validos = [estado for estado in estados_selecionados if estado in estados_nos_dados]
-    
     if not estados_validos:
-        print(f"Erro: Nenhum dos estados selecionados encontrado nos dados")
-        print(f"Estados selecionados: {estados_selecionados}")
-        print(f"Estados nos dados: {list(estados_nos_dados)[:10]}...")
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
-    
-    if len(estados_validos) != len(estados_selecionados):
-        estados_nao_encontrados = [e for e in estados_selecionados if e not in estados_validos]
-        print(f"Aviso: Estados não encontrados nos dados: {estados_nao_encontrados}")
-    
-    print(f"Processando dados de faltas para {len(estados_validos)} estados")
-    
     try:
         return _calcular_faltas_por_estado(microdados_estados, estados_validos)
     except Exception as e:
-        print(f"Erro ao preparar dados para gráfico de faltas: {e}")
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
 
 
@@ -153,19 +128,15 @@ def _calcular_faltas_por_estado(
     
     # Verificar se temos dados válidos
     if df is None or df.empty:
-        print("Erro: DataFrame vazio em _calcular_faltas_por_estado")
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
     
     if not estados:
-        print("Erro: Lista de estados vazia")
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
     
     # Processamento mais eficiente usando agrupamento
     try:
         grupos_estado = df.groupby('SG_UF_PROVA', observed=True)
-        print(f"Agrupamento criado com {len(grupos_estado)} grupos")
     except Exception as e:
-        print(f"Erro ao agrupar por estado: {e}")
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
         
     # Processar cada estado selecionado
@@ -177,36 +148,26 @@ def _calcular_faltas_por_estado(
             estados_processados += 1
         except KeyError:
             # Estado não encontrado no agrupamento, pular
-            print(f"Aviso: Estado '{estado}' não encontrado nos dados agrupados")
             continue
         except Exception as e:
-            print(f"Erro ao processar estado '{estado}': {e}")
             continue
-            
         total_candidatos = len(dados_estado)
-        
         if total_candidatos == 0:
-            print(f"Aviso: Nenhum candidato encontrado para o estado '{estado}'")
             continue  # Pular estados sem candidatos
-        
         # Contagem de faltas por categoria
         categorias_faltas = {
             0: {'nome': 'Faltou nos dois dias', 'contagem': 0},
             1: {'nome': 'Faltou no segundo dia', 'contagem': 0},
             2: {'nome': 'Faltou no primeiro dia', 'contagem': 0}
         }
-        
         # Contagem eficiente
         try:
             valores_presenca = dados_estado['TP_PRESENCA_GERAL'].value_counts()
         except Exception as e:
-            print(f"Erro ao contar presenças para estado '{estado}': {e}")
             continue
-        
         for codigo, info in categorias_faltas.items():
             contagem = valores_presenca.get(codigo, 0)
             percentual = (contagem / total_candidatos * 100) if total_candidatos > 0 else 0
-            
             dados_grafico.append({
                 'Estado': estado,
                 'Tipo de Falta': info['nome'],
@@ -214,16 +175,11 @@ def _calcular_faltas_por_estado(
                 'Contagem': contagem,
                 'Total': total_candidatos
             })
-            
         # Liberar memória a cada lote de estados processados
         if (i+1) % CONFIG_PROCESSAMENTO['tamanho_lote_estados'] == 0:
             release_memory(dados_estado)
-    
-    print(f"Processamento concluído: {estados_processados} estados processados de {len(estados)} solicitados")
-    
     # Criar DataFrame otimizado
     df_resultado = pd.DataFrame(dados_grafico)
-    
     # Converter para categorias para economia de memória
     if not df_resultado.empty:
         df_resultado['Estado'] = pd.Categorical(df_resultado['Estado'], categories=estados)
@@ -231,10 +187,6 @@ def _calcular_faltas_por_estado(
             df_resultado['Tipo de Falta'], 
             categories=['Faltou nos dois dias', 'Faltou no primeiro dia', 'Faltou no segundo dia']
         )
-        print(f"DataFrame resultado criado com {len(df_resultado)} linhas")
-    else:
-        print("Aviso: Nenhum dado de falta foi processado")
-        
     return df_resultado
 
 
@@ -262,7 +214,6 @@ def preparar_dados_metricas_principais(
     """
     # Verificar se temos dados válidos
     if microdados_estados is None or microdados_estados.empty:
-        print("Aviso: DataFrame de microdados vazio")
         return _gerar_metricas_vazias(colunas_notas)
     
     try:
@@ -308,7 +259,6 @@ def preparar_dados_metricas_principais(
             'desempenho_regioes': desempenho_regioes
         }
     except Exception as e:
-        print(f"Erro ao preparar métricas principais: {e}")
         return _gerar_metricas_vazias(colunas_notas)
 
 
@@ -419,13 +369,11 @@ def preparar_dados_media_geral_estados(
     """
     # Verificar se temos dados válidos
     if microdados_estados is None or microdados_estados.empty:
-        print("Aviso: DataFrame de microdados vazio")
         return pd.DataFrame(columns=['Local', 'Média Geral'])
     
     try:
         # Agrupar os dados por estado
         if 'SG_UF_PROVA' not in microdados_estados.columns:
-            print("Erro: Coluna 'SG_UF_PROVA' não encontrada nos dados")
             return pd.DataFrame(columns=['Local', 'Média Geral'])
             
         resultado = []
@@ -465,7 +413,6 @@ def preparar_dados_media_geral_estados(
             
         return df_resultado
     except Exception as e:
-        print(f"Erro ao preparar dados de média geral por estado: {e}")
         return pd.DataFrame(columns=['Local', 'Média Geral'])
 
 
@@ -485,29 +432,22 @@ def _agrupar_estados_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
     # Verificar se temos dados para processar
     if df is None or df.empty or 'Local' not in df.columns:
         return df
-    
     try:
         # Criar coluna de região
         df_temp = df.copy()
         df_temp['Região'] = df_temp['Local'].apply(obter_regiao_do_estado)
-        
         # Remover estados sem região associada
         df_temp = df_temp[df_temp['Região'] != ""]
-        
         # Agrupar por região
         colunas_numericas = df_temp.select_dtypes(include='number').columns.tolist()
         df_agrupado = df_temp.groupby('Região')[colunas_numericas].mean().reset_index()
-        
         # Renomear coluna para manter compatibilidade
         df_agrupado = df_agrupado.rename(columns={'Região': 'Local'})
-        
         # Arredondar valores numéricos
         for col in colunas_numericas:
             df_agrupado[col] = df_agrupado[col].round(2)
-            
         return df_agrupado
     except Exception as e:
-        print(f"Erro ao agrupar estados por região: {e}")
         return df
 
 
@@ -532,44 +472,29 @@ def preparar_dados_evasao(
     """
     # Verificar se temos dados válidos
     if microdados_estados is None or microdados_estados.empty:
-        print("Aviso: DataFrame de microdados vazio")
         return pd.DataFrame(columns=['Estado', 'Métrica', 'Valor'])
-        
     # Verificar se temos as colunas necessárias
     colunas_necessarias = ['SG_UF_PROVA', 'TP_PRESENCA_GERAL']
     if not all(col in microdados_estados.columns for col in colunas_necessarias):
-        print("Erro: Colunas necessárias ausentes")
         return pd.DataFrame(columns=['Estado', 'Métrica', 'Valor'])
-    
     try:
         resultado = []
-        
-        # Processamento eficiente usando agrupamento
         grupos_estado = microdados_estados.groupby('SG_UF_PROVA')
-        
         for estado in estados_selecionados:
             try:
                 dados_estado = grupos_estado.get_group(estado)
             except KeyError:
                 continue  # Estado não encontrado, pular
-                
             total_candidatos = len(dados_estado)
-            
-            # Contar presença/ausência
             presenca_counts = dados_estado['TP_PRESENCA_GERAL'].value_counts()
-            
             # Faltou nos dois dias (código 0)
             faltas_ambos = presenca_counts.get(0, 0)
-            
             # Faltou no segundo dia (código 1 - presente apenas no primeiro)
             faltas_dia2 = presenca_counts.get(1, 0)
-            
             # Faltou no primeiro dia (código 2 - presente apenas no segundo)
             faltas_dia1 = presenca_counts.get(2, 0)
-            
             # Presente nos dois dias (código 3)
             presentes = presenca_counts.get(3, 0)
-            
             # Calcular percentuais
             if total_candidatos > 0:
                 percentual_faltas_ambos = (faltas_ambos / total_candidatos) * 100
@@ -581,18 +506,15 @@ def preparar_dados_evasao(
                 percentual_faltas_dia1 = 0
                 percentual_faltas_dia2 = 0
                 percentual_presentes = 0
-                
             # Adicionar dados ao resultado
             resultado.extend([
                 {'Estado': estado, 'Métrica': 'Presentes', 'Valor': round(percentual_presentes, 2), 'Contagem': presentes},
-                {'Estado': estado, 'Métrica': 'Faltantes Dia 1', 'Valor': round(percentual_faltas_dia1, 2), 'Contagem': faltas_dia1},
-                {'Estado': estado, 'Métrica': 'Faltantes Dia 2', 'Valor': round(percentual_faltas_dia2, 2), 'Contagem': faltas_dia2},
+                {'Estado': estado, 'Métrica': 'Faltantes Somente Dia 1', 'Valor': round(percentual_faltas_dia1, 2), 'Contagem': faltas_dia1},
+                {'Estado': estado, 'Métrica': 'Faltantes Somente Dia 2', 'Valor': round(percentual_faltas_dia2, 2), 'Contagem': faltas_dia2},
                 {'Estado': estado, 'Métrica': 'Faltantes Ambos', 'Valor': round(percentual_faltas_ambos, 2), 'Contagem': faltas_ambos}
             ])
-        
         # Criar DataFrame otimizado
         df_resultado = pd.DataFrame(resultado)
-        
         # Converter para categorias para economia de memória
         if not df_resultado.empty:
             df_resultado['Estado'] = pd.Categorical(df_resultado['Estado'], categories=estados_selecionados)
@@ -600,9 +522,8 @@ def preparar_dados_evasao(
                 df_resultado['Métrica'], 
                 categories=['Presentes', 'Faltantes Dia 1', 'Faltantes Dia 2', 'Faltantes Ambos']
             )
-            
+        return df_resultado
     except Exception as e:
-        print(f"Erro ao preparar dados de evasão: {e}")
         return pd.DataFrame(columns=['Estado', 'Métrica', 'Valor'])
 
 
@@ -633,13 +554,7 @@ def preparar_dados_comparativo_areas(
     """
     # Verificar se temos dados válidos
     if microdados_estados is None or microdados_estados.empty:
-        print("Aviso: DataFrame de microdados vazio")
         return pd.DataFrame(columns=['Area', 'Media', 'DesvioPadrao', 'Mediana'])
-    
-    # Verificar se temos as colunas de notas
-    colunas_ausentes = [col for col in colunas_notas if col not in microdados_estados.columns]
-    if colunas_ausentes:
-        print(f"Aviso: Colunas ausentes: {colunas_ausentes}")
     
     try:
         resultado = []
@@ -678,5 +593,4 @@ def preparar_dados_comparativo_areas(
             
         return df_resultado
     except Exception as e:
-        print(f"Erro ao preparar dados comparativos entre áreas: {e}")
         return pd.DataFrame(columns=['Area', 'Media', 'DesvioPadrao', 'Mediana'])

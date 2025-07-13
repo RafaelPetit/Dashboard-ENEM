@@ -59,7 +59,6 @@ def calcular_correlacao_competencias(
         return correlacao, interpretacao
         
     except Exception as e:
-        print(f"Erro ao calcular correlação: {e}")
         return 0.0, "Erro no cálculo"
 
 
@@ -143,7 +142,6 @@ def gerar_estatisticas_descritivas(
     try:
         return dados.describe().round(precisao)
     except Exception as e:
-        print(f"Erro ao calcular estatísticas descritivas: {e}")
         return pd.Series({
             'count': 0, 'mean': 0, 'std': 0, 'min': 0, 
             '25%': 0, '50%': 0, '75%': 0, 'max': 0
@@ -214,9 +212,6 @@ def analisar_desempenho_por_estado(
                 # Calcular diferença percentual entre melhor e pior
                 diferenca_percentual = ((melhor_estado['Média'] - pior_estado['Média']) / pior_estado['Média'] * 100) if pior_estado['Média'] > 0 else 0
                 
-                # Verificar se todos os valores são finitos
-                if not all(np.isfinite([media_geral, desvio_padrao, coef_variacao, diferenca_percentual])):
-                    print("Aviso: Valores não finitos encontrados nas estatísticas")
                 
                 return {
                     'melhor_estado': melhor_estado,
@@ -231,7 +226,6 @@ def analisar_desempenho_por_estado(
         return _criar_resultado_analise_vazio()
     
     except (KeyError, ValueError, TypeError) as e:
-        print(f"Erro ao analisar desempenho por estado: {e}")
         return _criar_resultado_analise_vazio()
 
 
@@ -308,7 +302,7 @@ def calcular_estatisticas_comparativas(
             )
             resultados['indicadores_globais'] = indicadores_globais
         except Exception as e:
-            print(f"Erro ao calcular indicadores globais: {e}")
+            return indicadores_globais
         
         # Calcular para cada competência
         for competencia in competencias:
@@ -349,7 +343,6 @@ def calcular_estatisticas_comparativas(
                     coluna_valor='Média'
                 )
             except Exception as e:
-                print(f"Erro ao calcular indicadores para competência {competencia}: {e}")
                 indicadores = {
                     'razao_max_min': 0,
                     'coef_variacao': 0,
@@ -413,7 +406,6 @@ def calcular_estatisticas_comparativas(
         return resultados
         
     except Exception as e:
-        print(f"Erro ao calcular estatísticas comparativas: {e}")
         return _criar_resultado_comparativo_vazio()
 
 
@@ -489,7 +481,6 @@ def calcular_percentis_desempenho(
         return resultado
     
     except Exception as e:
-        print(f"Erro ao calcular percentis: {e}")
         return {f"P{int(p*100)}": 0 for p in percentis}
 
 
@@ -569,7 +560,6 @@ def analisar_variabilidade_entre_categorias(
         }
     
     except Exception as e:
-        print(f"Erro ao analisar variabilidade: {e}")
         return {
             'coef_variacao': 0,
             'amplitude': 0,

@@ -1,15 +1,11 @@
 import streamlit as st
 import gc
-import pandas as pd
 
 from utils.helpers.mappings import get_mappings
-from data.data_loader import load_data_for_tab
-
-
 
 # Configuração inicial da página
 st.set_page_config(
-    page_title="Dashboard ENEM Sudeste - Análise Acadêmica", 
+    page_title="Dashboard ENEM Sul - Análise Acadêmica", 
     page_icon="🏠", 
     layout="wide",
     initial_sidebar_state="expanded"
