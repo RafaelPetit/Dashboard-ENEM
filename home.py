@@ -147,7 +147,7 @@ init_session_state()
 
 
 # Título principal com indicação regional
-st.title("🌎 Dashboard ENEM 2023 - Região Norte")
+st.title("🌎 Dashboard ENEM 2023 - Região Sul/Sudeste e Centro-Oeste")
 st.markdown("#### Plataforma de Análise Acadêmica para Pesquisa Educacional - Versão Sudeste")
 
 # Aviso importante sobre a divisão regional
