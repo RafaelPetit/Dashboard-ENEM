@@ -7,7 +7,7 @@ from .expander_desempenho import (
 from .expander_aspectos_sociais import (
     criar_expander_analise_correlacao,
     criar_expander_dados_distribuicao,
-    criar_expander_analise_regional,
+    criar_expander_analise_regional_aspectos_sociais,
     criar_expander_dados_completos_estado
 )
 

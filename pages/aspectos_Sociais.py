@@ -52,7 +52,7 @@ from utils.explicacao import (
 from utils.expander import (
     criar_expander_analise_correlacao,
     criar_expander_dados_distribuicao,
-    criar_expander_analise_regional,
+    criar_expander_analise_regional_aspectos_sociais,
     criar_expander_dados_completos_estado
 )
 
@@ -545,7 +545,7 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
         
         # Adicionar análise estatística detalhada se uma categoria foi selecionada - EXATAMENTE IGUAL À ORIGINAL
         if categoria_selecionada:
-            criar_expander_analise_regional(
+            criar_expander_analise_regional_aspectos_sociais(
                 df_por_estado, 
                 aspecto_social, 
                 categoria_selecionada, 

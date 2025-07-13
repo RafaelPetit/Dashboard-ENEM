@@ -184,7 +184,7 @@ def criar_expander_dados_distribuicao(
             _mostrar_distribuicao_basica(contagem_aspecto, aspecto_social, nome_aspecto)
 
 
-def criar_expander_analise_regional(
+def criar_expander_analise_regional_aspectos_sociais(
     df_por_estado: pd.DataFrame, 
     aspecto_social: str, 
     categoria_selecionada: str, 
@@ -209,11 +209,11 @@ def criar_expander_analise_regional(
     """
     # Validar entrada
     if df_por_estado is None or df_por_estado.empty:
-        return
+        return st.warning("⚠️ Não há dados suficientes para análise regional.")
     
     # Verificar se o aspecto social existe no dicionário
     if aspecto_social not in variaveis_sociais:
-        return
+        return st.warning("⚠️ Aspecto social não encontrado no dicionário de mapeamentos.")
         
     with st.expander(f"Ver análise regional detalhada"):
         try:
