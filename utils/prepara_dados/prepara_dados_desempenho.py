@@ -414,7 +414,7 @@ def preparar_dados_desempenho_geral(
     colunas_demograficas = [
         'TP_COR_RACA', 'TP_SEXO', 'TP_DEPENDENCIA_ADM_ESC', 
         'TP_FAIXA_ETARIA', 'Q001', 'Q002', 'Q005', 'Q006',
-        'Q025', 'TP_FAIXA_SALARIAL', 'TP_ST_CONCLUSAO'
+        'Q025', 'TP_FAIXA_SALARIAL', 'TP_ST_CONCLUSAO', 'NU_INFRAESTRUTURA',
     ]
     
     # Determinar quais colunas vamos precisar (notas + demografia)

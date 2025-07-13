@@ -1,13 +1,10 @@
 import pandas as pd
 from typing import Dict, List
 
-# Mapeamento constante de regiões do Brasil para uso em múltiplas funções
-# SUDESTE REMOVIDO - dados já filtrados no dataset
 REGIOES_BRASIL = {
-    'Norte': ['AC', 'AM', 'AP', 'PA', 'RO', 'RR', 'TO'],
-    'Nordeste': ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'],
     'Centro-Oeste': ['DF', 'GO', 'MS', 'MT'],
-    'Sul': ['PR', 'RS', 'SC']
+    'Sul': ['PR', 'RS', 'SC'],
+    'Sudeste': ['ES', 'MG', 'RJ', 'SP'],
 }
 
 # Mapeamento inverso para uso eficiente
