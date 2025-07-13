@@ -9,7 +9,7 @@ from utils.helpers.sidebar_filter import render_sidebar_filters
 from utils.helpers.tooltip import titulo_com_tooltip
 
 # Imports para gerenciamento de memória
-from utils.helpers.cache_utils import release_memory, optimized_cache
+from utils.helpers.cache_utils import release_memory
 
 # Imports para carregamento de dados
 from data.data_loader import load_data_for_tab, filter_data_by_states
