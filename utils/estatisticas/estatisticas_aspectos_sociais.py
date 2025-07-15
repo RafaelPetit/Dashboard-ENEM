@@ -25,83 +25,80 @@ def calcular_estatisticas_distribuicao(
 ) -> Dict[str, Any]:
     """
     Calcula estatísticas básicas sobre a distribuição de um aspecto social.
-    
+
     Parâmetros:
     -----------
     contagem_aspecto : DataFrame
         DataFrame com a contagem de ocorrências por categoria
-        
+
     Retorna:
     --------
     Dict[str, Any]
         Dicionário com estatísticas calculadas
     """
-    # Verificar se temos dados válidos
     if contagem_aspecto is None or contagem_aspecto.empty or 'Quantidade' not in contagem_aspecto.columns:
         return _criar_estatisticas_distribuicao_vazias()
-        
+
     try:
-        # Calcular total
+        # Total de ocorrências
         total = contagem_aspecto['Quantidade'].sum()
-        
-        # Verificar se temos um total válido
         if total <= 0:
             return _criar_estatisticas_distribuicao_vazias()
-        
-        # Encontrar categorias com maior e menor quantidade (forma segura)
-        try:
-            idx_max = contagem_aspecto['Quantidade'].idxmax()
-            idx_min = contagem_aspecto['Quantidade'].idxmin()
-            
-            categoria_mais_frequente = contagem_aspecto.loc[idx_max].copy() if idx_max in contagem_aspecto.index else None
-            categoria_menos_frequente = contagem_aspecto.loc[idx_min].copy() if idx_min in contagem_aspecto.index else None
-        except (KeyError, ValueError):
-            # Fallback se idxmax/idxmin falhar
-            max_valor = contagem_aspecto['Quantidade'].max()
-            min_valor = contagem_aspecto['Quantidade'].min()
-            
-            categoria_mais_frequente = contagem_aspecto[contagem_aspecto['Quantidade'] == max_valor].iloc[0].copy() if max_valor > 0 else None
-            categoria_menos_frequente = contagem_aspecto[contagem_aspecto['Quantidade'] == min_valor].iloc[0].copy() if min_valor > 0 else None
-        
-        # Verificar se encontramos categorias válidas
-        if categoria_mais_frequente is None or categoria_menos_frequente is None:
-            return _criar_estatisticas_distribuicao_vazias()
-        
-        # Calcular média e mediana
-        media = contagem_aspecto['Quantidade'].mean()
-        mediana = contagem_aspecto['Quantidade'].median()
-        
-        # Calcular o índice de concentração (Gini simplificado)
+
+        # Proporção de cada categoria
         proporcoes = contagem_aspecto['Quantidade'] / total
-        
-        # Verificar se temos proporcões válidas
+
+        # Tendência central
+        media = proporcoes.mean() * 100  # em %
+        mediana = proporcoes.median() * 100  # em %
+        try:
+           # Moda: categoria com maior quantidade
+            idx_moda = contagem_aspecto['Quantidade'].idxmax()
+            moda_val = contagem_aspecto.loc[idx_moda, 'Quantidade']
+            moda = (moda_val / total) * 100
+        except Exception:
+            moda = np.nan
+
+        # Dispersão
+        desvio_padrao = proporcoes.std() * 100  # em %
+        amplitude = (proporcoes.max() - proporcoes.min()) * 100  # em %
+        coef_variacao = (desvio_padrao / media * 100) if media > 0 else 0
+
+        # Percentis
+        percentil_25 = proporcoes.quantile(0.25) * 100
+        percentil_75 = proporcoes.quantile(0.75) * 100
+        percentil_90 = proporcoes.quantile(0.90) * 100
+
+        # Índice de concentração (Herfindahl-Hirschman Index invertido)
         if proporcoes.empty or proporcoes.isna().any():
             indice_concentracao = 0
         else:
-            # Quanto mais próximo de 1, mais desigual a distribuição
-            indice_concentracao = 1 - (1 / len(contagem_aspecto)) * (proporcoes**2).sum() * len(contagem_aspecto)
-            
-            # Verificar se o índice é um número válido
-            if not np.isfinite(indice_concentracao):
-                indice_concentracao = 0
-        
-        # Calcular a entropia (medida de dispersão)
+            indice_concentracao = 1 - (proporcoes ** 2).sum()
+
+        # Entropia
+        proporcoes_validas = proporcoes[proporcoes > 0]
+        entropia = -np.sum(proporcoes_validas * np.log2(proporcoes_validas))
+        entropia_normalizada = entropia / np.log2(len(proporcoes_validas)) if len(proporcoes_validas) > 0 else 0
+
+        # Índice de Gini
         try:
-            # Proporcões devem ser não-negativas e somar 1
-            proporcoes_validas = proporcoes[proporcoes > 0]
-            entropia = -np.sum(proporcoes_validas * np.log2(proporcoes_validas))
-            entropia_normalizada = entropia / np.log2(len(proporcoes_validas)) if len(proporcoes_validas) > 0 else 0
-        except Exception as e:
-            entropia = 0
-            entropia_normalizada = 0
-        
-        # Calcular razão entre maior e menor valor
-        razao_max_min = categoria_mais_frequente['Quantidade'] / categoria_menos_frequente['Quantidade'] if categoria_menos_frequente['Quantidade'] > 0 else 0
-        
-        # Calcular o coeficiente de variação
-        cv = (contagem_aspecto['Quantidade'].std() / media * 100) if media > 0 else 0
-        
-        # Classificar a distribuição
+            valores = proporcoes.values
+            n = len(valores)
+            if n <= 1:
+                indice_gini = 0
+            else:
+                valores_ordenados = np.sort(valores)
+                index = np.arange(1, n + 1)
+                indice_gini = (np.sum((2 * index - n - 1) * valores_ordenados)) / (n * np.sum(valores_ordenados))
+        except Exception:
+            indice_gini = 0
+
+        # Razão entre maior e menor valor
+        max_q = contagem_aspecto['Quantidade'].max()
+        min_q = contagem_aspecto['Quantidade'].min()
+        razao_max_min = (max_q / min_q) if min_q > 0 else 0
+
+        # Classificação da concentração
         if indice_concentracao < 0.2:
             classificacao_concentracao = "Distribuição muito homogênea"
         elif indice_concentracao < 0.4:
@@ -112,8 +109,13 @@ def calcular_estatisticas_distribuicao(
             classificacao_concentracao = "Distribuição concentrada"
         else:
             classificacao_concentracao = "Distribuição muito concentrada"
-        
-        # Retornar estatísticas em um dicionário
+
+        # Categorias mais e menos frequentes
+        idx_max = contagem_aspecto['Quantidade'].idxmax()
+        idx_min = contagem_aspecto['Quantidade'].idxmin()
+        categoria_mais_frequente = contagem_aspecto.loc[idx_max].copy() if idx_max in contagem_aspecto.index else None
+        categoria_menos_frequente = contagem_aspecto.loc[idx_min].copy() if idx_min in contagem_aspecto.index else None
+
         return {
             'total': int(total),
             'categoria_mais_frequente': categoria_mais_frequente,
@@ -121,17 +123,43 @@ def calcular_estatisticas_distribuicao(
             'num_categorias': len(contagem_aspecto),
             'media': round(media, 2),
             'mediana': round(mediana, 2),
+            'moda': round(moda, 2) if moda is not None and not np.isnan(moda) else 0.0,
             'indice_concentracao': round(indice_concentracao, 3),
             'classificacao_concentracao': classificacao_concentracao,
             'entropia': round(entropia, 3),
             'entropia_normalizada': round(entropia_normalizada, 3),
             'razao_max_min': round(razao_max_min, 2),
-            'coef_variacao': round(cv, 2),
-            'desvio_padrao': round(contagem_aspecto['Quantidade'].std(), 2)
+            'coef_variacao': round(coef_variacao, 2),
+            'desvio_padrao': round(desvio_padrao, 2),
+            'amplitude': round(amplitude, 2),
+            'percentil_25': round(percentil_25, 2),
+            'percentil_75': round(percentil_75, 2),
+            'percentil_90': round(percentil_90, 2),
+            'indice_gini': round(indice_gini, 3)
         }
-    
-    except Exception as e:
-        return _criar_estatisticas_distribuicao_vazias()
+
+    except:
+        return {
+            'total': 0,
+            'categoria_mais_frequente': None,
+            'categoria_menos_frequente': None,
+            'num_categorias': 0,
+            'media': 0,
+            'mediana': 0,
+            'moda': None,
+            'indice_concentracao': 0,
+            'classificacao_concentracao': "Dados insuficientes",
+            'entropia': 0,
+            'entropia_normalizada': 0,
+            'razao_max_min': 0,
+            'coef_variacao': 0,
+            'desvio_padrao': 0,
+            'amplitude': 0,
+            'percentil_25': 0,
+            'percentil_75': 0,
+            'percentil_90': 0,
+            'indice_gini': 0
+        }
 
 
 def _criar_estatisticas_distribuicao_vazias() -> Dict[str, Any]:
