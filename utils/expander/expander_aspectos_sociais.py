@@ -174,10 +174,6 @@ def criar_expander_dados_distribuicao(
             
             st.divider()
             
-            # Seção 7: Downloads e Exportação
-            st.write("### 💾 Downloads e Exportação")
-            _mostrar_downloads_distribuicao(contagem_aspecto, estatisticas, aspecto_social, nome_aspecto)
-            
         except Exception as e:
             st.error(f"❌ Erro ao gerar análise estatística: {str(e)}")
             # Fallback para versão básica
@@ -300,10 +296,6 @@ def criar_expander_dados_completos_estado(
             _mostrar_tabela_interativa(df_dados, tipo_localidade)
             
             st.markdown("---")
-            
-            # Seção 6: Downloads e exportação
-            st.markdown("### 📥 Downloads e Exportação")
-            _mostrar_opcoes_download(df_dados, tipo_localidade)
             
         except Exception as e:
             st.error(f"Erro ao gerar análise completa: {str(e)}")
@@ -635,53 +627,6 @@ def _mostrar_tabela_interativa(df_dados: pd.DataFrame, tipo_localidade: str) -> 
         
     except Exception as e:
         st.error(f"Erro ao gerar tabela interativa: {str(e)}")
-
-
-def _mostrar_opcoes_download(df_dados: pd.DataFrame, tipo_localidade: str) -> None:
-    """
-    Mostra opções de download e exportação.
-    """
-    try:
-        st.markdown("**💾 Opções de download:**")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Download da tabela completa
-            csv_completo = df_dados.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📄 Baixar dados completos (CSV)",
-                data=csv_completo,
-                file_name=f"aspectos_sociais_{tipo_localidade}_completo.csv",
-                mime="text/csv",
-                key="download_completo"
-            )
-        
-        with col2:
-            # Download da tabela pivô
-            try:
-                df_pivot = _criar_tabela_pivot(df_dados, tipo_localidade)
-                if df_pivot is not None and not df_pivot.empty:
-                    csv_pivot = df_pivot.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="📊 Baixar tabela cruzada (CSV)",
-                        data=csv_pivot,
-                        file_name=f"aspectos_sociais_{tipo_localidade}_pivot.csv",
-                        mime="text/csv",
-                        key="download_pivot"
-                    )
-            except Exception:
-                st.info("Tabela cruzada não disponível para download")
-        
-        # Informações sobre os dados
-        st.markdown("**ℹ️ Informações sobre os dados:**")
-        st.write(f"• **Total de registros:** {len(df_dados)}")
-        st.write(f"• **{tipo_localidade.capitalize()}s únicos:** {df_dados['Estado'].nunique()}")
-        st.write(f"• **Categorias únicas:** {df_dados['Categoria'].nunique()}")
-        st.write(f"• **Período de coleta:** ENEM 2023")
-        
-    except Exception as e:
-        st.error(f"Erro ao gerar opções de download: {str(e)}")
 
 
 def _mostrar_tabela_basica(df_dados: pd.DataFrame, tipo_localidade: str) -> None:
@@ -1401,44 +1346,50 @@ def _mostrar_resumo_distribuicao(estatisticas: Dict, nome_aspecto: str, contagem
         total_observacoes = contagem_aspecto['Quantidade'].sum()
         total_categorias = len(contagem_aspecto)
         categoria_dominante = contagem_aspecto.loc[contagem_aspecto['Percentual'].idxmax()]
-        
+
+        # Obter mapping de nomes amigáveis
+        categorias_mapping = mappings.get('categorias', {}).get(nome_aspecto, {})
+
+        # Nome amigável da categoria dominante
+        categoria_nome = categorias_mapping.get(str(categoria_dominante['Categoria']), str(categoria_dominante['Categoria']))
+
         col1, col2, col3 = st.columns(3)
-        
+
         with col1:
             st.metric(
                 "🔢 Total de Observações",
                 f"{total_observacoes:,}",
                 help="Número total de registros analisados"
             )
-            
+
         with col2:
             st.metric(
                 "📊 Categorias",
                 f"{total_categorias}",
                 help="Número de categorias distintas"
             )
-            
+
         with col3:
             st.metric(
                 "🎯 Categoria Dominante",
                 f"{categoria_dominante['Percentual']:.1f}%",
-                help=f"Categoria: {categoria_dominante.name}"
+                help=f"Categoria: {categoria_nome}"
             )
-        
+
         # Resumo textual
         st.markdown(f"""
         **Resumo da Distribuição de {nome_aspecto}:**
         
-        A análise revela que **{categoria_dominante.name}** é a categoria mais representativa, 
+        A análise revela que **{categoria_nome}** é a categoria mais representativa, 
         concentrando **{categoria_dominante['Percentual']:.1f}%** dos casos ({categoria_dominante['Quantidade']:,} observações).
         
         A distribuição apresenta **{total_categorias}** categorias distintas, com um 
         **índice de concentração de {estatisticas.get('indice_concentracao', 0):.3f}** 
         ({'alta' if estatisticas.get('indice_concentracao', 0) > 0.5 else 'baixa'} concentração).
         """)
-        
+
     except Exception as e:
-        st.error(f"Erro ao gerar resumo: {str(e)}")
+        st.error(f"Erro ao gerar")
 
 
 def _mostrar_metricas_distribuicao(estatisticas: Dict, nome_aspecto: str) -> None:
@@ -1473,42 +1424,44 @@ def _mostrar_metricas_distribuicao(estatisticas: Dict, nome_aspecto: str) -> Non
     except Exception as e:
         st.error(f"Erro ao gerar métricas: {str(e)}")
 
-
 def _mostrar_ranking_categorias(contagem_aspecto: pd.DataFrame, nome_aspecto: str) -> None:
     """
-    Mostra ranking das categorias.
+    Mostra ranking das categorias, utilizando o mappings para exibir nomes amigáveis das categorias.
     """
     try:
         # Ordenar por percentual decrescente
         df_ordenado = contagem_aspecto.sort_values('Percentual', ascending=False).reset_index(drop=True)
-        
+
+        # Tenta obter o dicionário de mapeamento de categorias para o aspecto
+        categorias_mapping = mappings.get('categorias', {}).get(nome_aspecto, {})
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.markdown("**🏆 Top 5 Categorias:**")
             top_5 = df_ordenado.head(5)
             for i, row in top_5.iterrows():
                 percentual = row['Percentual']
                 quantidade = row['Quantidade']
-                categoria = row.name if hasattr(row, 'name') else str(i+1)
-                
-                # Barra de progresso visual
-                st.markdown(f"**{i+1}º** {categoria}")
+                categoria_codigo = row['Categoria'] if 'Categoria' in row else (row.name if hasattr(row, 'name') else str(i+1))
+                # Usa o nome amigável se existir no mapping, senão mostra o código
+                categoria_nome = categorias_mapping.get(str(categoria_codigo), str(categoria_codigo))
+                st.markdown(f"**{i+1}º** {categoria_nome}")
                 st.progress(percentual / 100)
                 st.write(f"   {percentual:.1f}% ({quantidade:,} casos)")
-                
+
         with col2:
             st.markdown("**🔻 5 Menores Categorias:**")
             bottom_5 = df_ordenado.tail(5)
             for i, row in bottom_5.iterrows():
                 percentual = row['Percentual']
                 quantidade = row['Quantidade']
-                categoria = row.name if hasattr(row, 'name') else str(i+1)
-                
-                st.markdown(f"**{len(df_ordenado)-i}º** {categoria}")
+                categoria_codigo = row['Categoria'] if 'Categoria' in row else (row.name if hasattr(row, 'name') else str(i+1))
+                categoria_nome = categorias_mapping.get(str(categoria_codigo), str(categoria_codigo))
+                st.markdown(f"**{len(df_ordenado)-i}º** {categoria_nome}")
                 st.progress(percentual / 100)
                 st.write(f"   {percentual:.1f}% ({quantidade:,} casos)")
-                
+
     except Exception as e:
         st.error(f"Erro ao gerar ranking: {str(e)}")
 
@@ -1643,50 +1596,6 @@ def _mostrar_tabela_interativa_distribuicao(contagem_aspecto: pd.DataFrame, aspe
     except Exception as e:
         st.error(f"Erro ao gerar tabela interativa: {str(e)}")
 
-
-def _mostrar_downloads_distribuicao(contagem_aspecto: pd.DataFrame, estatisticas: Dict, aspecto_social: str, nome_aspecto: str) -> None:
-    """
-    Mostra seção de downloads para análise de distribuição.
-    """
-    try:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("**📊 Dados da Análise:**")
-            
-            # Download dos dados
-            csv = contagem_aspecto.to_csv(index=True)
-            st.download_button(
-                label="📥 Baixar dados da distribuição (CSV)",
-                data=csv,
-                file_name=f"distribuicao_{aspecto_social}.csv",
-                mime="text/csv"
-            )
-            
-        with col2:
-            st.markdown("**📈 Relatório de Análise:**")
-            
-            # Criar relatório
-            relatorio = _criar_relatorio_distribuicao(estatisticas, contagem_aspecto, aspecto_social, nome_aspecto)
-            
-            st.download_button(
-                label="📄 Baixar relatório (TXT)",
-                data=relatorio,
-                file_name=f"relatorio_distribuicao_{aspecto_social}.txt",
-                mime="text/plain"
-            )
-        
-        # Metadados
-        st.markdown("**ℹ️ Metadados:**")
-        st.info(f"""
-        - **Total de observações:** {contagem_aspecto['Quantidade'].sum():,}
-        - **Categorias:** {len(contagem_aspecto)}
-        - **Análise:** {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}
-        - **Variável:** {nome_aspecto}
-        """)
-        
-    except Exception as e:
-        st.error(f"Erro ao gerar downloads: {str(e)}")
 
 
 def _mostrar_distribuicao_basica(contagem_aspecto: pd.DataFrame, aspecto_social: str, nome_aspecto: str) -> None:
