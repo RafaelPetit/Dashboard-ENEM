@@ -27,98 +27,75 @@ def render_sidebar_filters() -> Tuple[List[str], List[str]]:
     mappings = st.session_state.mappings
     regioes_mapping = mappings['regioes_mapping']
     
-    # ---------------------------- FILTROS SIDEBAR ----------------------------
     st.sidebar.header("🔧 Filtros de Seleção")
     
     # Obter lista de todos os estados disponíveis
     todos_estados = sorted(filtros_dados['SG_UF_PROVA'].unique())
     todas_regioes = sorted(regioes_mapping.keys())
-    
-    # Checkbox para selecionar todo o Brasil
-    selecionar_brasil = st.sidebar.checkbox(
-        "Norte e Nordeste do Brasil (Todos os estados)", 
-        value=True, 
-        key="sidebar_brasil_checkbox"
-    )
-    
+
     # Função para converter seleção de regiões em lista de estados
     def get_estados_por_regiao(regioes_selecionadas):
         estados = []
         for regiao in regioes_selecionadas:
             estados.extend(regioes_mapping[regiao])
         return sorted(list(set(estados)))
-    
-    # Lógica de seleção de estados
-    if selecionar_brasil:
-        estados_selecionados = todos_estados
-        regioes_selecionadas = todas_regioes
-        
-        st.sidebar.multiselect(
-            "Regiões selecionadas:",
-            options=todas_regioes,
-            default=todas_regioes,
-            disabled=True,
-            key="sidebar_regioes_disabled",
-            help="Selecione regiões específicas quando a opção Brasil estiver desmarcada"
-        )
-        
-        st.sidebar.multiselect(
-            "Estados selecionados:",
-            options=todos_estados,
-            default=todos_estados,
-            disabled=True,
-            key="sidebar_estados_disabled",
-            help="Todos os estados estão selecionados. Desmarque 'Brasil' para selecionar estados específicos."
-        )
+
+    st.sidebar.markdown("#### 🗺️ Filtrar por região")
+    regioes_selecionadas = st.sidebar.multiselect(
+        "Selecione as regiões:",
+        options=todas_regioes,
+        default=[],
+        key="sidebar_regioes_ativas",
+        help="Selecione uma ou mais regiões para filtrar os estados disponíveis"
+    )
+
+    # Lógica: se nenhuma região for selecionada, mostra todos os estados.
+    # Se uma ou mais regiões forem selecionadas, mostra apenas os estados dessas regiões.
+    if not regioes_selecionadas:
+        estados_disponiveis = todos_estados
     else:
-        st.sidebar.markdown("#### 🗺️ Filtrar por região")
-        
-        regioes_selecionadas = st.sidebar.multiselect(
-            "Selecione as regiões:",
-            options=todas_regioes,
-            default=[],
-            key="sidebar_regioes_ativas",
-            help="Selecionar uma região automaticamente seleciona todos os seus estados"
-        )
-        
-        estados_das_regioes = get_estados_por_regiao(regioes_selecionadas)
-        
-        st.sidebar.markdown("#### 🏛️ Filtrar por estado")
-        
-        estados_adicionais = st.sidebar.multiselect(
-            "Selecione estados específicos:",
-            options=[e for e in todos_estados if e not in estados_das_regioes],
-            default=[],
-            key="sidebar_estados_adicionais",
-            help="Selecione estados específicos além dos já incluídos pelas regiões selecionadas"
-        )
-        
-        estados_selecionados = sorted(list(set(estados_das_regioes + estados_adicionais)))
-        
-        if not estados_selecionados:
-            st.sidebar.warning("⚠️ Selecione pelo menos uma região ou estado, ou marque a opção Brasil.")
-    
+        estados_disponiveis = get_estados_por_regiao(regioes_selecionadas)
+
+    # Recupera seleção anterior de estados (se houver)
+    estados_selecionados_anteriores = st.session_state.get("sidebar_estados_ativos", [])
+
+    # Mantém selecionados apenas os estados ainda disponíveis
+    if not regioes_selecionadas:
+        estados_default = todos_estados
+    else:
+        estados_default = estados_disponiveis
+
+    st.sidebar.markdown("#### 🏛️ Filtrar por estado")
+    estados_selecionados = st.sidebar.multiselect(
+        "Selecione os estados:",
+        options=estados_disponiveis,
+        default=estados_default,
+        key="sidebar_estados_ativos",
+        help="Selecione os estados que deseja analisar"
+    )
+
+
+    if not estados_selecionados:
+        st.sidebar.warning("⚠️ Selecione pelo menos um estado para continuar.")
+
     # Gerar locais formatados
     locais_selecionados = agrupar_estados_em_regioes(estados_selecionados, regioes_mapping)
-    
+
     # Atualizar session_state
     st.session_state.estados_selecionados = estados_selecionados
     st.session_state.locais_selecionados = locais_selecionados
-    
+
     # Mostrar resumo dos filtros
     if estados_selecionados:
         if len(estados_selecionados) == len(todos_estados):
-            st.sidebar.success("✅ Dados de todo o Norte e Nordeste do Brasil selecionados")
+            st.sidebar.success("✅ Dados de todos os estados do Brasil selecionados")
         else:
             if regioes_selecionadas:
-                st.sidebar.success(f"✅ Regiões: {', '.join(regioes_selecionadas)}")
-            if 'estados_adicionais' in locals() and estados_adicionais and not selecionar_brasil:
-                st.sidebar.success(f"✅ Estados adicionais: {', '.join(estados_adicionais)}")
+                st.sidebar.success(f"✅ Regiões filtradas: {', '.join(regioes_selecionadas)}")
             st.sidebar.info(f"📊 Total: {len(estados_selecionados)} estados selecionados")
-    
-    # Adicionar botão para ir ao Home
+
     st.sidebar.markdown("---")
-    if st.sidebar.button("🏠 Retornar à Página Inicial", use_container_width=True, key="sidebar_home_button"):
+    if st.sidebar.button("🏠 Voltar a Página Inicial", use_container_width=True, key="sidebar_home_button"):
         st.switch_page("Página_Inicial.py")
     
     return estados_selecionados, locais_selecionados

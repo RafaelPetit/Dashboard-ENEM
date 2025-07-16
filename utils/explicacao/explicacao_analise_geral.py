@@ -68,8 +68,8 @@ def get_tooltip_faltas() -> str:
 
     <b>Como interpretar:</b><br>
     - <span style="color:#1f77b4">Faltou nos dois dias:</span> candidatos que não compareceram a nenhum dia de prova
-    - <span style="color:#ff7f0e">Faltou no primeiro dia:</span> candidatos presentes apenas no segundo dia
-    - <span style="color:#2ca02c">Faltou no segundo dia:</span> candidatos presentes apenas no primeiro dia
+    - <span style="color:#ff7f0e">Faltou somente no primeiro dia:</span> candidatos presentes apenas no segundo dia
+    - <span style="color:#2ca02c">Faltou somente no segundo dia:</span> candidatos presentes apenas no primeiro dia
     
     <b>Contexto importante:</b><br>
     O ENEM é realizado em dois dias, com as seguintes provas:

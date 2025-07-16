@@ -103,6 +103,7 @@ def criar_grafico_comparativo_barras(
         # Aplicar estilização padrão
         fig = aplicar_layout_padrao(fig, titulo)
         fig = _aplicar_estilizacao_eixos_e_legenda(fig)
+        fig.update_layout(legend=dict(orientation="v", x=1.02, y=1, xanchor="left", yanchor="top"))
         
         return fig
         
@@ -188,6 +189,7 @@ def criar_grafico_linha_desempenho(
         # Aplicar estilização padrão
         fig = aplicar_layout_padrao(fig, titulo)
         fig = _aplicar_estilizacao_eixos_e_legenda(fig)
+        fig.update_layout(legend=dict(orientation="v", x=1.02, y=1, xanchor="left", yanchor="top"))
         
         return fig
         
@@ -250,6 +252,7 @@ def criar_grafico_linha_estados(
         # Aplicar estilização padrão
         fig = aplicar_layout_padrao(fig, titulo_completo)
         fig = _aplicar_estilizacao_eixos_e_legenda(fig, legenda_titulo="Área de Conhecimento")
+        fig.update_layout(legend=dict(orientation="v", x=1.02, y=1, xanchor="left", yanchor="top"))
         
         return fig
         

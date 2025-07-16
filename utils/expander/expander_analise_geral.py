@@ -9,7 +9,7 @@ from utils.estatisticas.estatistica_analise_geral import (
     analisar_desempenho_por_faixa_nota,
     analisar_metricas_por_regiao
 )
-from utils.explicacao.explicacao_geral import (
+from utils.explicacao.explicacao_analise_geral import (
     get_interpretacao_distribuicao
 )
 from utils.helpers.mappings import get_mappings

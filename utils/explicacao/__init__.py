@@ -23,7 +23,7 @@ from .explicacao_aspectos_sociais import (
     get_analise_concentracao
 )
 
-from .explicacao_geral import (
+from .explicacao_analise_geral import (
     get_tooltip_metricas_principais,
     get_tooltip_histograma,
     get_tooltip_faltas,

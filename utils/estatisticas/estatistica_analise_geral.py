@@ -661,9 +661,9 @@ def analisar_faltas(
         
         # Filtrar para tipos específicos de falta
         df_ambos_dias = df_normalizado[df_normalizado['Tipo de Falta'] == 'Faltou nos dois dias'].copy()
-        df_dia1 = df_normalizado[df_normalizado['Tipo de Falta'] == 'Faltou no primeiro dia'].copy()
-        df_dia2 = df_normalizado[df_normalizado['Tipo de Falta'] == 'Faltou no segundo dia'].copy()
-        
+        df_dia1 = df_normalizado[df_normalizado['Tipo de Falta'] == 'Faltou somente no primeiro dia'].copy()
+        df_dia2 = df_normalizado[df_normalizado['Tipo de Falta'] == 'Faltou somente no segundo dia'].copy()
+
         # Calcular médias por tipo de falta
         media_faltas_ambos_dias = df_ambos_dias['Percentual de Faltas'].mean() if not df_ambos_dias.empty else 0
         media_faltas_dia1 = df_dia1['Percentual de Faltas'].mean() if not df_dia1.empty else 0
@@ -711,7 +711,7 @@ def analisar_faltas(
         
         # Criar DataFrame com médias por tipo
         medias_por_tipo = pd.DataFrame({
-            'Tipo de Falta': ['Faltou nos dois dias', 'Faltou no primeiro dia', 'Faltou no segundo dia'],
+            'Tipo de Falta': ['Faltou nos dois dias', 'Faltou somente no primeiro dia', 'Faltou somente no segundo dia'],
             'Percentual de Faltas': [media_faltas_ambos_dias, media_faltas_dia1, media_faltas_dia2]
         })
         
@@ -766,7 +766,7 @@ def _criar_analise_faltas_vazia() -> Dict[str, Any]:
         'estado_maior_falta': None,
         'estado_menor_falta': None,
         'medias_por_tipo': pd.DataFrame({
-            'Tipo de Falta': ['Faltou nos dois dias', 'Faltou no primeiro dia', 'Faltou no segundo dia'],
+            'Tipo de Falta': ['Faltou nos dois dias', 'Faltou no somente primeiro dia', 'Faltou no somente segundo dia'],
             'Percentual de Faltas': [0.0, 0.0, 0.0]
         }),
         'tipo_mais_comum': 'N/A',
@@ -802,8 +802,8 @@ def _normalizar_tipos_faltas(df: pd.DataFrame) -> pd.DataFrame:
         'Faltou nos dois dias': 'Faltou nos dois dias',
         'Faltou no segundo dia': 'Faltou no segundo dia',
         'Faltou no primeiro dia': 'Faltou no primeiro dia',
-        'Faltou apenas no segundo dia': 'Faltou no segundo dia',
-        'Faltou apenas no primeiro dia': 'Faltou no primeiro dia'
+        'Faltou apenas no segundo dia': 'Faltou apenas no segundo dia',
+        'Faltou apenas no primeiro dia': 'Faltou apenas no primeiro dia'
     }
     
     # Aplicar normalização
