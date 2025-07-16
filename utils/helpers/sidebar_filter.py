@@ -88,7 +88,7 @@ def render_sidebar_filters() -> Tuple[List[str], List[str]]:
     # Mostrar resumo dos filtros
     if estados_selecionados:
         if len(estados_selecionados) == len(todos_estados):
-            st.sidebar.success("✅ Dados de todos os estados do Brasil selecionados")
+            st.sidebar.success("✅ Todos os estados selecionados")
         else:
             if regioes_selecionadas:
                 st.sidebar.success(f"✅ Regiões filtradas: {', '.join(regioes_selecionadas)}")
