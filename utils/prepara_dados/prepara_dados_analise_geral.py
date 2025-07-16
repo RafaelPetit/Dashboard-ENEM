@@ -58,8 +58,9 @@ def preparar_dados_histograma(
 @optimized_cache(ttl=1800)
 def preparar_dados_grafico_faltas(
     microdados_estados: pd.DataFrame, 
-    estados_selecionados: List[str], 
-    colunas_presenca: Optional[Dict[str, str]] = None
+    localidades_selecionadas: List[str], 
+    colunas_presenca: Optional[Dict[str, str]] = None,
+    coluna_agrupamento: str = 'SG_UF_PROVA'
 ) -> pd.DataFrame:
     """
     Prepara os dados para o gráfico de faltas por estado e dia de prova.
@@ -79,113 +80,105 @@ def preparar_dados_grafico_faltas(
     """
     # Verificar se temos dados válidos
     if microdados_estados is None or microdados_estados.empty:
-        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
-    
-    # Verificar se temos estados selecionados
-    if not estados_selecionados:
-        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
-    
-    # Verificar se temos a coluna de UF
-    if 'SG_UF_PROVA' not in microdados_estados.columns:
-        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
-        
+        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas', 'Área'])
+
+    # Verificar se temos localidades selecionadas
+    if not localidades_selecionadas:
+        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas', 'Área'])
+
+    # Verificar se temos a coluna de agrupamento
+    if coluna_agrupamento not in microdados_estados.columns:
+        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas', 'Área'])
+
     # Verificar se temos a coluna de presença geral
     if 'TP_PRESENCA_GERAL' not in microdados_estados.columns:
-        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
-    
-    # Verificar se os estados selecionados existem nos dados
-    estados_nos_dados = microdados_estados['SG_UF_PROVA'].unique()
-    estados_validos = [estado for estado in estados_selecionados if estado in estados_nos_dados]
-    if not estados_validos:
-        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
+        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas', 'Área'])
+
+    # Verificar se as localidades selecionadas existem nos dados
+    localidades_nos_dados = microdados_estados[coluna_agrupamento].unique()
+    localidades_validas = [loc for loc in localidades_selecionadas if loc in localidades_nos_dados]
+    if not localidades_validas:
+        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas', 'Área'])
+
     try:
-        return _calcular_faltas_por_estado(microdados_estados, estados_validos)
+        df_faltas = _calcular_faltas_por_localidade(microdados_estados, localidades_validas, coluna_agrupamento)
+        # Adiciona coluna 'Área' para compatibilidade com filtros
+        if not df_faltas.empty and 'Área' not in df_faltas.columns:
+            df_faltas['Área'] = df_faltas['Tipo de Falta']
+        return df_faltas
     except Exception as e:
-        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
+        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas', 'Área'])
 
 
 @memory_intensive_function
-def _calcular_faltas_por_estado(
+def _calcular_faltas_por_localidade(
     df: pd.DataFrame, 
-    estados: List[str]
+    localidades: List[str],
+    coluna_agrupamento: str
 ) -> pd.DataFrame:
     """
-    Calcula percentuais de faltas por estado e tipo de falta.
+    Calcula percentuais de faltas por localidade (estado ou região) e tipo de falta.
     Função auxiliar para melhorar legibilidade e manutenção.
     
     Parâmetros:
     -----------
     df : DataFrame
         DataFrame com os dados
-    estados : List[str]
-        Lista de estados para análise
-        
+    localidades : List[str]
+        Lista de localidades para análise
+    coluna_agrupamento : str
+        Nome da coluna para agrupar (SG_UF_PROVA ou SG_REGIAO)
+    
     Retorna:
     --------
-    DataFrame: Dados de faltas por estado
+    DataFrame: Dados de faltas por localidade
     """
     dados_grafico = []
-    
-    # Verificar se temos dados válidos
     if df is None or df.empty:
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
-    
-    if not estados:
+    if not localidades:
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
-    
-    # Processamento mais eficiente usando agrupamento
     try:
-        grupos_estado = df.groupby('SG_UF_PROVA', observed=True)
+        grupos = df.groupby(coluna_agrupamento, observed=True)
     except Exception as e:
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
-        
-    # Processar cada estado selecionado
-    estados_processados = 0
-    for i, estado in enumerate(estados):
+    for i, local in enumerate(localidades):
         try:
-            # Obter dados do estado atual
-            dados_estado = grupos_estado.get_group(estado)
-            estados_processados += 1
+            dados_local = grupos.get_group(local)
         except KeyError:
-            # Estado não encontrado no agrupamento, pular
             continue
         except Exception as e:
             continue
-        total_candidatos = len(dados_estado)
+        total_candidatos = len(dados_local)
         if total_candidatos == 0:
-            continue  # Pular estados sem candidatos
-        # Contagem de faltas por categoria
+            continue
         categorias_faltas = {
             0: {'nome': 'Faltou nos dois dias', 'contagem': 0},
-            1: {'nome': 'Faltou no segundo dia', 'contagem': 0},
-            2: {'nome': 'Faltou no primeiro dia', 'contagem': 0}
+            1: {'nome': 'Faltou somente no segundo dia', 'contagem': 0},
+            2: {'nome': 'Faltou somente no primeiro dia', 'contagem': 0}
         }
-        # Contagem eficiente
         try:
-            valores_presenca = dados_estado['TP_PRESENCA_GERAL'].value_counts()
+            valores_presenca = dados_local['TP_PRESENCA_GERAL'].value_counts()
         except Exception as e:
             continue
         for codigo, info in categorias_faltas.items():
             contagem = valores_presenca.get(codigo, 0)
             percentual = (contagem / total_candidatos * 100) if total_candidatos > 0 else 0
             dados_grafico.append({
-                'Estado': estado,
+                'Estado': local,
                 'Tipo de Falta': info['nome'],
                 'Percentual de Faltas': round(percentual, 2),
                 'Contagem': contagem,
                 'Total': total_candidatos
             })
-        # Liberar memória a cada lote de estados processados
         if (i+1) % CONFIG_PROCESSAMENTO['tamanho_lote_estados'] == 0:
-            release_memory(dados_estado)
-    # Criar DataFrame otimizado
+            release_memory(dados_local)
     df_resultado = pd.DataFrame(dados_grafico)
-    # Converter para categorias para economia de memória
     if not df_resultado.empty:
-        df_resultado['Estado'] = pd.Categorical(df_resultado['Estado'], categories=estados)
+        df_resultado['Estado'] = pd.Categorical(df_resultado['Estado'], categories=localidades)
         df_resultado['Tipo de Falta'] = pd.Categorical(
             df_resultado['Tipo de Falta'], 
-            categories=['Faltou nos dois dias', 'Faltou no primeiro dia', 'Faltou no segundo dia']
+            categories=['Faltou nos dois dias', 'Faltou somente no primeiro dia', 'Faltou somente no segundo dia']
         )
     return df_resultado
 

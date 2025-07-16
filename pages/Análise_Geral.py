@@ -5,6 +5,9 @@ from typing import Dict, List, Any, Optional
 
 from utils.helpers.tooltip import titulo_com_tooltip, custom_metric_with_tooltip
 
+from utils.visualizacao.componentes import criar_filtros_estados
+
+
 # Imports para gerenciamento de memória
 from utils.helpers.cache_utils import release_memory
 
@@ -392,6 +395,7 @@ def exibir_analise_faltas(
     Exibe análise de faltas por estado e dia de prova com gráficos interativos.
     FUNÇÃO 100% IDÊNTICA À ORIGINAL
     """
+
     try:
         # Definir mapeamento das colunas de presença
         colunas_presenca = {
@@ -401,80 +405,82 @@ def exibir_analise_faltas(
             'TP_PRESENCA_MT': 'Matemática',
             'TP_PRESENCA_REDACAO': 'Redação'
         }
-        
+
         # Título com tooltip
         titulo_com_tooltip("Análise de Faltas por Dia de Prova", get_tooltip_faltas(), "faltas_tooltip")
-        
+
+        # Novo: Filtro Estados/Regiões
+        tipo_localidade = st.radio(
+            "Visualizar por:",
+            options=["Estados", "Regiões"],
+            horizontal=True,
+            key="radio_faltas_estado_regiao"
+        )
+
+
         # Preparar dados para o gráfico de faltas
         with st.spinner("Processando dados para análise de faltas..."):
-            df_faltas = preparar_dados_grafico_faltas(microdados_estados, estados_selecionados, colunas_presenca)
-            
+            if tipo_localidade == "Estados":
+                df_faltas = preparar_dados_grafico_faltas(
+                    microdados_estados,
+                    estados_selecionados,
+                    colunas_presenca,
+                    coluna_agrupamento='SG_UF_PROVA'
+                )
+            else:
+                microdados_estados_regiao = microdados_estados.copy()
+                microdados_estados_regiao = microdados_estados_regiao[microdados_estados_regiao['SG_REGIAO'].notna()]
+                regioes = list(microdados_estados_regiao['SG_REGIAO'].unique())
+                df_faltas = preparar_dados_grafico_faltas(
+                    microdados_estados_regiao,
+                    regioes,
+                    colunas_presenca,
+                    coluna_agrupamento='SG_REGIAO'
+                )
+
             if df_faltas.empty:
                 st.warning("Não há dados suficientes para análise de faltas com os filtros aplicados.")
                 return
-            
+
             # Calcular análise completa das faltas (uma vez só)
             analise_faltas_dados = analisar_faltas(df_faltas)
-        
-        # Controles de interface para personalização do gráfico
-        col1, col2, col3 = st.columns([1, 1, 1])
-        
-        with col1:
-            ordenar_por_faltas = st.checkbox(
-                "Ordenar estados por % de faltas", 
-                value=False,
-                key="checkbox_ordenar_faltas"
-            )
-        
-        # Tipo de falta para ordenação
-        tipo_selecionado = None
-        if ordenar_por_faltas:
-            with col2:
-                tipos_disponiveis = df_faltas['Tipo de Falta'].unique().tolist()
-                # Remover tipos inválidos
-                tipos_disponiveis = [tipo for tipo in tipos_disponiveis if "Total de faltas" not in tipo]
-                tipo_selecionado = st.selectbox(
-                    "Ordenar por tipo de falta:",
-                    options=tipos_disponiveis,
-                    key="selectbox_tipo_falta"
-                )
-        
-        # Opção para filtrar apenas um tipo de falta
-        filtrar_tipo = False
-        if ordenar_por_faltas and tipo_selecionado:
-            with col3:
-                filtrar_tipo = st.checkbox(
-                    "Mostrar apenas este tipo de falta", 
-                    value=False,
-                    key="checkbox_filtrar_tipo"
-                )
-        
+
+        # Filtros interativos usando criar_filtros_estados
+        filtros = criar_filtros_estados(df_faltas)
+        area_selecionada = filtros.get('area_selecionada')
+        ordenar_por_nota = filtros.get('ordenar_por_nota', False)
+        mostrar_apenas_area = filtros.get('mostrar_apenas_area', False)
+
+        # Determinar ordenação e filtro
+        order_by_area = area_selecionada if ordenar_por_nota else None
+        filtro_area = area_selecionada if mostrar_apenas_area else None
+
         # Criar visualização do gráfico de faltas
         with st.spinner("Gerando visualização..."):
             fig = criar_grafico_faltas(
-                df_faltas, 
-                order_by_area=tipo_selecionado if ordenar_por_faltas else None,
+                df_faltas,
+                order_by_area=order_by_area,
                 order_ascending=False,
-                filtro_area=tipo_selecionado if (filtrar_tipo) else None
+                filtro_area=filtro_area
             )
             st.plotly_chart(fig, use_container_width=True)
-            
+
             # Liberar memória do gráfico (OTIMIZAÇÃO ADICIONADA)
             release_memory(fig)
-        
+
         # Extrair dados para explicação
         taxa_media_geral = analise_faltas_dados['taxa_media_geral']
         tipo_mais_comum = analise_faltas_dados['tipo_mais_comum']
-        
-        # Extrair estados com maior e menor faltas
+
+        # Extrair estados/regiões com maior e menor faltas
         estado_maior_falta = "N/A"
         if analise_faltas_dados['estado_maior_falta'] is not None:
             estado_maior_falta = analise_faltas_dados['estado_maior_falta']['Estado']
-        
+
         estado_menor_falta = "N/A"
         if analise_faltas_dados['estado_menor_falta'] is not None:
             estado_menor_falta = analise_faltas_dados['estado_menor_falta']['Estado']
-        
+
         # Exibir explicação contextualizada
         explicacao = get_explicacao_faltas(
             taxa_media_geral,
@@ -483,17 +489,17 @@ def exibir_analise_faltas(
             estado_menor_falta
         )
         st.info(explicacao)
-        
+
         # Adicionar expander com análise detalhada
         criar_expander_analise_faltas(df_faltas, analise_faltas_dados)
-        
+
         # Opção para visualizar evasão por tipo de presença
         if st.checkbox("Visualizar análise detalhada de evasão por tipo de presença", key="checkbox_evasao"):
             exibir_analise_evasao(microdados_estados, estados_selecionados)
-        
+
         # Liberar memória (OTIMIZAÇÃO ADICIONADA)
         release_memory([df_faltas, analise_faltas_dados])
-        
+
     except Exception as e:
         st.error(f"Erro ao exibir análise de faltas: {str(e)}")
         st.warning("Verifique se os dados de presença estão disponíveis para os estados selecionados.")

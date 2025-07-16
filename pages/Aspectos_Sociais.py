@@ -435,17 +435,19 @@ def render_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais):
 def render_aspectos_por_estado(microdados_estados, estados_selecionados, variaveis_sociais):
     """
     Renderiza a análise de distribuição de aspectos sociais por estado ou região.
-    FUNÇÃO 100% IDÊNTICA À ORIGINAL
+    Agora utiliza o componente criar_filtros_estados para filtros de ordenação e seleção de categoria.
     """
+    from utils.visualizacao.componentes import criar_filtros_estados
+
     try:
-        # Título com tooltip - EXATAMENTE IGUAL À ORIGINAL
+        # Título com tooltip
         titulo_com_tooltip(
             "Distribuição de Aspectos Sociais por Estado/Região", 
             get_tooltip_aspectos_por_estado(), 
             "aspectos_por_estado_tooltip"
         )
         
-        # Permitir ao usuário selecionar qual aspecto social visualizar - EXATAMENTE IGUAL À ORIGINAL
+        # Seleção do aspecto social
         aspecto_social = st.selectbox(
             "Selecione o aspecto social para análise por estado/região:",
             options=list(variaveis_sociais.keys()),
@@ -453,12 +455,11 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
             key="aspecto_por_estado"
         )
         
-        # Verificar se a coluna existe nos dados - EXATAMENTE IGUAL À ORIGINAL
         if aspecto_social not in microdados_estados.columns:
             st.warning(f"A variável {variaveis_sociais[aspecto_social]['nome']} não está disponível no conjunto de dados.")
             return
         
-        # Adicionar opção para agrupar por região - EXATAMENTE IGUAL À ORIGINAL
+        # Agrupar por região ou estado
         col1, col2 = st.columns([1, 2])
         with col1:
             agrupar_por_regiao = st.radio(
@@ -468,7 +469,7 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
                 key="agrupar_aspectos_regiao"
             ) == "Regiões"
         
-        # Preparar dados para visualização - EXATAMENTE IGUAL À ORIGINAL
+        # Preparar dados
         with st.spinner("Preparando dados..."):
             df_por_estado = preparar_dados_grafico_aspectos_por_estado(
                 microdados_estados, 
@@ -478,51 +479,30 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
                 agrupar_por_regiao
             )
         
-        # Verificar se temos dados suficientes - EXATAMENTE IGUAL À ORIGINAL
         if df_por_estado.empty:
             tipo_localidade = "região" if agrupar_por_regiao else "estado"
             st.warning(f"Não há dados suficientes para mostrar a distribuição de {variaveis_sociais[aspecto_social]['nome']} por {tipo_localidade}.")
             return
-        
-        # Interface para ordenação e filtragem - EXATAMENTE IGUAL À ORIGINAL
-        col1, col2 = st.columns([1, 2])
-        
-        with col1:
-            ordenar_por_percentual = st.checkbox(
-                "Ordenar por percentual", 
-                value=False, 
-                key="ordenar_estados_percentual"
-            )
-        
-        # Mostrar seletor de categoria apenas se o usuário escolheu ordenar - EXATAMENTE IGUAL À ORIGINAL
-        categoria_selecionada = None
-        if ordenar_por_percentual:
-            with col2:
-                categorias_disponiveis = sorted(df_por_estado['Categoria'].unique().tolist())
-                categoria_selecionada = st.selectbox(
-                    "Ordenar por categoria:",
-                    options=categorias_disponiveis,
-                    key="categoria_ordenacao"
-                )
-        
-        # Criar uma cópia do DataFrame para processamento - EXATAMENTE IGUAL À ORIGINAL
-        df_plot = df_por_estado.copy()
-        
-        # Se o usuário escolheu ordenar, reorganizamos os dados - EXATAMENTE IGUAL À ORIGINAL
-        if ordenar_por_percentual and categoria_selecionada:
-            df_plot = _ordenar_dados_por_categoria(df_plot, categoria_selecionada)
-            
-            # Opcional: Filtrar para mostrar apenas a categoria selecionada - EXATAMENTE IGUAL À ORIGINAL
-            mostrar_apenas_categoria = st.checkbox(
-                "Mostrar apenas a categoria selecionada", 
-                value=False, 
-                key="mostrar_apenas_categoria_estado"
-            )
-            
-            if mostrar_apenas_categoria:
-                df_plot = df_plot[df_plot['Categoria'] == categoria_selecionada]
-        
-        # Criar o gráfico - EXATAMENTE IGUAL À ORIGINAL
+
+        # Renomear coluna 'Categoria' para 'Área' para compatibilidade com o componente
+        df_filtros = df_por_estado.rename(columns={"Categoria": "Área"}) if "Categoria" in df_por_estado.columns else df_por_estado
+
+        # Usar componente criar_filtros_estados
+        filtros = criar_filtros_estados(df_filtros)
+
+        # Aplicar filtros
+        df_plot = df_filtros.copy()
+        if filtros['ordenar_por_nota'] and filtros['area_selecionada']:
+            df_plot = _ordenar_dados_por_categoria(df_plot.rename(columns={"Área": "Categoria"}), filtros['area_selecionada'])
+            df_plot = df_plot.rename(columns={"Categoria": "Área"})
+        if filtros['mostrar_apenas_area'] and filtros['area_selecionada']:
+            df_plot = df_plot[df_plot['Área'] == filtros['area_selecionada']]
+
+        # Voltar coluna para 'Categoria' para o gráfico
+        if "Área" in df_plot.columns:
+            df_plot = df_plot.rename(columns={"Área": "Categoria"})
+
+        # Gerar gráfico
         with st.spinner("Gerando visualização..."):
             fig = criar_grafico_aspectos_por_estado(
                 df_plot, 
@@ -531,32 +511,26 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
                 por_regiao=agrupar_por_regiao
             )
         
-        # Exibir o gráfico - EXATAMENTE IGUAL À ORIGINAL
         st.plotly_chart(fig, use_container_width=True)
         
-        # Adicionar explicação contextualizada - EXATAMENTE IGUAL À ORIGINAL
         tipo_localidade = "região" if agrupar_por_regiao else "estado"
         explicacao = get_explicacao_aspectos_por_estado(
             variaveis_sociais[aspecto_social]['nome'], 
-            categoria_selecionada,
+            filtros.get('area_selecionada'),
             tipo_localidade
         )
         st.info(explicacao)
         
-        # Adicionar análise estatística detalhada se uma categoria foi selecionada - EXATAMENTE IGUAL À ORIGINAL
-        if categoria_selecionada:
+        if filtros.get('area_selecionada'):
             criar_expander_analise_regional_aspectos_sociais(
                 df_por_estado, 
                 aspecto_social, 
-                categoria_selecionada, 
+                filtros['area_selecionada'], 
                 variaveis_sociais, 
                 tipo_localidade
             )
         
-        # Adicionar tabela completa de dados - EXATAMENTE IGUAL À ORIGINAL
         criar_expander_dados_completos_estado(df_por_estado, tipo_localidade)
-        
-        # Liberar memória - OTIMIZAÇÃO ADICIONADA
         release_memory([df_por_estado, df_plot, fig])
         
     except Exception as e:

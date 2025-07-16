@@ -215,7 +215,7 @@ def criar_filtros_estados(df_grafico: pd.DataFrame) -> Dict[str, Any]:
     # Opção para ordenar por nota
     with col2:
         ordenar_por_nota = st.checkbox(
-            "Ordenar por nota", 
+            "Ordenar por valor decrescente", 
             value=False,
             key="ordenar_estados"
         )
