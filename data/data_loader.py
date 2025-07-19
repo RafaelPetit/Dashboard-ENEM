@@ -38,14 +38,6 @@ def load_data_for_tab(tab_name: str, apenas_filtros: bool = False):
         # Aplicar otimização de tipos de dados
         dados_especificos = optimize_dtypes(dados_especificos, tab_name.lower())
 
-        # if tab_name in ['desempenho', 'geral']:
-        #     # faz a multiplicação por 10 das colunas de notas
-        #     notas_cols = [col for col in dados_especificos.columns if col.startswith('NU_NOTA_')]
-        #     for col in notas_cols:
-        #         if col in dados_especificos.columns:
-        #             dados_especificos[col] /= 10.0
-        #     return dados_especificos
-        
         return dados_especificos
         
     except Exception as e:
