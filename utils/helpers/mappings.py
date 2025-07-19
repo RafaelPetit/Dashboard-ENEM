@@ -110,6 +110,14 @@ def get_mappings():
         4: "Não concluído e não cursado"
     }
 
+    nacionalidade_mapping = {
+        0: 'Não informado',
+        1: 'Brasileiro(a)',
+        2: 'Brasileiro(a) Naturalizado(a)',
+        3: 'Estrangeiro(a)',
+        4: 'Brasileiro(a) Nascido no Exterior',
+    }
+
     variaveis_categoricas = {
         "TP_COR_RACA": {
             "nome": "Raça/Cor",
@@ -169,8 +177,15 @@ def get_mappings():
             "nome": "Nível de Infraestrutura",
             "mapeamento": infraestrutura_mapping,
             "ordem": list(infraestrutura_mapping.values())
+        },
+
+        "TP_NACIONALIDADE": {
+            "nome": "Nacionalidade",
+            "mapeamento": nacionalidade_mapping,
+            "ordem": list(nacionalidade_mapping.values())
         }
     }
+
     # Variáveis sociais para a aba de Aspectos Sociais
     variaveis_sociais = {
         "TP_COR_RACA": {
@@ -215,6 +230,11 @@ def get_mappings():
         "Q025": {
             "nome": "Acesso à Internet", 
             "mapeamento": acesso_internet_mapping
+            },
+
+        "TP_NACIONALIDADE": {
+            "nome": "Nacionalidade",
+            "mapeamento": nacionalidade_mapping
             }
     }
 

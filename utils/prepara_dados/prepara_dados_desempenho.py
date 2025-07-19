@@ -410,18 +410,11 @@ def preparar_dados_desempenho_geral(
     if microdados is None or microdados.empty:
         return pd.DataFrame()
     
-    # Colunas demográficas que precisamos para análises
-    colunas_demograficas = [
-        'TP_COR_RACA', 'TP_SEXO', 'TP_DEPENDENCIA_ADM_ESC', 
-        'TP_FAIXA_ETARIA', 'Q001', 'Q002', 'Q005', 'Q006',
-        'Q025', 'TP_FAIXA_SALARIAL', 'TP_ST_CONCLUSAO', 'NU_INFRAESTRUTURA',
-    ]
-    
     # Determinar quais colunas vamos precisar (notas + demografia)
     colunas_necessarias = list(colunas_notas)
     
     # Adicionar colunas demográficas que existem no DataFrame
-    for col in colunas_demograficas:
+    for col in mappings['variaveis_categoricas']:
         if col in microdados.columns:
             colunas_necessarias.append(col)
     
