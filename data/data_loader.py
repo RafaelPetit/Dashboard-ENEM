@@ -36,7 +36,15 @@ def load_data_for_tab(tab_name: str, apenas_filtros: bool = False):
         dados_especificos = pd.read_parquet(f"data/sample_{tab_name.lower()}.parquet", engine='pyarrow')
         
         # Aplicar otimização de tipos de dados
-        dados_especificos = optimize_dtypes(dados_especificos, tab_name)
+        dados_especificos = optimize_dtypes(dados_especificos, tab_name.lower())
+
+        # if tab_name in ['desempenho', 'geral']:
+        #     # faz a multiplicação por 10 das colunas de notas
+        #     notas_cols = [col for col in dados_especificos.columns if col.startswith('NU_NOTA_')]
+        #     for col in notas_cols:
+        #         if col in dados_especificos.columns:
+        #             dados_especificos[col] /= 10.0
+        #     return dados_especificos
         
         return dados_especificos
         
@@ -186,7 +194,7 @@ def calcular_seguro(serie_dados, operacao='media'):
 # FUNÇÕES DE OTIMIZAÇÃO DE MEMÓRIA
 # ------------------------------------------------------------
 
-def optimize_dtypes(df: pd.DataFrame, dtypes) -> pd.DataFrame:
+def optimize_dtypes(df: pd.DataFrame, dtypes: str) -> pd.DataFrame:
     """
     Otimiza tipos de dados para reduzir uso de memória.
     
@@ -201,14 +209,17 @@ def optimize_dtypes(df: pd.DataFrame, dtypes) -> pd.DataFrame:
     """
     if df.empty:
         return df
-    
-    # Otimizar inteiros
+
     arquivo_dtypes = f'data/dtypes_{dtypes}.json'
+    dtypes_series = pd.read_json(arquivo_dtypes, orient='index', typ='series')
+    df = df.astype(dtypes_series)
 
-    dtypes = pd.read_json(arquivo_dtypes, orient='index', typ='series')
-
-    df = df.astype(dtypes)
-    
+    if dtypes in ['desempenho', 'geral']:
+        notas_cols = [col for col in df.columns if col.startswith('NU_NOTA_')]
+        for col in notas_cols:
+            if col in df.columns:
+                df[col] /= 10.0
+                df[col] = df[col].astype('float64')
     return df
 
 
