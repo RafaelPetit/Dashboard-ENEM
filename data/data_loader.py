@@ -206,12 +206,16 @@ def optimize_dtypes(df: pd.DataFrame, dtypes: str) -> pd.DataFrame:
     dtypes_series = pd.read_json(arquivo_dtypes, orient='index', typ='series')
     df = df.astype(dtypes_series)
 
+    notas_cols = [col for col in df.columns if col.startswith('NU_NOTA_')]
+
+
     if dtypes in ['desempenho', 'geral']:
-        notas_cols = [col for col in df.columns if col.startswith('NU_NOTA_')]
-        for col in notas_cols:
-            if col in df.columns:
-                df[col] /= 10.0
-                df[col] = df[col].astype('float64')
+       df[notas_cols] = df[notas_cols] / 10.0
+       df[notas_cols] = df[notas_cols].astype('float64')
+
+    if dtypes in ['geral']:
+        df[notas_cols] = df[notas_cols].replace(-1, np.nan)
+
     return df
 
 
