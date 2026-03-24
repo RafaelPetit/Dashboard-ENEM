@@ -5,7 +5,7 @@ import warnings
 from typing import Dict, List, Any, Tuple
 from utils.estatisticas.estatistica_desempenho import analisar_desempenho_por_estado, calcular_estatisticas_comparativas
 from utils.helpers.mappings import get_mappings
-from utils.helpers.regiao_utils import obter_regiao_do_estado
+from utils.helpers.regiao_utils import obter_regiao_do_estado, ESTADO_PARA_REGIAO
 
 # Suprimir warnings específicos de cálculos matemáticos
 warnings.filterwarnings('ignore', message='invalid value encountered in scalar subtract')
@@ -808,7 +808,7 @@ def adicionar_regiao_aos_estados(df: pd.DataFrame) -> pd.DataFrame:
         df_com_regiao = df.copy()
         
         # Adicionar coluna de região usando a função auxiliar
-        df_com_regiao['Região'] = df_com_regiao['Estado'].apply(obter_regiao_do_estado)
+        df_com_regiao['Região'] = df_com_regiao['Estado'].map(ESTADO_PARA_REGIAO)
         
         return df_com_regiao
     except Exception as e:

@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 import pandas as pd
 from plotly.graph_objs import Figure
 from typing import Dict, Tuple, Any
+from utils.visualizacao.componentes import criar_grafico_vazio
 from utils.visualizacao.config_graficos import cores_padrao
 from utils.helpers.cache_utils import memory_intensive_function
 from utils.helpers.mappings import get_mappings
@@ -55,15 +56,15 @@ def criar_grafico_heatmap(
     """
     # Validação de dados
     if df_correlacao is None or df_correlacao.empty:
-        return _criar_grafico_vazio("Dados insuficientes para análise de correlação"), ""
+        return criar_grafico_vazio("Dados insuficientes para análise de correlação"), ""
     
     # Verificar se as variáveis existem no dicionário de mapeamentos
     if var_x not in variaveis_sociais or var_y not in variaveis_sociais:
-        return _criar_grafico_vazio("Variáveis não encontradas nos mapeamentos"), ""
+        return criar_grafico_vazio("Variáveis não encontradas nos mapeamentos"), ""
     
     # Verificar se as colunas de plotagem existem no DataFrame
     if var_x_plot not in df_correlacao.columns or var_y_plot not in df_correlacao.columns:
-        return _criar_grafico_vazio(f"Colunas {var_x_plot} e/ou {var_y_plot} não encontradas nos dados"), ""
+        return criar_grafico_vazio(f"Colunas {var_x_plot} e/ou {var_y_plot} não encontradas nos dados"), ""
     
     try:
         # Usar a função de preparação de dados
@@ -72,7 +73,7 @@ def criar_grafico_heatmap(
         
         # Verificar se temos um resultado válido
         if normalized_pivot is None or normalized_pivot.empty:
-            return _criar_grafico_vazio("Não foi possível preparar os dados para o heatmap"), ""
+            return criar_grafico_vazio("Não foi possível preparar os dados para o heatmap"), ""
         
         # Título formatado
         titulo = _formatar_titulo_correlacao(variaveis_sociais, var_x, var_y, estados_texto)
@@ -111,7 +112,7 @@ def criar_grafico_heatmap(
         return fig, explicacao
     
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
 
 # Corrigir a função criar_grafico_barras_empilhadas
 
@@ -152,15 +153,15 @@ def criar_grafico_barras_empilhadas(
     """
     # Validação de dados
     if df_correlacao is None or df_correlacao.empty:
-        return _criar_grafico_vazio("Dados insuficientes para análise de correlação"), ""
+        return criar_grafico_vazio("Dados insuficientes para análise de correlação"), ""
     
     # Verificar se as variáveis existem no dicionário de mapeamentos
     if var_x not in variaveis_sociais or var_y not in variaveis_sociais:
-        return _criar_grafico_vazio("Variáveis não encontradas nos mapeamentos"), ""
+        return criar_grafico_vazio("Variáveis não encontradas nos mapeamentos"), ""
     
     # Verificar se as colunas de plotagem existem no DataFrame
     if var_x_plot not in df_correlacao.columns or var_y_plot not in df_correlacao.columns:
-        return _criar_grafico_vazio(f"Colunas {var_x_plot} e/ou {var_y_plot} não encontradas nos dados"), ""
+        return criar_grafico_vazio(f"Colunas {var_x_plot} e/ou {var_y_plot} não encontradas nos dados"), ""
     
     try:
         # Usar a função de preparação de dados
@@ -169,7 +170,7 @@ def criar_grafico_barras_empilhadas(
         
         # Verificar se temos um resultado válido
         if df_barras is None or df_barras.empty:
-            return _criar_grafico_vazio("Não foi possível preparar os dados para o gráfico de barras"), ""
+            return criar_grafico_vazio("Não foi possível preparar os dados para o gráfico de barras"), ""
         
         # Título formatado
         titulo = f"Distribuição de {variaveis_sociais[var_y]['nome']} por {variaveis_sociais[var_x]['nome']} ({estados_texto})"
@@ -203,7 +204,7 @@ def criar_grafico_barras_empilhadas(
         return fig, explicacao
     
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
 
 @memory_intensive_function
 def criar_grafico_sankey(
@@ -242,15 +243,15 @@ def criar_grafico_sankey(
     """
     # Validação de dados
     if df_correlacao is None or df_correlacao.empty:
-        return _criar_grafico_vazio("Dados insuficientes para análise de fluxo"), ""
+        return criar_grafico_vazio("Dados insuficientes para análise de fluxo"), ""
     
     # Verificar se as variáveis existem no dicionário de mapeamentos
     if var_x not in variaveis_sociais or var_y not in variaveis_sociais:
-        return _criar_grafico_vazio("Variáveis não encontradas nos mapeamentos"), ""
+        return criar_grafico_vazio("Variáveis não encontradas nos mapeamentos"), ""
     
     # Verificar se as colunas de plotagem existem no DataFrame
     if var_x_plot not in df_correlacao.columns or var_y_plot not in df_correlacao.columns:
-        return _criar_grafico_vazio(f"Colunas {var_x_plot} e/ou {var_y_plot} não encontradas nos dados"), ""
+        return criar_grafico_vazio(f"Colunas {var_x_plot} e/ou {var_y_plot} não encontradas nos dados"), ""
     
     try:
         # Usar a função de preparação de dados
@@ -259,10 +260,10 @@ def criar_grafico_sankey(
         
         # Verificar se temos dados válidos
         if not labels or not source or not target or not value:
-            return _criar_grafico_vazio("Não foi possível preparar os dados para o diagrama Sankey"), ""
+            return criar_grafico_vazio("Não foi possível preparar os dados para o diagrama Sankey"), ""
         
         if len(labels) < 3 or len(source) < 2:  # Mínimo para um diagrama Sankey útil
-            return _criar_grafico_vazio("Dados insuficientes para um diagrama Sankey significativo"), ""
+            return criar_grafico_vazio("Dados insuficientes para um diagrama Sankey significativo"), ""
         
         # Criar cores para nós (com verificação de limites)
         cores_primarias = px.colors.qualitative.Pastel
@@ -313,7 +314,7 @@ def criar_grafico_sankey(
         return fig, explicacao
     
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
 
 
 @memory_intensive_function
@@ -344,16 +345,16 @@ def criar_grafico_distribuicao(
     """
     # Validação de dados
     if contagem_aspecto is None or contagem_aspecto.empty:
-        return _criar_grafico_vazio("Dados insuficientes para visualização de distribuição")
+        return criar_grafico_vazio("Dados insuficientes para visualização de distribuição")
     
     # Verificar se as colunas necessárias existem
     colunas_necessarias = ['Categoria', 'Quantidade', 'Percentual']
     if not all(col in contagem_aspecto.columns for col in colunas_necessarias):
-        return _criar_grafico_vazio("Estrutura de dados incorreta para visualização")
+        return criar_grafico_vazio("Estrutura de dados incorreta para visualização")
     
     # Verificar se o aspecto social existe no dicionário
     if aspecto_social not in variaveis_sociais:
-        return _criar_grafico_vazio(f"Aspecto social '{aspecto_social}' não encontrado nos mapeamentos")
+        return criar_grafico_vazio(f"Aspecto social '{aspecto_social}' não encontrado nos mapeamentos")
     
     try:
         # Nome formatado do aspecto social
@@ -378,7 +379,7 @@ def criar_grafico_distribuicao(
         return fig
     
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
 @memory_intensive_function
@@ -409,16 +410,16 @@ def criar_grafico_aspectos_por_estado(
     """
     # Validação de dados
     if df_plot is None or df_plot.empty:
-        return _criar_grafico_vazio("Dados insuficientes para visualização por estado/região")
+        return criar_grafico_vazio("Dados insuficientes para visualização por estado/região")
     
     # Verificar se as colunas necessárias existem
     colunas_necessarias = ['Estado', 'Categoria', 'Percentual']
     if not all(col in df_plot.columns for col in colunas_necessarias):
-        return _criar_grafico_vazio("Estrutura de dados incorreta para visualização por estado/região")
+        return criar_grafico_vazio("Estrutura de dados incorreta para visualização por estado/região")
     
     # Verificar se o aspecto social existe no dicionário
     if aspecto_social not in variaveis_sociais:
-        return _criar_grafico_vazio(f"Aspecto social '{aspecto_social}' não encontrado nos mapeamentos")
+        return criar_grafico_vazio(f"Aspecto social '{aspecto_social}' não encontrado nos mapeamentos")
     
     try:
         # Determinar tipo de localidade para rótulos
@@ -471,12 +472,12 @@ def criar_grafico_aspectos_por_estado(
         return fig
     
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
 # Funções auxiliares para formatação de gráficos
 
-def _criar_grafico_vazio(mensagem: str = "Dados insuficientes para criar visualização") -> Figure:
+def criar_grafico_vazio(mensagem: str = "Dados insuficientes para criar visualização") -> Figure:
     """
     Cria um gráfico vazio com uma mensagem explicativa.
     

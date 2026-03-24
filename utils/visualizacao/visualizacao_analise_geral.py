@@ -2,6 +2,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 from typing import Dict, List, Optional, Any
+from utils.visualizacao.componentes import criar_grafico_vazio
 from utils.visualizacao.config_graficos import aplicar_layout_padrao, cores_padrao
 from utils.helpers.cache_utils import memory_intensive_function, release_memory
 from utils.helpers.mappings import get_mappings
@@ -38,7 +39,7 @@ def criar_histograma(
     """
     # Verificar se temos dados válidos
     if df is None or df.empty or coluna not in df.columns:
-        return _criar_grafico_vazio(f"Dados insuficientes para criar histograma de {nome_area}")
+        return criar_grafico_vazio(f"Dados insuficientes para criar histograma de {nome_area}")
     
     try:
         # Extrair estatísticas principais com valores padrão em caso de ausência
@@ -53,7 +54,7 @@ def criar_histograma(
         
         # Verificar se temos estatísticas válidas
         if media == 0 and mediana == 0 and min_valor == 0 and max_valor == 0:
-            return _criar_grafico_vazio(f"Estatísticas insuficientes para criar histograma de {nome_area}")
+            return criar_grafico_vazio(f"Estatísticas insuficientes para criar histograma de {nome_area}")
 
         # Criar histograma
         fig = px.histogram(
@@ -87,7 +88,7 @@ def criar_histograma(
         return fig
         
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar histograma: {str(e)}")
+        return criar_grafico_vazio(f"Erro ao criar histograma: {str(e)}")
     finally:
         # Liberar memória
         release_memory(df)
@@ -120,17 +121,17 @@ def criar_grafico_faltas(
     """
     # Verificar se temos dados válidos
     if df_faltas is None or df_faltas.empty:
-        return _criar_grafico_vazio("Sem dados disponíveis para análise de faltas")
+        return criar_grafico_vazio("Sem dados disponíveis para análise de faltas")
     
     # Verificar estrutura mínima necessária
     colunas_necessarias = ['Estado', 'Tipo de Falta', 'Percentual de Faltas']
     colunas_faltantes = [col for col in colunas_necessarias if col not in df_faltas.columns]
     if colunas_faltantes:
-        return _criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
+        return criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
     
     # Verificar se temos dados suficientes
     if len(df_faltas) == 0:
-        return _criar_grafico_vazio("Nenhum dado de faltas encontrado")
+        return criar_grafico_vazio("Nenhum dado de faltas encontrado")
     
     
     try:
@@ -151,7 +152,7 @@ def criar_grafico_faltas(
             
         # Verificar novamente se ainda temos dados após filtragem
         if df_plot.empty:
-            return _criar_grafico_vazio("Sem dados disponíveis após aplicação de filtros")
+            return criar_grafico_vazio("Sem dados disponíveis após aplicação de filtros")
         
         # Criar gráfico de linha
         fig = _criar_grafico_linha_faltas(df_plot)
@@ -162,7 +163,7 @@ def criar_grafico_faltas(
         return fig
         
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar análise de faltas: {str(e)}")
+        return criar_grafico_vazio(f"Erro ao criar análise de faltas: {str(e)}")
     finally:
         # Liberar memória
         release_memory(df_faltas)
@@ -200,11 +201,11 @@ def criar_grafico_media_por_estado(
     """
     # Verificar se temos dados válidos
     if df_medias is None or df_medias.empty:
-        return _criar_grafico_vazio("Sem dados disponíveis para médias por estado/região")
+        return criar_grafico_vazio("Sem dados disponíveis para médias por estado/região")
     
     # Verificar estrutura mínima necessária
     if 'Local' not in df_medias.columns or 'Média Geral' not in df_medias.columns:
-        return _criar_grafico_vazio("Estrutura de dados incorreta para médias por estado/região")
+        return criar_grafico_vazio("Estrutura de dados incorreta para médias por estado/região")
     
     try:
         # Preparar o título
@@ -278,7 +279,7 @@ def criar_grafico_media_por_estado(
         return fig
         
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
 def criar_grafico_comparativo_areas(
@@ -304,12 +305,12 @@ def criar_grafico_comparativo_areas(
     """
     # Verificar se temos dados válidos
     if df_areas is None or df_areas.empty:
-        return _criar_grafico_vazio("Sem dados disponíveis para comparação entre áreas")
+        return criar_grafico_vazio("Sem dados disponíveis para comparação entre áreas")
     
     # Verificar estrutura mínima necessária
     colunas_necessarias = ['Area', 'Media']
     if not all(col in df_areas.columns for col in colunas_necessarias):
-        return _criar_grafico_vazio("Estrutura de dados incorreta para comparação entre áreas")
+        return criar_grafico_vazio("Estrutura de dados incorreta para comparação entre áreas")
     
     try:
         # Preparar o título
@@ -330,7 +331,7 @@ def criar_grafico_comparativo_areas(
         return fig
         
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
 def criar_grafico_evasao(
@@ -359,12 +360,12 @@ def criar_grafico_evasao(
     """
     # Verificar se temos dados válidos
     if df_evasao is None or df_evasao.empty:
-        return _criar_grafico_vazio("Sem dados disponíveis para análise de evasão")
+        return criar_grafico_vazio("Sem dados disponíveis para análise de evasão")
     
     # Verificar estrutura mínima necessária
     colunas_necessarias = ['Estado', 'Métrica', 'Valor']
     if not all(col in df_evasao.columns for col in colunas_necessarias):
-        return _criar_grafico_vazio("Estrutura de dados incorreta para análise de evasão")
+        return criar_grafico_vazio("Estrutura de dados incorreta para análise de evasão")
     
     try:
         # Preparar o título
@@ -388,43 +389,11 @@ def criar_grafico_evasao(
         return fig
         
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
 # Funções auxiliares
 
-def _criar_grafico_vazio(mensagem: str = "Dados insuficientes para criar visualização") -> go.Figure:
-    """
-    Cria um gráfico vazio com uma mensagem explicativa.
-    
-    Parâmetros:
-    -----------
-    mensagem: str, default="Dados insuficientes para criar visualização"
-        Mensagem a ser exibida no gráfico vazio
-        
-    Retorna:
-    --------
-    Figure: Objeto de figura Plotly com mensagem de erro
-    """
-    fig = go.Figure()
-    
-    fig.update_layout(
-        title=mensagem,
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-        annotations=[
-            dict(
-                text=mensagem,
-                xref="paper",
-                yref="paper",
-                showarrow=False,
-                font=dict(size=16)
-            )
-        ],
-        height=400
-    )
-    
-    return fig
 
 
 def _aplicar_layout_histograma(fig: go.Figure, nome_area: str) -> go.Figure:

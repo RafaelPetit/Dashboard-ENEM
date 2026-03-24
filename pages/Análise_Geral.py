@@ -4,16 +4,10 @@ import gc
 from typing import Dict, List, Any, Optional
 
 from utils.helpers.tooltip import titulo_com_tooltip, custom_metric_with_tooltip
-
 from utils.visualizacao.componentes import criar_filtros_estados
-
-
-# Imports para gerenciamento de memória
 from utils.helpers.cache_utils import release_memory
-
-# Imports para carregamento de dados
-from data.data_loader import load_data_for_tab, filter_data_by_states
-from utils.helpers.mappings import get_mappings
+from utils.helpers.page_utils import clear_page_cache, init_page_session_state, get_cached_data, get_all_cached_data
+from data.data_loader import filter_data_by_states
 
 # Imports para preparação de dados
 from utils.prepara_dados import (
@@ -79,50 +73,16 @@ st.set_page_config(
 )
 
 def clear_geral_cache():
-    """Limpa cache específico da página Geral"""
-    st.session_state.current_page = "geral"
-    
-    # Limpar cache de outras páginas se necessário
-    if hasattr(st.session_state, 'last_page') and st.session_state.last_page != "geral":
-        st.cache_data.clear()
-        gc.collect()
-    
-    st.session_state.last_page = "geral"
+    clear_page_cache("geral")
 
 def init_geral_session_state():
-    """Inicializa session_state específico para página Geral"""
-    if 'mappings' not in st.session_state:
-        st.session_state.mappings = get_mappings()
-    
-    if 'estados_selecionados' not in st.session_state:
-        st.session_state.estados_selecionados = []
-        st.warning("⚠️ Nenhum estado selecionado. Volte à página inicial para configurar os filtros.")
-        st.stop()
-    
-    if 'locais_selecionados' not in st.session_state:
-        st.session_state.locais_selecionados = []
+    init_page_session_state()
 
 def get_cached_data_geral(estados_selecionados: List[str]):
-    """Carrega dados otimizados para a página Geral"""
-    
-    @st.cache_data(ttl=600, max_entries=2, show_spinner=False)
-    def _load_geral_data(estados_key: str):
-        """Cache interno para dados da página Geral"""
-        return load_data_for_tab("geral")
-    
-    # Usar string dos estados como chave para cache
-    estados_key = "_".join(sorted(estados_selecionados))
-    return _load_geral_data(estados_key)
+    return get_cached_data("geral", estados_selecionados)
 
 def get_all_data_geral():
-    """Carrega TODOS os dados (não filtrados) para a página Geral"""
-    
-    @st.cache_data(ttl=600, max_entries=1, show_spinner=False)
-    def _load_all_geral_data():
-        """Cache interno para TODOS os dados da página Geral"""
-        return load_data_for_tab("geral")
-    
-    return _load_all_geral_data()
+    return get_all_cached_data("geral")
 
 def render_geral(
     microdados_estados: pd.DataFrame, 
@@ -149,7 +109,7 @@ def render_geral(
     competencia_mapping : Dict[str, str]
         Dicionário que mapeia códigos de competências para seus nomes
     """
-    # Verificar se temos estados selecionados - EXATAMENTE IGUAL À ORIGINAL
+    # Verificar se temos estados selecionados
     if not estados_selecionados:
         st.warning("Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
         return
@@ -158,17 +118,17 @@ def render_geral(
     mensagem = f"Analisando Dados Gerais para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
     st.info(mensagem)
     
-    # Exibir métricas principais (sempre visíveis) - EXATAMENTE IGUAL À ORIGINAL
+    # Exibir métricas principais (sempre visíveis)
     metricas = exibir_metricas_principais(microdados_estados, estados_selecionados, colunas_notas)
     
-    # Permitir ao usuário selecionar a análise desejada - EXATAMENTE IGUAL À ORIGINAL
+    # Permitir ao usuário selecionar a análise desejada
     analise_selecionada = st.radio(
         "Selecione a análise desejada:",
         ["Distribuição de Notas", "Análise por Região/Estado", "Comparativo entre Áreas", "Análise de Faltas"],
         horizontal=True
     )
     
-    # Exibir a visualização selecionada - EXATAMENTE IGUAL À ORIGINAL
+    # Exibir a visualização selecionada
     try:
         if analise_selecionada == "Distribuição de Notas":
             exibir_histograma_notas(microdados_estados, colunas_notas, competencia_mapping, microdados_completos)
@@ -182,7 +142,7 @@ def render_geral(
         st.error(f"Ocorreu um erro ao exibir a análise: {str(e)}")
         st.warning("Tente selecionar outra visualização ou verificar os filtros aplicados.")
     
-    # Limpeza de memória otimizada (ÚNICA ADIÇÃO)
+    # Limpeza de memória otimizada
     release_memory(microdados_estados)
 
 def exibir_metricas_principais(
@@ -192,7 +152,6 @@ def exibir_metricas_principais(
 ) -> Dict[str, Any]:
     """
     Calcula e exibe métricas principais em cards.
-    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     """
     # Título com tooltip explicativo
     titulo_com_tooltip("Métricas Principais", get_tooltip_metricas_principais(), "metricas_tooltip")
@@ -253,7 +212,6 @@ def exibir_histograma_notas(
 ) -> None:
     """
     Exibe um histograma interativo da distribuição de notas com análise estatística.
-    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     """
     try:
         # Título com tooltip explicativo
@@ -295,7 +253,7 @@ def exibir_histograma_notas(
             )
             st.plotly_chart(fig_hist, use_container_width=True)
             
-            # Liberar memória do gráfico (OTIMIZAÇÃO ADICIONADA)
+            # Liberar memória do gráfico
             release_memory(fig_hist)
         
         # Exibir explicação contextualizada do histograma
@@ -312,7 +270,7 @@ def exibir_histograma_notas(
         criar_expander_analise_histograma(df_valido, coluna_hist, nome_area_hist, estatisticas)
         criar_expander_analise_faixas_desempenho(df_valido, coluna_hist, nome_area_hist)
         
-        # Liberar memória (OTIMIZAÇÃO ADICIONADA)
+        # Liberar memória
         release_memory([df_valido, estatisticas])
         
     except Exception as e:
@@ -325,7 +283,6 @@ def exibir_analise_faltas(
 ) -> None:
     """
     Exibe análise de faltas por estado e dia de prova com gráficos interativos.
-    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     """
 
     try:
@@ -397,7 +354,7 @@ def exibir_analise_faltas(
             )
             st.plotly_chart(fig, use_container_width=True)
 
-            # Liberar memória do gráfico (OTIMIZAÇÃO ADICIONADA)
+            # Liberar memória do gráfico
             release_memory(fig)
 
         # Extrair dados para explicação
@@ -429,7 +386,7 @@ def exibir_analise_faltas(
         if st.checkbox("Visualizar análise detalhada de evasão por tipo de presença", key="checkbox_evasao"):
             exibir_analise_evasao(microdados_estados, estados_selecionados)
 
-        # Liberar memória (OTIMIZAÇÃO ADICIONADA)
+        # Liberar memória
         release_memory([df_faltas, analise_faltas_dados])
 
     except Exception as e:
@@ -444,7 +401,6 @@ def exibir_analise_regional(
 ) -> None:
     """
     Exibe análise de médias por estado ou região do Brasil.
-    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     """
     try:
         # Título com tooltip
@@ -498,7 +454,7 @@ def exibir_analise_regional(
             )
             st.plotly_chart(fig, use_container_width=True)
             
-            # Liberar memória do gráfico (OTIMIZAÇÃO ADICIONADA)
+            # Liberar memória do gráfico
             release_memory(fig)
         
         # Preparar dados para explicação
@@ -531,7 +487,7 @@ def exibir_analise_regional(
         # Adicionar expander com análise detalhada por região
         criar_expander_analise_regional(microdados_estados, colunas_notas, competencia_mapping)
         
-        # Liberar memória (OTIMIZAÇÃO ADICIONADA)
+        # Liberar memória
         release_memory(df_medias)
         
     except Exception as e:
@@ -546,7 +502,6 @@ def exibir_comparativo_areas(
 ) -> None:
     """
     Exibe comparativo entre áreas de conhecimento.
-    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     """
     try:
         # Título com tooltip
@@ -590,7 +545,7 @@ def exibir_comparativo_areas(
             )
             st.plotly_chart(fig, use_container_width=True)
             
-            # Liberar memória do gráfico (OTIMIZAÇÃO ADICIONADA)
+            # Liberar memória do gráfico
             release_memory(fig)
         
         # Identificar áreas com melhor e pior desempenho
@@ -622,7 +577,7 @@ def exibir_comparativo_areas(
         # Adicionar expander com análise detalhada
         criar_expander_analise_comparativo_areas(df_areas)
         
-        # Liberar memória (OTIMIZAÇÃO ADICIONADA)
+        # Liberar memória
         release_memory(df_areas)
         
     except Exception as e:
@@ -635,7 +590,6 @@ def exibir_analise_evasao(
 ) -> None:
     """
     Exibe análise de evasão (presença/ausência) por estado.
-    FUNÇÃO 100% IDÊNTICA À ORIGINAL
     """
     try:
         # Título com tooltip
@@ -687,7 +641,7 @@ def exibir_analise_evasao(
             )
             st.plotly_chart(fig, use_container_width=True)
             
-            # Liberar memória do gráfico (OTIMIZAÇÃO ADICIONADA)
+            # Liberar memória do gráfico
             release_memory(fig)
         
         # Calcular métricas para explicação
@@ -716,7 +670,7 @@ def exibir_analise_evasao(
         )
         st.info(explicacao)
         
-        # Liberar memória (OTIMIZAÇÃO ADICIONADA)
+        # Liberar memória
         release_memory(df_evasao)
         
     except Exception as e:

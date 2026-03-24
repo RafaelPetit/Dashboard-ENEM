@@ -1,6 +1,40 @@
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
 from typing import Dict, List, Any
+
+
+def criar_grafico_vazio(mensagem: str = "Dados insuficientes para criar visualização") -> go.Figure:
+    """
+    Cria um gráfico vazio com uma mensagem explicativa.
+    Função centralizada — usada por todos os módulos de visualização.
+
+    Parâmetros:
+    -----------
+    mensagem: str
+        Mensagem a ser exibida no gráfico vazio
+
+    Retorna:
+    --------
+    Figure: Objeto de figura Plotly com mensagem
+    """
+    fig = go.Figure()
+    fig.update_layout(
+        title=mensagem,
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        annotations=[
+            dict(
+                text=mensagem,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=16)
+            )
+        ],
+        height=400
+    )
+    return fig
 
 def criar_filtros_comparativo(
     df_resultados: pd.DataFrame, 

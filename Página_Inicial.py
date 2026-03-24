@@ -151,7 +151,7 @@ st.markdown("""
 <div class="warning-card">
     <h4>📍 Cobertura Regional desta Plataforma</h4>
     <p>
-        Esta versão da plataforma contém dados das regiões <strong>Sudeste, Sudeste e Centro-Oeste</strong>. Para análise das regiões <strong>Norte e Nordeste</strong> , acesse a <strong> Versão abaixo</strong> da plataforma.
+        Esta versão da plataforma contém dados das regiões <strong>Sul, Sudeste e Centro-Oeste</strong>. Para análise das regiões <strong>Norte e Nordeste</strong>, acesse a <strong>Versão abaixo</strong> da plataforma.
     </p>
     <p style="margin-top: 1rem;">
         <a href="https://enem-insights-norte.streamlit.app/" target="_blank" class="link-button">
@@ -382,9 +382,9 @@ footer_col1, footer_col2, footer_col3 = st.columns([1, 1, 1])
 
 with footer_col1:
     try:
-        logo = "Logo.jpg"
+        logo = "data/Logo.jpg"
         st.image(logo, width=120)
-    except:
+    except Exception:
         st.markdown("<h3>UNIP</h3>", unsafe_allow_html=True)
     
     st.markdown("""

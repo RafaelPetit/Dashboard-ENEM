@@ -138,7 +138,7 @@ def calcular_estatisticas_distribuicao(
             'indice_gini': round(indice_gini, 3)
         }
 
-    except:
+    except Exception:
         return {
             'total': 0,
             'categoria_mais_frequente': None,

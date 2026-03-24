@@ -6,6 +6,7 @@ import numpy as np
 from scipy import stats
 import warnings
 from typing import Dict, Optional, Any
+from utils.visualizacao.componentes import criar_grafico_vazio
 from utils.visualizacao.config_graficos import aplicar_layout_padrao, cores_padrao
 from utils.helpers.cache_utils import memory_intensive_function
 from utils.helpers.mappings import get_mappings
@@ -60,21 +61,21 @@ def criar_grafico_comparativo_barras(
     """
     # Verificar dados de entrada
     if df_resultados is None or df_resultados.empty:
-        return _criar_grafico_vazio("Sem dados disponíveis para visualização")
+        return criar_grafico_vazio("Sem dados disponíveis para visualização")
     
     # Verificar estrutura mínima do DataFrame
     colunas_necessarias = ['Categoria', 'Competência', 'Média']
     colunas_faltantes = [col for col in colunas_necessarias if col not in df_resultados.columns]
     if colunas_faltantes:
-        return _criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
+        return criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
     
     # Verificar se a variável selecionada existe no dicionário
     if variavel_selecionada not in variaveis_categoricas:
-        return _criar_grafico_vazio(f"Variável '{variavel_selecionada}' não encontrada nos metadados")
+        return criar_grafico_vazio(f"Variável '{variavel_selecionada}' não encontrada nos metadados")
     
     # Verificar se temos dados suficientes
     if len(df_resultados) == 0:
-        return _criar_grafico_vazio("Nenhum dado encontrado após filtros aplicados")
+        return criar_grafico_vazio("Nenhum dado encontrado após filtros aplicados")
     
     try:
         # Determinar título e componentes do texto
@@ -108,7 +109,7 @@ def criar_grafico_comparativo_barras(
         return fig
         
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
 def criar_grafico_linha_desempenho(
@@ -140,19 +141,19 @@ def criar_grafico_linha_desempenho(
     """
     # Validação de dados de entrada
     if df_linha is None:
-        return _criar_grafico_vazio("Erro: dados não fornecidos")
+        return criar_grafico_vazio("Erro: dados não fornecidos")
         
     if df_linha.empty:
-        return _criar_grafico_vazio("Sem dados disponíveis para visualização")
+        return criar_grafico_vazio("Sem dados disponíveis para visualização")
     
     # Verificar se as colunas necessárias existem
     colunas_necessarias = ['Categoria', 'Competência', 'Média']
     colunas_faltantes = [col for col in colunas_necessarias if col not in df_linha.columns]
     if colunas_faltantes:
-        return _criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
+        return criar_grafico_vazio(f"Estrutura de dados incorreta. Colunas faltantes: {colunas_faltantes}")
     
     if variavel_selecionada not in variaveis_categoricas:
-        return _criar_grafico_vazio(f"Variável '{variavel_selecionada}' não encontrada nos metadados")
+        return criar_grafico_vazio(f"Variável '{variavel_selecionada}' não encontrada nos metadados")
     
     try:
         # Determinar título adequado
@@ -163,7 +164,7 @@ def criar_grafico_linha_desempenho(
         try:
             competencias_unicas = df_linha['Competência'].unique()
         except Exception as e:
-            return _criar_grafico_vazio("Erro ao processar competências dos dados")
+            return criar_grafico_vazio("Erro ao processar competências dos dados")
         
         filtro_texto = f" - {competencia_filtro}" if competencia_filtro and len(competencias_unicas) == 1 else ""
         titulo = f"Desempenho por {variaveis_categoricas[variavel_selecionada]['nome']}{filtro_texto}{ordenacao_texto}"
@@ -194,7 +195,7 @@ def criar_grafico_linha_desempenho(
         return fig
         
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
 def criar_grafico_linha_estados(
@@ -223,10 +224,10 @@ def criar_grafico_linha_estados(
     """
     # Validação de dados
     if df_plot is None or df_plot.empty:
-        return _criar_grafico_vazio("Sem dados disponíveis para visualização")
+        return criar_grafico_vazio("Sem dados disponíveis para visualização")
     
     if 'Estado' not in df_plot.columns or 'Área' not in df_plot.columns or 'Média' not in df_plot.columns:
-        return _criar_grafico_vazio("Estrutura de dados incorreta para este gráfico")
+        return criar_grafico_vazio("Estrutura de dados incorreta para este gráfico")
     
     try:
         # Determinar título adequado
@@ -257,7 +258,7 @@ def criar_grafico_linha_estados(
         return fig
         
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
 @memory_intensive_function
@@ -290,14 +291,14 @@ def criar_grafico_scatter(
     """
     # Validação de dados
     if df is None or df.empty:
-        return _criar_grafico_vazio("Sem dados disponíveis para visualização")
+        return criar_grafico_vazio("Sem dados disponíveis para visualização")
     
     
     if eixo_x not in df.columns or eixo_y not in df.columns:
-        return _criar_grafico_vazio(f"Colunas de eixo não encontradas nos dados")
+        return criar_grafico_vazio(f"Colunas de eixo não encontradas nos dados")
     
     if eixo_x not in competencia_mapping or eixo_y not in competencia_mapping:
-        return _criar_grafico_vazio(f"Mapeamento de competências não encontrado")
+        return criar_grafico_vazio(f"Mapeamento de competências não encontrado")
     
     try:
         # Filtrar dados válidos
@@ -305,7 +306,7 @@ def criar_grafico_scatter(
         
         # Verificar se ainda temos dados suficientes após filtragem
         if len(df_valido) < 10:
-            return _criar_grafico_vazio("Dados insuficientes para criar o gráfico de dispersão")
+            return criar_grafico_vazio("Dados insuficientes para criar o gráfico de dispersão")
         
         # Criar gráfico básico
         fig = _criar_scatter_base(df_valido, eixo_x, eixo_y, competencia_mapping, colorir_por_faixa)
@@ -319,7 +320,7 @@ def criar_grafico_scatter(
         return fig
         
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
 def adicionar_linha_tendencia(
@@ -409,7 +410,7 @@ def adicionar_linha_tendencia(
 
 # Funções auxiliares
 
-def _criar_grafico_vazio(mensagem: str = "Dados insuficientes para criar visualização") -> Figure:
+def criar_grafico_vazio(mensagem: str = "Dados insuficientes para criar visualização") -> Figure:
     """
     Cria um gráfico vazio com uma mensagem explicativa.
     
@@ -577,7 +578,7 @@ def _filtrar_dados_validos_scatter(
         # Retornar dataframe vazio em caso de erro, mas manter as colunas originais
         try:
             return pd.DataFrame(columns=df.columns)
-        except:
+        except Exception:
             return pd.DataFrame(columns=[eixo_x, eixo_y])
 
 
@@ -641,7 +642,7 @@ def _criar_scatter_colorido_por_faixa(
     try:
         # Garantir que temos dados para processar
         if df_valido is None or df_valido.empty:
-            return _criar_grafico_vazio("Dados insuficientes após filtragem")
+            return criar_grafico_vazio("Dados insuficientes após filtragem")
             
         # Criar cópia para evitar SettingWithCopyWarning
         df_plot = df_valido.copy()
@@ -683,7 +684,7 @@ def _criar_scatter_colorido_por_faixa(
         return fig
         
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
 def _criar_scatter_simples(
@@ -713,7 +714,7 @@ def _criar_scatter_simples(
     try:
         # Garantir que temos dados para processar
         if df_valido is None or df_valido.empty:
-            return _criar_grafico_vazio("Dados insuficientes após filtragem")
+            return criar_grafico_vazio("Dados insuficientes após filtragem")
             
         # Título do gráfico
         titulo = f"Relação entre {competencia_mapping[eixo_x]} e {competencia_mapping[eixo_y]}"
@@ -737,7 +738,7 @@ def _criar_scatter_simples(
         return fig
         
     except Exception as e:
-        return _criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
+        return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
 def _adicionar_linha_tendencia_scatter(

@@ -470,48 +470,44 @@ def preparar_dados_evasao(
     if not all(col in microdados_estados.columns for col in colunas_necessarias):
         return pd.DataFrame(columns=['Estado', 'Métrica', 'Valor'])
     try:
+        import numpy as np
+        # Filtrar apenas estados solicitados
+        df = microdados_estados[microdados_estados['SG_UF_PROVA'].isin(estados_selecionados)]
+        if df.empty:
+            return pd.DataFrame(columns=['Estado', 'Métrica', 'Valor'])
+
+        # Crosstab vetorizado: contagens por estado × presença
+        counts = pd.crosstab(df['SG_UF_PROVA'], df['TP_PRESENCA_GERAL'])
+        totais = df.groupby('SG_UF_PROVA').size()
+
+        # Mapeamento de códigos para métricas
+        metricas_map = {
+            3: 'Presentes',
+            2: 'Faltantes Somente Dia 1',
+            1: 'Faltantes Somente Dia 2',
+            0: 'Faltantes Ambos'
+        }
+
         resultado = []
-        grupos_estado = microdados_estados.groupby('SG_UF_PROVA')
         for estado in estados_selecionados:
-            try:
-                dados_estado = grupos_estado.get_group(estado)
-            except KeyError:
-                continue  # Estado não encontrado, pular
-            total_candidatos = len(dados_estado)
-            presenca_counts = dados_estado['TP_PRESENCA_GERAL'].value_counts()
-            # Faltou nos dois dias (código 0)
-            faltas_ambos = presenca_counts.get(0, 0)
-            # Faltou no segundo dia (código 1 - presente apenas no primeiro)
-            faltas_dia2 = presenca_counts.get(1, 0)
-            # Faltou no primeiro dia (código 2 - presente apenas no segundo)
-            faltas_dia1 = presenca_counts.get(2, 0)
-            # Presente nos dois dias (código 3)
-            presentes = presenca_counts.get(3, 0)
-            # Calcular percentuais
-            if total_candidatos > 0:
-                percentual_faltas_ambos = (faltas_ambos / total_candidatos) * 100
-                percentual_faltas_dia1 = (faltas_dia1 / total_candidatos) * 100
-                percentual_faltas_dia2 = (faltas_dia2 / total_candidatos) * 100
-                percentual_presentes = (presentes / total_candidatos) * 100
-            else:
-                percentual_faltas_ambos = 0
-                percentual_faltas_dia1 = 0
-                percentual_faltas_dia2 = 0
-                percentual_presentes = 0
-            # Adicionar dados ao resultado
-            resultado.extend([
-                {'Estado': estado, 'Métrica': 'Presentes', 'Valor': round(percentual_presentes, 2), 'Contagem': presentes},
-                {'Estado': estado, 'Métrica': 'Faltantes Somente Dia 1', 'Valor': round(percentual_faltas_dia1, 2), 'Contagem': faltas_dia1},
-                {'Estado': estado, 'Métrica': 'Faltantes Somente Dia 2', 'Valor': round(percentual_faltas_dia2, 2), 'Contagem': faltas_dia2},
-                {'Estado': estado, 'Métrica': 'Faltantes Ambos', 'Valor': round(percentual_faltas_ambos, 2), 'Contagem': faltas_ambos}
-            ])
-        # Criar DataFrame otimizado
+            if estado not in counts.index:
+                continue
+            total = totais[estado]
+            for codigo, metrica in metricas_map.items():
+                contagem = int(counts.loc[estado, codigo]) if codigo in counts.columns else 0
+                percentual = round((contagem / total * 100), 2) if total > 0 else 0.0
+                resultado.append({
+                    'Estado': estado,
+                    'Métrica': metrica,
+                    'Valor': percentual,
+                    'Contagem': contagem
+                })
+
         df_resultado = pd.DataFrame(resultado)
-        # Converter para categorias para economia de memória
         if not df_resultado.empty:
             df_resultado['Estado'] = pd.Categorical(df_resultado['Estado'], categories=estados_selecionados)
             df_resultado['Métrica'] = pd.Categorical(
-                df_resultado['Métrica'], 
+                df_resultado['Métrica'],
                 categories=['Presentes', 'Faltantes Dia 1', 'Faltantes Dia 2', 'Faltantes Ambos']
             )
         return df_resultado

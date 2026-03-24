@@ -259,17 +259,6 @@ def get_mappings():
         'largura_linha': 2
     }
     
-    MAPEAMENTO_FAIXAS_SALARIAIS = {
-        0: 'Nenhuma Renda',
-        1: 'Até 1 salário mínimo',
-        2: '1 a 2 salários mínimos',
-        3: '2 a 3 salários mínimos',
-        4: '3 a 5 salários mínimos',
-        5: '5 a 10 salários mínimos',
-        6: '10 a 20 salários mínimos',
-        7: ' > 20 salários mínimos'
-    }
-    
     LIMIARES = {
         'correlacao_fraca': 0.3,
         'correlacao_moderada': 0.7,
@@ -349,7 +338,7 @@ def get_mappings():
         'regioes_mapping': regioes_mapping,
         'faixa_salarial': faixa_salarial,
         'config_visualizacao': CONFIG_VISUALIZACAO,
-        'mapeamento_faixas_salariais': MAPEAMENTO_FAIXAS_SALARIAIS,
+        'mapeamento_faixas_salariais': faixa_salarial,
         'limiares': LIMIARES,
         'opcoes_amostragem': OPCOES_AMOSTRAGEM,
         'config_processamento': CONFIG_PROCESSAMENTO,

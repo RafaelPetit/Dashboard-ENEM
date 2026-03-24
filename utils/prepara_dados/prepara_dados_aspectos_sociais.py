@@ -370,11 +370,12 @@ def preparar_dados_barras_empilhadas(
         # Adicionar coluna de Total para facilitar cálculos
         df_barras['Total'] = df_barras[var_x_plot].map(totais_dict)
         
-        # Calcular percentual para cada combinação
-        df_barras['Percentual'] = df_barras.apply(
-            lambda row: (row['Contagem'] / row['Total'] * 100) if row['Total'] > 0 else 0, 
-            axis=1
-        ).round(2)
+        # Calcular percentual de forma vetorizada
+        df_barras['Percentual'] = np.where(
+            df_barras['Total'] > 0,
+            (df_barras['Contagem'] / df_barras['Total'] * 100).round(2),
+            0.0
+        )
         
         return df_barras
     
@@ -643,8 +644,8 @@ def _agrupar_por_regiao(
         # Renomear coluna de região para manter compatibilidade
         df_agrupado = df_agrupado.rename(columns={'Região': 'Estado'})
         
-        # Otimizar tipo de dados da coluna de região - SUDESTE REMOVIDO
-        regioes = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sul']
+        # Otimizar tipo de dados da coluna de região
+        regioes = list(regioes_mapping.keys())
         df_agrupado['Estado'] = pd.Categorical(df_agrupado['Estado'], categories=regioes)
         df_agrupado['Percentual'] = df_agrupado['Percentual'].round(2)
         

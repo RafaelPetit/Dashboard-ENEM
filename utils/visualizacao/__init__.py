@@ -9,7 +9,8 @@ from .visualizacao_desempenho import (
 from .componentes import (
     criar_filtros_comparativo,
     criar_filtros_dispersao,
-    criar_filtros_estados
+    criar_filtros_estados,
+    criar_grafico_vazio
 )
 
 from .config_graficos import (
@@ -23,8 +24,7 @@ from .visualizacao_aspectos_sociais import (
     criar_grafico_barras_empilhadas,
     criar_grafico_sankey,
     criar_grafico_distribuicao,
-    criar_grafico_aspectos_por_estado,
-    _criar_grafico_vazio
+    criar_grafico_aspectos_por_estado
 )
 
 from .visualizacao_analise_geral import (

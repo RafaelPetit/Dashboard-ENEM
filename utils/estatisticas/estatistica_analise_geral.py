@@ -3,7 +3,7 @@ import pandas as pd
 from typing import Dict, List, Tuple, Optional, Any
 from data.data_loader import calcular_seguro
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function
-from utils.helpers.regiao_utils import obter_regiao_do_estado
+from utils.helpers.regiao_utils import obter_regiao_do_estado, ESTADO_PARA_REGIAO
 from utils.helpers.mappings import get_mappings
 
 # Obter mapeamentos e constantes
@@ -560,7 +560,7 @@ def _calcular_intervalo_confianca(serie: pd.Series, nivel: float = 0.95) -> Tupl
         # Calcular erro padrão
         try:
             erro_padrao = stats.sem(serie_limpa)
-        except:
+        except Exception:
             # Fallback manual
             erro_padrao = serie_limpa.std(ddof=1) / np.sqrt(len(serie_limpa))
         
@@ -571,7 +571,7 @@ def _calcular_intervalo_confianca(serie: pd.Series, nivel: float = 0.95) -> Tupl
         # Calcular intervalo de confiança
         try:
             intervalo = stats.t.interval(nivel, len(serie_limpa)-1, loc=media, scale=erro_padrao)
-        except:
+        except Exception:
             # Fallback simples
             margem_erro = 1.96 * erro_padrao  # Aproximação para grandes amostras
             intervalo = (media - margem_erro, media + margem_erro)
@@ -990,7 +990,7 @@ def analisar_metricas_por_regiao(
     try:
         # Criar coluna temporária com a região
         df_temp = df.copy()
-        df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].apply(obter_regiao_do_estado)
+        df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].map(ESTADO_PARA_REGIAO)
         
         # Remover valores vazios ou nulos na coluna de região
         df_temp = df_temp[df_temp['REGIAO'] != '']

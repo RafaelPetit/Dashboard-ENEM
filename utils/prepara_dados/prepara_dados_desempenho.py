@@ -556,15 +556,15 @@ def preparar_dados_grafico_linha_desempenho(
 
 @memory_intensive_function
 def _processar_estados_em_lotes(
-    microdados: pd.DataFrame, 
-    estados: List[str], 
-    colunas_notas: List[str], 
+    microdados: pd.DataFrame,
+    estados: List[str],
+    colunas_notas: List[str],
     competencia_mapping: Dict[str, str]
 ) -> List[Dict[str, Any]]:
     """
-    Processa estados em lotes para calcular médias de desempenho.
-    Função auxiliar para melhorar legibilidade e manutenção.
-    
+    Calcula médias de desempenho por estado e área de conhecimento.
+    Versão vetorizada — usa groupby().mean() em vez de loops.
+
     Parâmetros:
     -----------
     microdados : DataFrame
@@ -575,71 +575,59 @@ def _processar_estados_em_lotes(
         Colunas com notas a processar
     competencia_mapping : Dict
         Mapeamento de códigos para nomes de competências
-        
+
     Retorna:
     --------
     List[Dict[str, Any]]: Lista de resultados calculados
     """
-    resultados = []
-    total_estados = len(estados)
-    
-    # Agrupar por estado para processamento mais eficiente
     try:
-        grupos_estado = microdados.groupby('SG_UF_PROVA')
-    except Exception as e:
-        return resultados
-    
-    # Processar cada estado
-    for i, estado in enumerate(estados):
-        try:
-            # Tentar obter dados do estado atual
-            dados_estado = grupos_estado.get_group(estado)
-        except KeyError:
-            # Estado não encontrado no agrupamento, pular
-            continue
-        
-        if len(dados_estado) == 0:
-            continue  # Pular estados sem dados
-        
-        # Armazenar médias para calcular média geral
-        medias_estado = []
-        
-        # Calcular média para cada área de conhecimento
-        for area in colunas_notas:
-            if area not in dados_estado.columns:
+        cols_notas = [c for c in colunas_notas if c in microdados.columns]
+        if not cols_notas:
+            return []
+
+        # Filtrar estados solicitados
+        df = microdados[microdados['SG_UF_PROVA'].isin(estados)]
+        if df.empty:
+            return []
+
+        # Substituir notas <= 0 por NaN
+        df_notas = df[cols_notas].copy()
+        df_notas[df_notas <= 0] = np.nan
+        df_notas['SG_UF_PROVA'] = df['SG_UF_PROVA'].values
+
+        # Uma única operação vetorizada: média por estado e competência
+        medias = df_notas.groupby('SG_UF_PROVA')[cols_notas].mean()
+
+        # Construir resultados no formato esperado
+        resultados = []
+        for estado in estados:
+            if estado not in medias.index:
                 continue
-                
-            # Filtrar notas válidas de forma mais eficiente
-            notas = dados_estado[area].values
-            notas_validas = notas[notas > 0]
-            
-            # Calcular média com função otimizada
-            media_area = calcular_seguro(notas_validas, 'media')
-            media_area = round(media_area, 2)
-            
-            # Adicionar ao resultado
-            resultados.append({
-                'Estado': estado,
-                'Área': competencia_mapping[area],
-                'Média': media_area
-            })
-            
-            # Armazenar para média geral
-            medias_estado.append(media_area)
-        
-        # Adicionar média geral para o estado
-        if medias_estado:
-            resultados.append({
-                'Estado': estado,
-                'Área': 'Média Geral',
-                'Média': round(sum(medias_estado) / len(medias_estado), 2)
-            })
-        
-        # Liberar memória a cada X estados processados
-        if (i+1) % CONFIG_PROCESSAMENTO['tamanho_lote_estados'] == 0:
-            release_memory()
-    
-    return resultados
+
+            medias_estado = []
+            for area in cols_notas:
+                media_val = medias.loc[estado, area]
+                media_arredondada = round(float(media_val), 2) if pd.notna(media_val) else 0.0
+                resultados.append({
+                    'Estado': estado,
+                    'Área': competencia_mapping.get(area, area),
+                    'Média': media_arredondada
+                })
+                if media_arredondada > 0:
+                    medias_estado.append(media_arredondada)
+
+            # Média geral do estado
+            if medias_estado:
+                resultados.append({
+                    'Estado': estado,
+                    'Área': 'Média Geral',
+                    'Média': round(sum(medias_estado) / len(medias_estado), 2)
+                })
+
+        return resultados
+
+    except Exception as e:
+        return []
 
 
 def _otimizar_tipos_dados(
@@ -725,8 +713,8 @@ def _agrupar_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
         # Renomear coluna de região para manter compatibilidade
         df_agrupado = df_agrupado.rename(columns={'Região': 'Estado'})
         
-        # Otimizar tipo de dados da coluna de região - SUDESTE REMOVIDO
-        regioes = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sul']
+        # Otimizar tipo de dados da coluna de região
+        regioes = list(regioes_mapping.keys())
         df_agrupado['Estado'] = pd.Categorical(df_agrupado['Estado'], categories=regioes)
         
         return df_agrupado

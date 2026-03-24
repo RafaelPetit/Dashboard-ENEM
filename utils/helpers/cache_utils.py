@@ -5,7 +5,6 @@ from typing import Any, Optional, List, Union, Callable, TypeVar, Dict
 
 # Definir type variables para uso em type hints genéricos
 T = TypeVar('T')  # Tipo de retorno da função
-InputType = TypeVar('InputType')  # Tipo de entrada para função
 
 # Constantes para configuração de cache
 DEFAULT_TTL = 3600  # Tempo padrão de vida do cache em segundos (1 hora)

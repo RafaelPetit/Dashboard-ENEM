@@ -100,3 +100,27 @@ def obter_todas_regioes() -> List[str]:
     List[str]: Lista de nomes das regiões
     """
     return list(REGIOES_BRASIL.keys())
+
+
+def adicionar_regiao_aos_estados(df: pd.DataFrame, coluna_estado: str = 'Estado') -> pd.DataFrame:
+    """
+    Adiciona coluna 'Região' ao DataFrame baseado na coluna de estados.
+    Função centralizada — usada por expander_desempenho e expander_aspectos_sociais.
+
+    Parâmetros:
+    -----------
+    df : DataFrame
+        DataFrame com coluna de estados
+    coluna_estado : str
+        Nome da coluna que contém os estados
+
+    Retorna:
+    --------
+    DataFrame com coluna 'Região' adicionada
+    """
+    if df is None or df.empty or coluna_estado not in df.columns:
+        return df
+
+    df_resultado = df.copy()
+    df_resultado['Região'] = df_resultado[coluna_estado].map(ESTADO_PARA_REGIAO)
+    return df_resultado

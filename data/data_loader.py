@@ -178,7 +178,7 @@ def calcular_seguro(serie_dados, operacao='media'):
         return resultado
         
     except Exception as e:
-        print(f"Erro ao calcular {operacao}: {e}")
+        import logging; logging.warning(f"Erro ao calcular {operacao}: {e}")
         return 0.0
 
 
@@ -219,20 +219,6 @@ def optimize_dtypes(df: pd.DataFrame, dtypes: str) -> pd.DataFrame:
     return df
 
 
-def release_memory(objects):
-    """
-    Libera memória de objetos Python.
-    
-    Parâmetros:
-    -----------
-    objects : Object ou List[Object]
-        Objeto ou lista de objetos a serem liberados
-    """
-    if not isinstance(objects, list):
-        objects = [objects]
-    
-    for obj in objects:
-        del obj
-    
-    # Forçar coleta de lixo
-    gc.collect()
+# release_memory() movida para utils/helpers/cache_utils.py
+# Importar de lá para compatibilidade
+from utils.helpers.cache_utils import release_memory

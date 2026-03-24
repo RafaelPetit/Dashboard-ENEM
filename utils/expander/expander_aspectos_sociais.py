@@ -1,3 +1,4 @@
+from utils.helpers.regiao_utils import ESTADO_PARA_REGIAO
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -11,7 +12,6 @@ from utils.estatisticas.estatisticas_aspectos_sociais import (
 from utils.helpers.mappings import get_mappings
 
 # Obter limiares dos mapeamentos centralizados
-mappings = get_mappings()
 mappings = get_mappings()
 LIMIARES_ESTATISTICOS = mappings.get('limiares_estatisticos', {})
 
@@ -1287,7 +1287,7 @@ def _gerar_insight_correlacao(coeficiente: float, nome_x: str, nome_y: str) -> s
             return f"Existe uma associação forte entre {nome_x} e {nome_y}, sugerindo que uma variável tem influência considerável sobre a outra."
         else:
             return f"A associação entre {nome_x} e {nome_y} é muito forte, indicando alta dependência entre as variáveis."
-    except:
+    except Exception:
         return "Análise de insight não disponível."
 
 
