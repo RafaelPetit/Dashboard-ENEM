@@ -135,17 +135,16 @@ def preparar_dados_comparativo(
 
 @memory_intensive_function
 def _calcular_medias_por_categoria(
-    df: pd.DataFrame, 
-    coluna_categoria: str, 
-    colunas_notas: List[str], 
+    df: pd.DataFrame,
+    coluna_categoria: str,
+    colunas_notas: List[str],
     competencia_mapping: Dict[str, str],
     mapeamento: Optional[Dict[Any, str]] = None
 ) -> List[Dict[str, Any]]:
     """
     Calcula médias de desempenho para cada combinação de categoria e competência.
-    
-    Função auxiliar para melhorar legibilidade e manutenção.
-    
+    Versão vetorizada — usa groupby().mean() em vez de loops Python.
+
     Parâmetros:
     -----------
     df : DataFrame
@@ -158,108 +157,54 @@ def _calcular_medias_por_categoria(
         Mapeamento de códigos de competência para nomes legíveis
     mapeamento : Dict, opcional
         Mapeamento de valores numéricos de categoria para textos legíveis
-        
+
     Retorna:
     --------
     List[Dict[str, Any]]: Lista de dicionários com os resultados calculados
     """
-    resultados = []
-    
-    # Verificar se temos dados válidos
-    if df.empty:
-        return resultados
-    
-    # Verificar se a coluna categoria existe
-    if coluna_categoria not in df.columns:
-        return resultados
-    
-    # Obter categorias únicas de forma eficiente
-    categorias_unicas = df[coluna_categoria].unique()
-    categorias_unicas = [cat for cat in categorias_unicas if pd.notna(cat)]  # Remover NaN
-    total_categorias = len(categorias_unicas)
-    
-    if total_categorias == 0:
-        return resultados
-    
-    # Verificar se há muitas categorias (pode afetar performance)
-    if total_categorias > CONFIG_PROCESSAMENTO['max_categorias_alerta']:
-        pass  # Continuar processamento mesmo com muitas categorias
-    
-    # Agrupar dados para economizar memória e melhorar performance
-    if total_categorias <= CONFIG_PROCESSAMENTO['limiar_agrupamento']:
-        # Cálculo eficiente com agrupamento - adicionar observed=True para evitar warning
-        df_agrupado = df.groupby(coluna_categoria, observed=True)
-        
-        for categoria in categorias_unicas:
-            # Determinar o valor de exibição da categoria
-            categoria_exibicao = mapeamento.get(categoria, str(categoria)) if mapeamento else str(categoria)
-            
-            try:
-                # Obter grupo de dados para a categoria
-                dados_categoria = df_agrupado.get_group(categoria)
-                
-                # Calcular médias para cada competência
-                for competencia in colunas_notas:
-                    if competencia not in dados_categoria.columns:
-                        continue
-                        
-                    # Filtrar apenas notas válidas (maiores que zero)
-                    notas_validas = dados_categoria[dados_categoria[competencia] > 0][competencia]
-                    
-                    if len(notas_validas) == 0:
-                        # Se não há notas válidas, usar 0 como média
-                        media_comp = 0
-                    else:
-                        # Calcular média ou usar zero se não houver notas válidas
-                        media_comp = calcular_seguro(notas_validas, 'media')
-                    
-                    competencia_nome = competencia_mapping.get(competencia, competencia)
-                    
-                    resultados.append({
-                        'Categoria': categoria_exibicao,
-                        'Competência': competencia_nome,
-                        'Média': round(media_comp, 2)
-                    })
-            except KeyError:
-                # Categoria pode não existir no agrupamento (caso raro)
+    if df.empty or coluna_categoria not in df.columns:
+        return []
+
+    # Filtrar apenas colunas de notas que existem no DataFrame
+    cols_notas = [c for c in colunas_notas if c in df.columns]
+    if not cols_notas:
+        return []
+
+    # Remover linhas com categoria NaN
+    df_trabalho = df[[coluna_categoria] + cols_notas].dropna(subset=[coluna_categoria])
+    if df_trabalho.empty:
+        return []
+
+    try:
+        # Substituir notas <= 0 por NaN (notas inválidas/ausentes)
+        df_notas = df_trabalho[cols_notas].copy()
+        df_notas[df_notas <= 0] = np.nan
+        df_notas[coluna_categoria] = df_trabalho[coluna_categoria].values
+
+        # UMA ÚNICA operação vetorizada: groupby + mean
+        medias = df_notas.groupby(coluna_categoria, observed=True)[cols_notas].mean()
+
+        # Construir resultados no formato esperado
+        resultados = []
+        for categoria in medias.index:
+            if pd.isna(categoria):
                 continue
-    else:
-        # Método alternativo para muitas categorias (processamento em lotes)
-        for i, categoria in enumerate(categorias_unicas):
-            # Filtrar dados para a categoria atual
-            dados_categoria = df[df[coluna_categoria] == categoria]
-            
-            # Determinar o valor de exibição da categoria
+            # Aplicar mapeamento de categoria para nome de exibição
             categoria_exibicao = mapeamento.get(categoria, str(categoria)) if mapeamento else str(categoria)
-            
-            # Calcular médias para cada competência
-            for competencia in colunas_notas:
-                if competencia not in dados_categoria.columns:
-                    continue
-                    
-                # Filtrar apenas notas válidas (maiores que zero)
-                notas_validas = dados_categoria[dados_categoria[competencia] > 0][competencia]
-                
-                if len(notas_validas) == 0:
-                    # Se não há notas válidas, usar 0 como média
-                    media_comp = 0
-                else:
-                    # Calcular média ou usar zero se não houver notas válidas
-                    media_comp = calcular_seguro(notas_validas, 'media')
-                
-                competencia_nome = competencia_mapping.get(competencia, competencia)
-                
+
+            for col in cols_notas:
+                media_val = medias.loc[categoria, col]
+                competencia_nome = competencia_mapping.get(col, col)
                 resultados.append({
                     'Categoria': categoria_exibicao,
                     'Competência': competencia_nome,
-                    'Média': round(media_comp, 2)
+                    'Média': round(float(media_val), 2) if pd.notna(media_val) else 0
                 })
-            
-            # Liberar memória a cada lote processado
-            if (i+1) % CONFIG_PROCESSAMENTO['tamanho_lote'] == 0:
-                release_memory(dados_categoria)
-    
-    return resultados
+
+        return resultados
+
+    except Exception as e:
+        return []
 
 
 @optimized_cache(ttl=1800)

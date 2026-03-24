@@ -124,70 +124,6 @@ def get_all_data_geral():
     
     return _load_all_geral_data()
 
-def optimize_memory_usage(microdados_estados: pd.DataFrame) -> pd.DataFrame:
-    """
-    Otimização de memória usando APENAS pandas - versão ultra-segura
-    
-    Parâmetros:
-    -----------
-    microdados_estados : DataFrame
-        DataFrame original a ser otimizado
-        
-    Retorna:
-    --------
-    DataFrame: DataFrame com tipos otimizados
-    """
-    try:
-        # Verificação básica
-        if microdados_estados is None or microdados_estados.empty:
-            return microdados_estados
-        
-        # Criar cópia para não modificar o original
-        df_optimized = microdados_estados.copy()
-        
-        # Otimizações seguras coluna por coluna
-        for col in df_optimized.columns:
-            try:
-                dtype_original = df_optimized[col].dtype
-                
-                # Otimizar colunas categóricas (object)
-                if dtype_original == 'object':
-                    # Verificar se vale a pena converter para category
-                    unique_ratio = len(df_optimized[col].unique()) / len(df_optimized)
-                    if unique_ratio < 0.5:  # Se menos de 50% valores únicos
-                        df_optimized[col] = df_optimized[col].astype('category')
-                
-                # Otimizar inteiros
-                elif dtype_original in ['int64', 'Int64']:
-                    # Verificar se temos valores válidos
-                    if not df_optimized[col].isna().all():
-                        max_val = df_optimized[col].max()
-                        min_val = df_optimized[col].min()
-                        
-                        if pd.notna(max_val) and pd.notna(min_val):
-                            # Escolher tipo menor possível
-                            if max_val <= 127 and min_val >= -128:
-                                df_optimized[col] = df_optimized[col].astype('int8')
-                            elif max_val <= 32767 and min_val >= -32768:
-                                df_optimized[col] = df_optimized[col].astype('int16')
-                            elif max_val <= 2147483647 and min_val >= -2147483648:
-                                df_optimized[col] = df_optimized[col].astype('int32')
-                
-                # Otimizar floats
-                elif dtype_original == 'float64':
-                    # Usar downcast do pandas (mais seguro)
-                    df_optimized[col] = pd.to_numeric(df_optimized[col], downcast='float')
-                    
-            except Exception as col_error:
-                # Se erro em coluna específica, manter tipo original
-                continue
-        
-        return df_optimized
-        
-    except Exception as e:
-        # Se qualquer erro geral, retornar DataFrame original
-        return microdados_estados
-
 def render_geral(
     microdados_estados: pd.DataFrame, 
     estados_selecionados: List[str], 
@@ -218,11 +154,7 @@ def render_geral(
         st.warning("Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
         return
     
-    # Otimizar dados na memória (ÚNICA ADIÇÃO)
-    with st.spinner("Otimizando dados..."):
-        microdados_estados = optimize_memory_usage(microdados_estados)
-    
-    # Mostrar mensagem sobre os filtros aplicados - EXATAMENTE IGUAL À ORIGINAL
+    # Mostrar mensagem sobre os filtros aplicados
     mensagem = f"Analisando Dados Gerais para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
     st.info(mensagem)
     

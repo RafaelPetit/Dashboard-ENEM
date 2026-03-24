@@ -1,7 +1,7 @@
 import pandas as pd
 from typing import Dict, List, Tuple, Optional, Any
 from data.data_loader import calcular_seguro
-from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
+from utils.helpers.cache_utils import optimized_cache, memory_intensive_function
 from utils.helpers.regiao_utils import obter_regiao_do_estado
 from utils.helpers.mappings import get_mappings
 
@@ -112,14 +112,14 @@ def preparar_dados_grafico_faltas(
 
 @memory_intensive_function
 def _calcular_faltas_por_localidade(
-    df: pd.DataFrame, 
+    df: pd.DataFrame,
     localidades: List[str],
     coluna_agrupamento: str
 ) -> pd.DataFrame:
     """
     Calcula percentuais de faltas por localidade (estado ou região) e tipo de falta.
-    Função auxiliar para melhorar legibilidade e manutenção.
-    
+    Versão vetorizada — usa pd.crosstab() em vez de loops por localidade.
+
     Parâmetros:
     -----------
     df : DataFrame
@@ -128,59 +128,72 @@ def _calcular_faltas_por_localidade(
         Lista de localidades para análise
     coluna_agrupamento : str
         Nome da coluna para agrupar (SG_UF_PROVA ou SG_REGIAO)
-    
+
     Retorna:
     --------
     DataFrame: Dados de faltas por localidade
     """
-    dados_grafico = []
-    if df is None or df.empty:
-        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
-    if not localidades:
-        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
+    colunas_vazio = ['Estado', 'Tipo de Falta', 'Percentual de Faltas']
+    if df is None or df.empty or not localidades:
+        return pd.DataFrame(columns=colunas_vazio)
+
+    if coluna_agrupamento not in df.columns or 'TP_PRESENCA_GERAL' not in df.columns:
+        return pd.DataFrame(columns=colunas_vazio)
+
     try:
-        grupos = df.groupby(coluna_agrupamento, observed=True)
-    except Exception as e:
-        return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
-    for i, local in enumerate(localidades):
-        try:
-            dados_local = grupos.get_group(local)
-        except KeyError:
-            continue
-        except Exception as e:
-            continue
-        total_candidatos = len(dados_local)
-        if total_candidatos == 0:
-            continue
-        categorias_faltas = {
-            0: {'nome': 'Faltou nos dois dias', 'contagem': 0},
-            1: {'nome': 'Faltou somente no segundo dia', 'contagem': 0},
-            2: {'nome': 'Faltou somente no primeiro dia', 'contagem': 0}
+        # Mapeamento de códigos de presença para nomes de faltas
+        nome_faltas = {
+            0: 'Faltou nos dois dias',
+            1: 'Faltou somente no segundo dia',
+            2: 'Faltou somente no primeiro dia'
         }
-        try:
-            valores_presenca = dados_local['TP_PRESENCA_GERAL'].value_counts()
-        except Exception as e:
-            continue
-        for codigo, info in categorias_faltas.items():
-            contagem = valores_presenca.get(codigo, 0)
-            percentual = (contagem / total_candidatos * 100) if total_candidatos > 0 else 0
-            dados_grafico.append({
-                'Estado': local,
-                'Tipo de Falta': info['nome'],
-                'Percentual de Faltas': round(percentual, 2),
-                'Contagem': contagem,
-                'Total': total_candidatos
-            })
-        if (i+1) % CONFIG_PROCESSAMENTO['tamanho_lote_estados'] == 0:
-            release_memory(dados_local)
-    df_resultado = pd.DataFrame(dados_grafico)
-    if not df_resultado.empty:
-        df_resultado['Estado'] = pd.Categorical(df_resultado['Estado'], categories=localidades)
-        df_resultado['Tipo de Falta'] = pd.Categorical(
-            df_resultado['Tipo de Falta'], 
-            categories=['Faltou nos dois dias', 'Faltou somente no primeiro dia', 'Faltou somente no segundo dia']
-        )
-    return df_resultado
+
+        # Filtrar apenas localidades solicitadas e códigos de falta (0, 1, 2)
+        df_filtrado = df[
+            df[coluna_agrupamento].isin(localidades) &
+            df['TP_PRESENCA_GERAL'].isin(nome_faltas.keys())
+        ]
+
+        if df_filtrado.empty:
+            return pd.DataFrame(columns=colunas_vazio)
+
+        # Contagem total por localidade (todos os candidatos, não só faltantes)
+        totais = df[df[coluna_agrupamento].isin(localidades)].groupby(coluna_agrupamento).size()
+
+        # Crosstab vetorizado: contagens de falta por localidade × tipo
+        counts = pd.crosstab(df_filtrado[coluna_agrupamento], df_filtrado['TP_PRESENCA_GERAL'])
+
+        # Construir resultados
+        dados = []
+        for local in localidades:
+            if local not in totais.index:
+                continue
+            total = totais[local]
+            for codigo, nome in nome_faltas.items():
+                contagem = int(counts.loc[local, codigo]) if local in counts.index and codigo in counts.columns else 0
+                percentual = round((contagem / total * 100), 2) if total > 0 else 0.0
+                dados.append({
+                    'Estado': local,
+                    'Tipo de Falta': nome,
+                    'Percentual de Faltas': percentual,
+                    'Contagem': contagem,
+                    'Total': total
+                })
+
+        df_resultado = pd.DataFrame(dados)
+        if not df_resultado.empty:
+            df_resultado['Estado'] = pd.Categorical(df_resultado['Estado'], categories=localidades)
+            df_resultado['Tipo de Falta'] = pd.Categorical(
+                df_resultado['Tipo de Falta'],
+                categories=['Faltou nos dois dias', 'Faltou somente no primeiro dia', 'Faltou somente no segundo dia']
+            )
+            # Adicionar coluna 'Área' para compatibilidade com filtros
+            df_resultado['Área'] = df_resultado['Tipo de Falta']
+
+        return df_resultado
+
+    except Exception as e:
+        return pd.DataFrame(columns=colunas_vazio)
 
 
 @optimized_cache(ttl=3600)  # Cache válido por 1 hora
@@ -280,13 +293,14 @@ def _gerar_metricas_vazias(colunas_notas: List[str]) -> Dict[str, Any]:
 
 @memory_intensive_function
 def _calcular_desempenho_regioes(
-    df: pd.DataFrame, 
-    estados: List[str], 
+    df: pd.DataFrame,
+    estados: List[str],
     colunas_notas: List[str]
 ) -> Dict[str, Dict[str, float]]:
     """
     Calcula desempenho médio por região para todas as áreas de conhecimento.
-    
+    Versão vetorizada — usa .map() e groupby().mean() sem loops.
+
     Parâmetros:
     -----------
     df : DataFrame
@@ -295,56 +309,52 @@ def _calcular_desempenho_regioes(
         Lista de estados selecionados
     colunas_notas : List[str]
         Lista de colunas com notas
-        
+
     Retorna:
     --------
     Dict[str, Dict[str, float]]: Médias por região e área de conhecimento
     """
-    # Verificar se temos dados válidos
     if df is None or df.empty or 'SG_UF_PROVA' not in df.columns:
         return {}
-        
-    # Adicionar coluna de região
-    df_temp = df.copy()
-    df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].apply(obter_regiao_do_estado)
-    
-    # Calcular médias por região e área
-    resultado = {}
-    regioes = df_temp['REGIAO'].unique()
-    
-    for regiao in regioes:
-        if not regiao:  # Ignorar valores vazios
-            continue
-            
-        dados_regiao = df_temp[df_temp['REGIAO'] == regiao]
-        
-        medias_regiao = {}
-        for coluna in colunas_notas:
-            if coluna in dados_regiao.columns:
-                notas_validas = dados_regiao[dados_regiao[coluna] > 0][coluna]
-                media = calcular_seguro(notas_validas, 'media')
-                medias_regiao[coluna] = round(media, 2)
-            else:
-                medias_regiao[coluna] = None
-                
-        resultado[regiao] = medias_regiao
-    
-    # Liberar memória
-    release_memory(df_temp)
-    
-    return resultado
+
+    try:
+        from utils.helpers.regiao_utils import ESTADO_PARA_REGIAO
+
+        cols_notas = [c for c in colunas_notas if c in df.columns]
+        if not cols_notas:
+            return {}
+
+        # Vetorizado: .map() em vez de .apply()
+        regioes = df['SG_UF_PROVA'].map(ESTADO_PARA_REGIAO)
+
+        # Substituir notas <= 0 por NaN para ignorar nos cálculos
+        df_notas = df[cols_notas].copy()
+        df_notas[df_notas <= 0] = np.nan
+        df_notas['REGIAO'] = regioes.values
+
+        # Remover regiões vazias
+        df_notas = df_notas[df_notas['REGIAO'].notna() & (df_notas['REGIAO'] != '')]
+
+        # Uma única operação vetorizada
+        medias = df_notas.groupby('REGIAO')[cols_notas].mean().round(2)
+
+        return medias.to_dict('index')
+
+    except Exception as e:
+        return {}
 
 
 @optimized_cache(ttl=3600)
 def preparar_dados_media_geral_estados(
-    microdados_estados: pd.DataFrame, 
-    estados_selecionados: List[str], 
-    colunas_notas: List[str], 
+    microdados_estados: pd.DataFrame,
+    estados_selecionados: List[str],
+    colunas_notas: List[str],
     agrupar_por_regiao: bool = False
 ) -> pd.DataFrame:
     """
     Prepara dados para visualização da média geral por estado ou região.
-    
+    Versão vetorizada — usa groupby().mean() em vez de loops estado×coluna.
+
     Parâmetros:
     -----------
     microdados_estados : DataFrame
@@ -355,55 +365,47 @@ def preparar_dados_media_geral_estados(
         Lista de colunas com notas a serem analisadas
     agrupar_por_regiao : bool, default=False
         Se True, agrupa os dados por região em vez de mostrar por estado
-        
+
     Retorna:
     --------
     DataFrame: Dados de média geral por estado ou região
     """
-    # Verificar se temos dados válidos
     if microdados_estados is None or microdados_estados.empty:
         return pd.DataFrame(columns=['Local', 'Média Geral'])
-    
+
     try:
-        # Agrupar os dados por estado
         if 'SG_UF_PROVA' not in microdados_estados.columns:
             return pd.DataFrame(columns=['Local', 'Média Geral'])
-            
-        resultado = []
-        
-        # Processo eficiente usando agrupamento
-        grupos_estado = microdados_estados.groupby('SG_UF_PROVA')
-        
-        for estado in estados_selecionados:
-            try:
-                dados_estado = grupos_estado.get_group(estado)
-            except KeyError:
-                continue  # Estado não encontrado, pular
-                
-            # Calcular médias por área de conhecimento
-            medias_estado = []
-            for coluna in colunas_notas:
-                if coluna in dados_estado.columns:
-                    notas_validas = dados_estado[dados_estado[coluna] > 0][coluna]
-                    if len(notas_validas) > 0:
-                        media = calcular_seguro(notas_validas, 'media')
-                        medias_estado.append(media)
-            
-            # Calcular média geral do estado
-            if medias_estado:
-                media_geral = sum(medias_estado) / len(medias_estado)
-                resultado.append({
-                    'Local': estado,
-                    'Média Geral': round(media_geral, 2)
-                })
-        
-        # Criar DataFrame
-        df_resultado = pd.DataFrame(resultado)
-        
+
+        cols_notas = [c for c in colunas_notas if c in microdados_estados.columns]
+        if not cols_notas:
+            return pd.DataFrame(columns=['Local', 'Média Geral'])
+
+        # Filtrar estados solicitados
+        df = microdados_estados[microdados_estados['SG_UF_PROVA'].isin(estados_selecionados)]
+        if df.empty:
+            return pd.DataFrame(columns=['Local', 'Média Geral'])
+
+        # Substituir notas <= 0 por NaN
+        df_notas = df[cols_notas].copy()
+        df_notas[df_notas <= 0] = np.nan
+        df_notas['SG_UF_PROVA'] = df['SG_UF_PROVA'].values
+
+        # Uma única operação vetorizada: média por estado e competência
+        medias_por_estado = df_notas.groupby('SG_UF_PROVA')[cols_notas].mean()
+
+        # Média geral (média das competências)
+        medias_por_estado['Média Geral'] = medias_por_estado.mean(axis=1)
+
+        # Formatar resultado
+        df_resultado = medias_por_estado[['Média Geral']].reset_index()
+        df_resultado = df_resultado.rename(columns={'SG_UF_PROVA': 'Local'})
+        df_resultado['Média Geral'] = df_resultado['Média Geral'].round(2)
+
         # Agrupar por região se solicitado
         if agrupar_por_regiao and not df_resultado.empty:
             df_resultado = _agrupar_estados_por_regiao(df_resultado)
-            
+
         return df_resultado
     except Exception as e:
         return pd.DataFrame(columns=['Local', 'Média Geral'])
@@ -412,31 +414,28 @@ def preparar_dados_media_geral_estados(
 def _agrupar_estados_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
     """
     Agrupa estados por região, calculando a média dos valores numéricos.
-    
+    Versão vetorizada — usa .map() em vez de .apply().
+
     Parâmetros:
     -----------
     df : DataFrame
         DataFrame com dados por estado, com coluna 'Local' contendo os estados
-        
+
     Retorna:
     --------
     DataFrame: DataFrame com dados agrupados por região
     """
-    # Verificar se temos dados para processar
     if df is None or df.empty or 'Local' not in df.columns:
         return df
     try:
-        # Criar coluna de região
+        from utils.helpers.regiao_utils import ESTADO_PARA_REGIAO
+        # Vetorizado: .map() em vez de .apply()
         df_temp = df.copy()
-        df_temp['Região'] = df_temp['Local'].apply(obter_regiao_do_estado)
-        # Remover estados sem região associada
-        df_temp = df_temp[df_temp['Região'] != ""]
-        # Agrupar por região
+        df_temp['Região'] = df_temp['Local'].map(ESTADO_PARA_REGIAO)
+        df_temp = df_temp[df_temp['Região'].notna() & (df_temp['Região'] != '')]
         colunas_numericas = df_temp.select_dtypes(include='number').columns.tolist()
         df_agrupado = df_temp.groupby('Região')[colunas_numericas].mean().reset_index()
-        # Renomear coluna para manter compatibilidade
         df_agrupado = df_agrupado.rename(columns={'Região': 'Local'})
-        # Arredondar valores numéricos
         for col in colunas_numericas:
             df_agrupado[col] = df_agrupado[col].round(2)
         return df_agrupado

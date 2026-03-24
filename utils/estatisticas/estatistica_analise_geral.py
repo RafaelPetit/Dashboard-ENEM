@@ -146,13 +146,13 @@ def _criar_metricas_principais_vazias() -> Dict[str, Any]:
 
 @memory_intensive_function
 def _calcular_medias_estados_competencias(
-    df: pd.DataFrame, 
-    estados: List[str], 
+    df: pd.DataFrame,
+    estados: List[str],
     colunas_notas: List[str]
 ) -> Dict[str, Any]:
     """
-    Calcula médias por estado e competência de forma otimizada.
-    
+    Calcula médias por estado e competência de forma vetorizada.
+
     Parâmetros:
     -----------
     df: DataFrame
@@ -161,69 +161,45 @@ def _calcular_medias_estados_competencias(
         Lista de estados para análise
     colunas_notas: List[str]
         Lista de colunas com notas
-        
+
     Retorna:
     --------
     Dict[str, Any]: Dicionário com médias calculadas
     """
-    # Inicializar estruturas de dados
-    todas_medias = []
-    medias_por_estado = {}
-    medias_por_competencia = {}
-    
     try:
-        # Agrupar por estado para melhor desempenho
-        grupos_estado = df.groupby('SG_UF_PROVA', observed=False)
-        
-        # Processar cada estado
-        for estado in estados:
-            try:
-                dados_estado = grupos_estado.get_group(estado)
-            except KeyError:
-                continue  # Estado não encontrado, pular
-                
-            medias_estado_atual = []
-            
-            # Processar cada competência
-            for col in colunas_notas:
-                if col not in dados_estado.columns:
-                    continue
-                    
-                # Filtrar notas válidas (maiores que 0, diferentes de -1, e não nulas)
-                # -1 representa candidatos ausentes no ENEM
-                notas_validas = dados_estado[
-                    (dados_estado[col] > 0) & 
-                    (dados_estado[col] != -1) & 
-                    (dados_estado[col].notna())
-                ][col]
-                
-                if len(notas_validas) > 0:
-                    # Calcular média
-                    media = calcular_seguro(notas_validas, 'media')
-                    
-                    # Armazenar resultados
-                    todas_medias.append(media)
-                    medias_estado_atual.append(media)
-                    
-                    # Atualizar médias por competência
-                    if col not in medias_por_competencia:
-                        medias_por_competencia[col] = []
-                    medias_por_competencia[col].append(media)
-            
-            # Calcular média geral do estado
-            if medias_estado_atual:
-                medias_por_estado[estado] = np.mean(medias_estado_atual)
-        
-        # Calcular média por competência
-        for comp, valores in medias_por_competencia.items():
-            medias_por_competencia[comp] = np.mean(valores) if valores else 0
-        
+        # Filtrar apenas estados solicitados e colunas necessárias
+        colunas_necessarias = ['SG_UF_PROVA'] + [c for c in colunas_notas if c in df.columns]
+        df_filtrado = df.loc[df['SG_UF_PROVA'].isin(estados), colunas_necessarias]
+
+        if df_filtrado.empty:
+            return {'todas_medias': [], 'medias_por_estado': {}, 'medias_por_competencia': {}}
+
+        # Substituir valores inválidos por NaN para ignorar nos cálculos
+        # Notas <= 0 e -1 (ausentes) não devem entrar nas médias
+        cols_notas = [c for c in colunas_notas if c in df_filtrado.columns]
+        df_notas = df_filtrado[cols_notas].copy()
+        df_notas[df_notas <= 0] = np.nan
+        df_notas['SG_UF_PROVA'] = df_filtrado['SG_UF_PROVA'].values
+
+        # Uma única operação vetorizada: médias por estado e competência
+        medias_estado_comp = df_notas.groupby('SG_UF_PROVA')[cols_notas].mean()
+
+        # Médias gerais por estado (média das competências)
+        medias_por_estado = medias_estado_comp.mean(axis=1).dropna().to_dict()
+
+        # Médias por competência (média de todos os estados)
+        medias_por_competencia = medias_estado_comp.mean(axis=0).dropna().to_dict()
+
+        # Todas as médias individuais (estado × competência)
+        todas_medias = medias_estado_comp.values.flatten()
+        todas_medias = [float(m) for m in todas_medias if not np.isnan(m)]
+
         return {
             'todas_medias': todas_medias,
-            'medias_por_estado': medias_por_estado,
-            'medias_por_competencia': medias_por_competencia
+            'medias_por_estado': {k: round(v, 4) for k, v in medias_por_estado.items()},
+            'medias_por_competencia': {k: round(v, 4) for k, v in medias_por_competencia.items()}
         }
-        
+
     except Exception as e:
         return {
             'todas_medias': [],
@@ -235,34 +211,28 @@ def _calcular_medias_estados_competencias(
 def _calcular_totais_por_regiao(df: pd.DataFrame) -> Dict[str, int]:
     """
     Calcula o total de candidatos por região.
-    
+
     Parâmetros:
     -----------
     df: DataFrame
         DataFrame com os dados
-        
+
     Retorna:
     --------
     Dict[str, int]: Dicionário com total de candidatos por região
     """
-    # Verificar se temos dados válidos
     if df is None or df.empty or 'SG_UF_PROVA' not in df.columns:
         return {}
-    
+
     try:
-        # Criar coluna temporária com a região de cada estado
-        df_temp = df.copy()
-        df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].apply(obter_regiao_do_estado)
-        
-        # Contar candidatos por região
-        contagem = df_temp['REGIAO'].value_counts().to_dict()
-        
+        from utils.helpers.regiao_utils import ESTADO_PARA_REGIAO
+        # Vetorizado: .map() com dicionário em vez de .apply() row-by-row
+        regioes = df['SG_UF_PROVA'].map(ESTADO_PARA_REGIAO)
+        contagem = regioes.value_counts().to_dict()
         # Remover região vazia se existir
-        if '' in contagem:
-            del contagem['']
-            
+        contagem.pop('', None)
         return contagem
-        
+
     except Exception as e:
         return {}
 

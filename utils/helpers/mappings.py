@@ -1,6 +1,8 @@
+from functools import lru_cache
 
+@lru_cache(maxsize=1)
 def get_mappings():
-    """Retorna todos os mapeamentos usados no dashboard."""
+    """Retorna todos os mapeamentos usados no dashboard. Cacheado com lru_cache para evitar reconstrução a cada chamada."""
     # Definir colunas de notas
     colunas_notas = ['NU_NOTA_CN', 'NU_NOTA_CH', 'NU_NOTA_LC', 'NU_NOTA_MT', 'NU_NOTA_REDACAO']
     # Mapeamentos
@@ -239,9 +241,11 @@ def get_mappings():
     }
 
     regioes_mapping = {
-        "Sul": ["RS", "SC", "PR"],
-        "Sudeste": ["SP", "RJ", "ES", "MG"],
+        "Norte": ["AC", "AP", "AM", "PA", "RO", "RR", "TO"],
+        "Nordeste": ["AL", "BA", "CE", "MA", "PB", "PE", "PI", "RN", "SE"],
         "Centro-Oeste": ["GO", "MT", "DF", "MS"],
+        "Sudeste": ["SP", "RJ", "ES", "MG"],
+        "Sul": ["RS", "SC", "PR"],
     }
 
     # Configurações de visualização

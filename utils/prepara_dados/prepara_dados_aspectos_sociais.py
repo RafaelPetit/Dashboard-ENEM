@@ -512,15 +512,15 @@ def preparar_dados_grafico_aspectos_por_estado(
 
 @memory_intensive_function
 def _processar_aspectos_por_estado(
-    microdados: pd.DataFrame, 
-    aspecto_social: str, 
-    estados: List[str], 
+    microdados: pd.DataFrame,
+    aspecto_social: str,
+    estados: List[str],
     variaveis_sociais: Dict[str, Dict[str, Any]]
 ) -> List[Dict[str, Any]]:
     """
-    Processa dados de aspectos sociais por estado em lotes.
-    Função auxiliar para melhorar legibilidade e manutenção.
-    
+    Processa dados de aspectos sociais por estado.
+    Versão vetorizada — usa pd.crosstab() em vez de loops por estado.
+
     Parâmetros:
     -----------
     microdados : DataFrame
@@ -531,69 +531,64 @@ def _processar_aspectos_por_estado(
         Lista de estados a processar
     variaveis_sociais : Dict
         Dicionário com mapeamentos das variáveis
-        
+
     Retorna:
     --------
     List[Dict[str, Any]]: Lista de resultados calculados
     """
-    resultados = []
-    
-    # Criar cópia para não modificar o DataFrame original
-    df = microdados.copy()
-    
-    # Aplicar mapeamento para o aspecto social
-    coluna_plot = aplicar_mapeamento(df, aspecto_social, variaveis_sociais)
-    
-    # Agrupar por estado para processamento mais eficiente
+    if microdados.empty or aspecto_social not in microdados.columns:
+        return []
+
     try:
-        grupos_estado = df.groupby('SG_UF_PROVA')
-    except Exception as e:
+        # Selecionar APENAS as colunas necessárias (sem .copy() do DF inteiro)
+        df = microdados[['SG_UF_PROVA', aspecto_social]].copy()
+
+        # Filtrar apenas estados solicitados
+        df = df[df['SG_UF_PROVA'].isin(estados)]
+        if df.empty:
+            return []
+
+        # Aplicar mapeamento se necessário
+        mapeamento = variaveis_sociais.get(aspecto_social, {}).get("mapeamento")
+        if mapeamento and df[aspecto_social].dtype != 'object':
+            df['_cat'] = df[aspecto_social].map(mapeamento)
+        else:
+            df['_cat'] = df[aspecto_social]
+
+        # Remover NaN na categoria
+        df = df.dropna(subset=['_cat'])
+        if df.empty:
+            return []
+
+        # UMA operação vetorizada: crosstab para contagens e percentuais
+        counts = pd.crosstab(df['SG_UF_PROVA'], df['_cat'])
+        percentuais = pd.crosstab(df['SG_UF_PROVA'], df['_cat'], normalize='index') * 100
+
+        # Determinar categorias esperadas
+        if mapeamento:
+            categorias = list(mapeamento.values())
+        else:
+            categorias = counts.columns.tolist()
+
+        # Construir resultados
+        resultados = []
+        for estado in estados:
+            if estado not in counts.index:
+                continue
+            for categoria in categorias:
+                quantidade = int(counts.loc[estado, categoria]) if categoria in counts.columns else 0
+                percentual = round(float(percentuais.loc[estado, categoria]), 2) if categoria in percentuais.columns else 0.0
+                resultados.append({
+                    'Estado': estado,
+                    'Categoria': categoria,
+                    'Quantidade': quantidade,
+                    'Percentual': percentual
+                })
+
         return resultados
-    
-    # Obter categorias do aspecto social
-    if "mapeamento" in variaveis_sociais[aspecto_social]:
-        categorias = list(variaveis_sociais[aspecto_social]["mapeamento"].values())
-    else:
-        categorias = df[coluna_plot].unique().tolist()
-    
-    # Processar cada estado em lotes
-    for i, estado in enumerate(estados):
-        try:
-            # Tentar obter dados do estado atual
-            dados_estado = grupos_estado.get_group(estado)
-        except KeyError:
-            # Estado não encontrado no agrupamento, pular
-            continue
-        
-        if dados_estado.empty:
-            continue  # Pular estados sem dados
-        
-        # Calcular total de candidatos para o estado
-        total_estado = len(dados_estado)
-        
-        # Contar cada categoria para o estado atual
-        contagem_categorias = dados_estado[coluna_plot].value_counts()
-        
-        # Converter contagem para dicionário para acesso mais rápido
-        contagem_dict = contagem_categorias.to_dict()
-        
-        # Gerar resultados para cada categoria
-        for categoria in categorias:
-            quantidade = contagem_dict.get(categoria, 0)
-            percentual = (quantidade / total_estado * 100) if total_estado > 0 else 0
-            
-            resultados.append({
-                'Estado': estado,
-                'Categoria': categoria,
-                'Quantidade': quantidade,
-                'Percentual': round(percentual, 2)
-            })
-        
-        # Liberar memória a cada X estados processados
-        if (i+1) % CONFIG_PROCESSAMENTO['tamanho_lote_estados'] == 0:
-            release_memory()
-    
-    return resultados
+
+    except Exception as e:
+        return []
 
 
 def _agrupar_por_regiao(
