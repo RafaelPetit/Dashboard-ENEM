@@ -675,48 +675,6 @@ def _otimizar_tipos_dados(
 
 
 def _agrupar_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Agrupa os dados por região em vez de por estado.
-    Função auxiliar para melhorar legibilidade e manutenção.
-    
-    Parâmetros:
-    -----------
-    df : DataFrame
-        DataFrame com dados por estado
-        
-    Retorna:
-    --------
-    DataFrame: DataFrame com dados agrupados por região
-    """
-    # Importar localmente para evitar importação circular
-    from utils.helpers.mappings import get_mappings
-    mappings = get_mappings()
-    regioes_mapping = mappings['regioes_mapping']
-    
-    # Verificar se temos dados para processar
-    if df is None or df.empty:
-        return df
-    
-    try:
-        # Criar um mapeamento de estado para região
-        estado_para_regiao = {estado: regiao 
-                             for regiao, estados in regioes_mapping.items() 
-                             for estado in estados}
-        
-        # Adicionar coluna de região
-        df_com_regiao = df.copy()
-        df_com_regiao['Região'] = df_com_regiao['Estado'].map(estado_para_regiao)
-        
-        # Agrupar por região e área
-        df_agrupado = df_com_regiao.groupby(['Região', 'Área'])['Média'].mean().reset_index()
-        
-        # Renomear coluna de região para manter compatibilidade
-        df_agrupado = df_agrupado.rename(columns={'Região': 'Estado'})
-        
-        # Otimizar tipo de dados da coluna de região
-        regioes = list(regioes_mapping.keys())
-        df_agrupado['Estado'] = pd.Categorical(df_agrupado['Estado'], categories=regioes)
-        
-        return df_agrupado
-    except Exception as e:
-        return df  # Retornar dados originais em caso de erro
+    """Agrupa dados por região. Usa função centralizada de regiao_utils."""
+    from utils.helpers.regiao_utils import agrupar_dados_por_regiao
+    return agrupar_dados_por_regiao(df, coluna_estado='Estado', coluna_valor='Média', coluna_grupo='Área')

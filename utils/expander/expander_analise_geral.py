@@ -396,7 +396,7 @@ def _criar_mapa_calor_faltas(df_faltas: pd.DataFrame) -> None:
         df_mapa = df_faltas.copy()
         
         # Adicionar informação de região
-        from utils.helpers.regiao_utils import ESTADO_PARA_REGIAO; df_mapa['Região'] = df_mapa['Estado'].map(ESTADO_PARA_REGIAO)
+        df_mapa['Região'] = df_mapa['Estado'].map(ESTADO_PARA_REGIAO)
         
         # Filtrar apenas dados de "Faltou nos dois dias"
         df_mapa = df_mapa[df_mapa['Tipo de Falta'] == 'Faltou nos dois dias']
@@ -746,10 +746,9 @@ def _mostrar_medias_competencia_regiao(metricas_regiao: Dict[str, Dict[str, floa
     # Substituir NaN por zeros
     df_metricas = df_metricas.fillna(0)
     
-    # Formatar números para evitar exibição de NaN
-    for col in df_metricas.columns:
-        if col != 'Região':
-            df_metricas[col] = df_metricas[col].apply(lambda x: round(float(x), 2) if pd.notnull(x) else 0)
+    # Formatar números para evitar exibição de NaN (vetorizado)
+    cols_numericas = [c for c in df_metricas.columns if c != 'Região']
+    df_metricas[cols_numericas] = df_metricas[cols_numericas].fillna(0).round(2)
     
     # Mostrar tabela formatada
     st.dataframe(

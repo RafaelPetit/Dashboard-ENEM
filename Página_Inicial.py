@@ -3,9 +3,22 @@ import gc
 
 from utils.helpers.mappings import get_mappings
 
+# Configurações do projeto (externalizadas para fácil manutenção)
+CONFIG_PROJETO = {
+    'pesquisador': 'Rafael Petit',
+    'email_pesquisador': 'rpetit.dev@gmail.com',
+    'orientador': 'Prof. Dr. César C. Xavier',
+    'email_orientador': 'cesarcx@gmail.com',
+    'versao': 'v2.1.0',
+    'ultima_atualizacao': '11/07/2025',
+    'total_registros': '2.056.502',
+    'cobertura_regional': '52,29%',
+    'variaveis_analiticas': '31',
+}
+
 # Configuração inicial da página
 st.set_page_config(
-    page_title="Dashboard ENEM Sul - Análise Acadêmica", 
+    page_title="Dashboard ENEM 2023 - Análise Acadêmica", 
     page_icon="🏠", 
     layout="wide",
     initial_sidebar_state="expanded"
@@ -128,7 +141,7 @@ def init_session_state():
     
     # Data da última atualização
     if 'last_data_update' not in st.session_state:
-        st.session_state.last_data_update = "11/07/2025"
+        st.session_state.last_data_update = CONFIG_PROJETO['ultima_atualizacao']
 
 # Função para limpar cache e memória entre navegações
 def clear_page_memory():
@@ -144,7 +157,7 @@ init_session_state()
 
 # Título principal com indicação regional
 st.title("🌎 Dashboard ENEM 2023 - Região Sul/Sudeste e Centro-Oeste")
-st.markdown("#### Plataforma de Análise Acadêmica para Pesquisa Educacional - Versão Sudeste")
+st.markdown("#### Plataforma de Análise Acadêmica para Pesquisa Educacional")
 
 # Aviso importante sobre a divisão regional
 st.markdown("""
@@ -253,7 +266,7 @@ with main_col2:
     </div>
     """, unsafe_allow_html=True)
     
-    st.info("🌎 **Escopo**: Todas as regiões do Sudeste disponíveis")
+    st.info("🌎 **Escopo**: Regiões Sul, Sudeste e Centro-Oeste")
     
     # Status do sistema
     st.markdown("""
@@ -267,11 +280,11 @@ with main_col2:
 
 
     with col1:
-        st.metric("Registros Regionais", "2.056.502", help="Candidatos das regiões Sul, Sudeste e Centro-Oeste")
-        st.metric("Cobertura Regional", "52,29%", help="Percentual do território nacional coberto nesta versão")
-    
+        st.metric("Registros Regionais", CONFIG_PROJETO['total_registros'], help="Candidatos das regiões Sul, Sudeste e Centro-Oeste")
+        st.metric("Cobertura Regional", CONFIG_PROJETO['cobertura_regional'], help="Percentual do território nacional coberto nesta versão")
+
     with col2:
-        st.metric("Variáveis Analíticas", "31", help="Total de variáveis processadas e otimizadas")
+        st.metric("Variáveis Analíticas", CONFIG_PROJETO['variaveis_analiticas'], help="Total de variáveis processadas e otimizadas")
         st.metric("Processamento", st.session_state.last_data_update, help="Data da última otimização dos dados")
     
     # Estados incluídos nesta versão
@@ -288,7 +301,7 @@ with main_col2:
     
     **Centro-Oeste:** DF, GO, MT, MS
     
-    Para análise de Norte e Nordeste utilize as versões abaixo:.
+    Para análise de Norte e Nordeste utilize a versão abaixo:
     """)
     
     # Card específico para redirecionamento à versão Norte
@@ -398,26 +411,26 @@ with footer_col1:
     """, unsafe_allow_html=True)
 
 with footer_col2:
-    st.markdown("""
+    st.markdown(f"""
     <div style='text-align: center; color: #475569;'>
         <p style='font-size: 16px;'><b>Plataforma de Análise Científica do ENEM 2023</b></p>
         <p style='font-size: 14px; margin-top: 1rem;'>Projeto de pesquisa desenvolvido como contribuição científica 
         para a compreensão dos fatores que influenciam o desempenho educacional.</p>
         <hr style='margin: 15px 0; border-color: #E2E8F0;'>
-        <p style='font-size: 11px; margin-top: 5px;'>v2.1.0 </p>
+        <p style='font-size: 11px; margin-top: 5px;'>{CONFIG_PROJETO['versao']} </p>
     </div>
     """, unsafe_allow_html=True)
 
 with footer_col3:
-    st.markdown("""
+    st.markdown(f"""
     <div style='text-align: right; color: #475569;'>
         <p style='font-size: 16px;'><b>Equipe de Pesquisa</b></p>
         <p style='font-size: 14px; margin-bottom: 5px; margin-top: 10px;'><b>Pesquisador Responsável:</b></p>
-        <p style='font-size: 14px; margin-top: 0;'>Rafael Petit</p>
-        <p style='font-size: 12px; margin-top: -2px;'>rpetit.dev@gmail.com</p>
+        <p style='font-size: 14px; margin-top: 0;'>{CONFIG_PROJETO['pesquisador']}</p>
+        <p style='font-size: 12px; margin-top: -2px;'>{CONFIG_PROJETO['email_pesquisador']}</p>
         <p style='font-size: 14px; margin-bottom: 5px; margin-top: 15px;'><b>Orientador Científico:</b></p>
-        <p style='font-size: 14px; margin-top: 0;'>Prof. Dr. César C. Xavier</p>
-        <p style='font-size: 12px; margin-top: -5px;'>cesarcx@gmail.com</p>
+        <p style='font-size: 14px; margin-top: 0;'>{CONFIG_PROJETO['orientador']}</p>
+        <p style='font-size: 12px; margin-top: -5px;'>{CONFIG_PROJETO['email_orientador']}</p>
     </div>
     """, unsafe_allow_html=True)
 

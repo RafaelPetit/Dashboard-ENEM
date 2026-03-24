@@ -410,38 +410,7 @@ def adicionar_linha_tendencia(
 
 # Funções auxiliares
 
-def criar_grafico_vazio(mensagem: str = "Dados insuficientes para criar visualização") -> Figure:
-    """
-    Cria um gráfico vazio com uma mensagem explicativa.
-    
-    Parâmetros:
-    -----------
-    mensagem: str, default="Dados insuficientes para criar visualização"
-        Mensagem a ser exibida no gráfico vazio
-        
-    Retorna:
-    --------
-    Figure: Objeto de figura Plotly com mensagem de erro
-    """
-    fig = go.Figure()
-    
-    fig.update_layout(
-        title=mensagem,
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-        annotations=[
-            dict(
-                text=mensagem,
-                xref="paper",
-                yref="paper",
-                showarrow=False,
-                font=dict(size=16)
-            )
-        ],
-        height=400
-    )
-    
-    return fig
+# criar_grafico_vazio importado de utils.visualizacao.componentes
 
 
 def _obter_componentes_titulo_comparativo(

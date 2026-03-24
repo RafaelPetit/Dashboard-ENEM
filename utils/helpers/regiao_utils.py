@@ -124,3 +124,63 @@ def adicionar_regiao_aos_estados(df: pd.DataFrame, coluna_estado: str = 'Estado'
     df_resultado = df.copy()
     df_resultado['Região'] = df_resultado[coluna_estado].map(ESTADO_PARA_REGIAO)
     return df_resultado
+
+
+def agrupar_dados_por_regiao(
+    df: pd.DataFrame,
+    coluna_estado: str = 'Estado',
+    coluna_valor: str = 'Média',
+    coluna_grupo: str = None
+) -> pd.DataFrame:
+    """
+    Agrupa dados por região em vez de por estado.
+    Função centralizada — substitui 3 cópias em prepara_dados/.
+
+    Parâmetros:
+    -----------
+    df : DataFrame
+        DataFrame com dados por estado
+    coluna_estado : str
+        Nome da coluna que contém os estados
+    coluna_valor : str
+        Nome da coluna numérica para agregar (média)
+    coluna_grupo : str, opcional
+        Coluna adicional de agrupamento (ex: 'Área', 'Categoria')
+
+    Retorna:
+    --------
+    DataFrame com dados agrupados por região
+    """
+    if df is None or df.empty or coluna_estado not in df.columns:
+        return df
+
+    try:
+        df_temp = df.copy()
+        df_temp['Região'] = df_temp[coluna_estado].map(ESTADO_PARA_REGIAO)
+        df_temp = df_temp[df_temp['Região'].notna() & (df_temp['Região'] != '')]
+
+        # Definir colunas de agrupamento
+        if coluna_grupo and coluna_grupo in df_temp.columns:
+            grupo_cols = ['Região', coluna_grupo]
+        else:
+            grupo_cols = ['Região']
+
+        # Agregar valores numéricos
+        colunas_numericas = df_temp.select_dtypes(include='number').columns.tolist()
+        if not colunas_numericas:
+            return df
+
+        df_agrupado = df_temp.groupby(grupo_cols)[colunas_numericas].mean().reset_index()
+        df_agrupado = df_agrupado.rename(columns={'Região': coluna_estado})
+
+        # Otimizar tipo de dados
+        regioes = list(REGIOES_BRASIL.keys())
+        df_agrupado[coluna_estado] = pd.Categorical(df_agrupado[coluna_estado], categories=regioes)
+
+        # Arredondar
+        for col in colunas_numericas:
+            df_agrupado[col] = df_agrupado[col].round(2)
+
+        return df_agrupado
+    except Exception as e:
+        return df

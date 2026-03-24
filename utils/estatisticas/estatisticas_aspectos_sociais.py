@@ -453,14 +453,14 @@ def analisar_distribuicao_regional(
     try:
         # Filtrar para uma categoria específica se solicitado
         if categoria:
-            df_analise = df_por_estado[df_por_estado['Categoria'] == categoria].copy()
+            df_analise = df_por_estado[df_por_estado['Categoria'] == categoria]
             
             # Verificar se a categoria existe nos dados
             if df_analise.empty:
                 return _criar_resultado_regional_vazio()
         else:
             # Se não houver categoria específica, usamos todo o dataframe
-            df_analise = df_por_estado.copy()
+            df_analise = df_por_estado
         
         # Verificar se temos dados para análise
         if df_analise.empty or len(df_analise) < 3:  # Mínimo de 3 estados para análise significativa
@@ -704,10 +704,10 @@ def analisar_tendencias_temporais(
     try:
         # Filtrar para uma categoria específica se solicitado
         if categoria:
-            df_analise = df_historico[df_historico['Categoria'] == categoria].copy()
+            df_analise = df_historico[df_historico['Categoria'] == categoria]
         else:
             # Se não houver categoria específica, usamos todo o dataframe
-            df_analise = df_historico.copy()
+            df_analise = df_historico
         
         # Verificar se temos pontos suficientes para análise de tendência
         if len(df_analise) < 3:  # Mínimo de 3 pontos temporais

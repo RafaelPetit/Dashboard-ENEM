@@ -234,16 +234,14 @@ def preparar_dados_metricas_principais(
             faltas_totais = 0
             percentual_faltas = 0
         
-        # Calcular médias por área de conhecimento
-        medias = {}
-        for coluna in colunas_notas:
-            if coluna in microdados_estados.columns:
-                notas_validas = microdados_estados[microdados_estados[coluna] > 0][coluna]
-                media = calcular_seguro(notas_validas, 'media')
-                medias[coluna] = round(media, 2)
-            else:
-                medias[coluna] = None
-        
+        # Calcular médias por área de conhecimento (vetorizado)
+        import numpy as np
+        cols_disponiveis = [c for c in colunas_notas if c in microdados_estados.columns]
+        df_notas = microdados_estados[cols_disponiveis].copy()
+        df_notas[df_notas <= 0] = np.nan
+        medias_series = df_notas.mean()
+        medias = {col: round(float(medias_series[col]), 2) if pd.notna(medias_series[col]) else None for col in cols_disponiveis}
+
         # Calcular média geral
         medias_validas = [v for v in medias.values() if v is not None]
         media_geral = round(sum(medias_validas) / len(medias_validas), 2) if medias_validas else 0
@@ -425,22 +423,8 @@ def _agrupar_estados_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
     --------
     DataFrame: DataFrame com dados agrupados por região
     """
-    if df is None or df.empty or 'Local' not in df.columns:
-        return df
-    try:
-        from utils.helpers.regiao_utils import ESTADO_PARA_REGIAO
-        # Vetorizado: .map() em vez de .apply()
-        df_temp = df.copy()
-        df_temp['Região'] = df_temp['Local'].map(ESTADO_PARA_REGIAO)
-        df_temp = df_temp[df_temp['Região'].notna() & (df_temp['Região'] != '')]
-        colunas_numericas = df_temp.select_dtypes(include='number').columns.tolist()
-        df_agrupado = df_temp.groupby('Região')[colunas_numericas].mean().reset_index()
-        df_agrupado = df_agrupado.rename(columns={'Região': 'Local'})
-        for col in colunas_numericas:
-            df_agrupado[col] = df_agrupado[col].round(2)
-        return df_agrupado
-    except Exception as e:
-        return df
+    from utils.helpers.regiao_utils import agrupar_dados_por_regiao
+    return agrupar_dados_por_regiao(df, coluna_estado='Local', coluna_valor='Média Geral')
 
 
 @optimized_cache(ttl=3600)
@@ -545,40 +529,35 @@ def preparar_dados_comparativo_areas(
         return pd.DataFrame(columns=['Area', 'Media', 'DesvioPadrao', 'Mediana'])
     
     try:
+        import numpy as np
+        cols_disponiveis = [c for c in colunas_notas if c in microdados_estados.columns]
+        if not cols_disponiveis:
+            return pd.DataFrame(columns=['Area', 'Media', 'DesvioPadrao', 'Mediana'])
+
+        # Vetorizado: substituir <= 0 por NaN e calcular tudo de uma vez
+        df_notas = microdados_estados[cols_disponiveis].copy()
+        df_notas[df_notas <= 0] = np.nan
+
+        # Todas as estatísticas em uma única chamada
+        stats = df_notas.agg(['mean', 'median', 'std', 'min', 'max'])
+
         resultado = []
-        
-        for coluna in colunas_notas:
-            if coluna not in microdados_estados.columns:
-                continue
-                
-            # Filtrar notas válidas
-            notas_validas = microdados_estados[microdados_estados[coluna] > 0][coluna]
-            
-            if len(notas_validas) > 0:
-                # Calcular estatísticas
-                media = calcular_seguro(notas_validas, 'media')
-                mediana = calcular_seguro(notas_validas, 'mediana')
-                desvio = calcular_seguro(notas_validas, 'desvio')
-                
-                # Obter nome legível da área
-                nome_area = competencia_mapping.get(coluna, coluna)
-                
+        for coluna in cols_disponiveis:
+            media = stats.loc['mean', coluna]
+            if pd.notna(media):
                 resultado.append({
-                    'Area': nome_area,
-                    'Media': round(media, 2),
-                    'DesvioPadrao': round(desvio, 2),
-                    'Mediana': round(mediana, 2),
-                    'Minimo': round(float(notas_validas.min()), 2),
-                    'Maximo': round(float(notas_validas.max()), 2)
+                    'Area': competencia_mapping.get(coluna, coluna),
+                    'Media': round(float(media), 2),
+                    'DesvioPadrao': round(float(stats.loc['std', coluna]), 2) if pd.notna(stats.loc['std', coluna]) else 0.0,
+                    'Mediana': round(float(stats.loc['median', coluna]), 2),
+                    'Minimo': round(float(stats.loc['min', coluna]), 2),
+                    'Maximo': round(float(stats.loc['max', coluna]), 2)
                 })
-        
-        # Criar DataFrame
+
         df_resultado = pd.DataFrame(resultado)
-        
-        # Ordenar por média decrescente
         if not df_resultado.empty:
             df_resultado = df_resultado.sort_values('Media', ascending=False)
-            
+
         return df_resultado
     except Exception as e:
         return pd.DataFrame(columns=['Area', 'Media', 'DesvioPadrao', 'Mediana'])

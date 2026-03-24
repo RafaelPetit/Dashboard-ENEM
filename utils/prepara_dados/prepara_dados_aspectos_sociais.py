@@ -561,9 +561,10 @@ def _processar_aspectos_por_estado(
         if df.empty:
             return []
 
-        # UMA operação vetorizada: crosstab para contagens e percentuais
+        # UMA operação vetorizada: crosstab para contagens (percentuais derivados)
         counts = pd.crosstab(df['SG_UF_PROVA'], df['_cat'])
-        percentuais = pd.crosstab(df['SG_UF_PROVA'], df['_cat'], normalize='index') * 100
+        totais_por_estado = counts.sum(axis=1)
+        percentuais = counts.div(totais_por_estado, axis=0) * 100
 
         # Determinar categorias esperadas
         if mapeamento:
@@ -593,63 +594,33 @@ def _processar_aspectos_por_estado(
 
 
 def _agrupar_por_regiao(
-    df: pd.DataFrame, 
+    df: pd.DataFrame,
     aspecto_social: str
 ) -> pd.DataFrame:
     """
     Agrupa os dados por região em vez de por estado.
-    Função auxiliar para melhorar legibilidade e manutenção.
-    
-    Parâmetros:
-    -----------
-    df : DataFrame
-        DataFrame com dados por estado
-    aspecto_social : str
-        Nome do aspecto social analisado
-        
-    Retorna:
-    --------
-    DataFrame: DataFrame com dados agrupados por região
+    Usa regiao_utils para mapeamento centralizado.
     """
-    # Importar localmente para evitar importação circular
-    from utils.helpers.mappings import get_mappings
-    from utils.helpers.regiao_utils import obter_regiao_do_estado
-    
-    mappings = get_mappings()
-    regioes_mapping = mappings['regioes_mapping']
-    
-    # Verificar se temos dados para processar
+    from utils.helpers.regiao_utils import ESTADO_PARA_REGIAO, REGIOES_BRASIL
+
     if df.empty:
         return df
-    
+
     try:
-        # Criar um mapeamento de estado para região
-        estado_para_regiao = {estado: regiao 
-                             for regiao, estados in regioes_mapping.items() 
-                             for estado in estados}
-        
-        # Adicionar coluna de região
         df_com_regiao = df.copy()
-        df_com_regiao['Região'] = df_com_regiao['Estado'].map(estado_para_regiao)
-        
-        # Agrupar por região e categoria
-        df_agrupado = df_com_regiao.groupby(['Região', 'Categoria'])['Percentual'].mean().reset_index()
-        
-        # Calcular quantidades somando para cada região/categoria
-        quantidades = df_com_regiao.groupby(['Região', 'Categoria'])['Quantidade'].sum().reset_index()
-        
-        # Juntar quantidades com percentuais
-        df_agrupado = df_agrupado.merge(quantidades, on=['Região', 'Categoria'])
-        
-        # Renomear coluna de região para manter compatibilidade
+        df_com_regiao['Região'] = df_com_regiao['Estado'].map(ESTADO_PARA_REGIAO)
+
+        # Percentual: média por região/categoria; Quantidade: soma
+        df_agrupado = df_com_regiao.groupby(['Região', 'Categoria']).agg(
+            Percentual=('Percentual', 'mean'),
+            Quantidade=('Quantidade', 'sum')
+        ).reset_index()
+
         df_agrupado = df_agrupado.rename(columns={'Região': 'Estado'})
-        
-        # Otimizar tipo de dados da coluna de região
-        regioes = list(regioes_mapping.keys())
-        df_agrupado['Estado'] = pd.Categorical(df_agrupado['Estado'], categories=regioes)
+        df_agrupado['Estado'] = pd.Categorical(df_agrupado['Estado'], categories=list(REGIOES_BRASIL.keys()))
         df_agrupado['Percentual'] = df_agrupado['Percentual'].round(2)
-        
+
         return df_agrupado
-    
+
     except Exception as e:
         return df  
