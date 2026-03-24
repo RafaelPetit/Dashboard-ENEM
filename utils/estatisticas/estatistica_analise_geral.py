@@ -3,7 +3,7 @@ import pandas as pd
 from typing import Dict, List, Tuple, Optional, Any
 from data.data_loader import calcular_seguro
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function
-from utils.helpers.regiao_utils import obter_regiao_do_estado, ESTADO_PARA_REGIAO
+from utils.helpers.regiao_utils import obter_regiao_do_estado
 from utils.helpers.mappings import get_mappings
 
 # Obter mapeamentos e constantes
@@ -146,13 +146,13 @@ def _criar_metricas_principais_vazias() -> Dict[str, Any]:
 
 @memory_intensive_function
 def _calcular_medias_estados_competencias(
-    df: pd.DataFrame,
-    estados: List[str],
+    df: pd.DataFrame, 
+    estados: List[str], 
     colunas_notas: List[str]
 ) -> Dict[str, Any]:
     """
-    Calcula médias por estado e competência de forma vetorizada.
-
+    Calcula médias por estado e competência de forma otimizada.
+    
     Parâmetros:
     -----------
     df: DataFrame
@@ -161,45 +161,69 @@ def _calcular_medias_estados_competencias(
         Lista de estados para análise
     colunas_notas: List[str]
         Lista de colunas com notas
-
+        
     Retorna:
     --------
     Dict[str, Any]: Dicionário com médias calculadas
     """
+    # Inicializar estruturas de dados
+    todas_medias = []
+    medias_por_estado = {}
+    medias_por_competencia = {}
+    
     try:
-        # Filtrar apenas estados solicitados e colunas necessárias
-        colunas_necessarias = ['SG_UF_PROVA'] + [c for c in colunas_notas if c in df.columns]
-        df_filtrado = df.loc[df['SG_UF_PROVA'].isin(estados), colunas_necessarias]
-
-        if df_filtrado.empty:
-            return {'todas_medias': [], 'medias_por_estado': {}, 'medias_por_competencia': {}}
-
-        # Substituir valores inválidos por NaN para ignorar nos cálculos
-        # Notas <= 0 e -1 (ausentes) não devem entrar nas médias
-        cols_notas = [c for c in colunas_notas if c in df_filtrado.columns]
-        df_notas = df_filtrado[cols_notas].copy()
-        df_notas[df_notas <= 0] = np.nan
-        df_notas['SG_UF_PROVA'] = df_filtrado['SG_UF_PROVA'].values
-
-        # Uma única operação vetorizada: médias por estado e competência
-        medias_estado_comp = df_notas.groupby('SG_UF_PROVA')[cols_notas].mean()
-
-        # Médias gerais por estado (média das competências)
-        medias_por_estado = medias_estado_comp.mean(axis=1).dropna().to_dict()
-
-        # Médias por competência (média de todos os estados)
-        medias_por_competencia = medias_estado_comp.mean(axis=0).dropna().to_dict()
-
-        # Todas as médias individuais (estado × competência)
-        todas_medias = medias_estado_comp.values.flatten()
-        todas_medias = [float(m) for m in todas_medias if not np.isnan(m)]
-
+        # Agrupar por estado para melhor desempenho
+        grupos_estado = df.groupby('SG_UF_PROVA', observed=False)
+        
+        # Processar cada estado
+        for estado in estados:
+            try:
+                dados_estado = grupos_estado.get_group(estado)
+            except KeyError:
+                continue  # Estado não encontrado, pular
+                
+            medias_estado_atual = []
+            
+            # Processar cada competência
+            for col in colunas_notas:
+                if col not in dados_estado.columns:
+                    continue
+                    
+                # Filtrar notas válidas (maiores que 0, diferentes de -1, e não nulas)
+                # -1 representa candidatos ausentes no ENEM
+                notas_validas = dados_estado[
+                    (dados_estado[col] > 0) & 
+                    (dados_estado[col] != -1) & 
+                    (dados_estado[col].notna())
+                ][col]
+                
+                if len(notas_validas) > 0:
+                    # Calcular média
+                    media = calcular_seguro(notas_validas, 'media')
+                    
+                    # Armazenar resultados
+                    todas_medias.append(media)
+                    medias_estado_atual.append(media)
+                    
+                    # Atualizar médias por competência
+                    if col not in medias_por_competencia:
+                        medias_por_competencia[col] = []
+                    medias_por_competencia[col].append(media)
+            
+            # Calcular média geral do estado
+            if medias_estado_atual:
+                medias_por_estado[estado] = np.mean(medias_estado_atual)
+        
+        # Calcular média por competência
+        for comp, valores in medias_por_competencia.items():
+            medias_por_competencia[comp] = np.mean(valores) if valores else 0
+        
         return {
             'todas_medias': todas_medias,
-            'medias_por_estado': {k: round(v, 4) for k, v in medias_por_estado.items()},
-            'medias_por_competencia': {k: round(v, 4) for k, v in medias_por_competencia.items()}
+            'medias_por_estado': medias_por_estado,
+            'medias_por_competencia': medias_por_competencia
         }
-
+        
     except Exception as e:
         return {
             'todas_medias': [],
@@ -211,28 +235,34 @@ def _calcular_medias_estados_competencias(
 def _calcular_totais_por_regiao(df: pd.DataFrame) -> Dict[str, int]:
     """
     Calcula o total de candidatos por região.
-
+    
     Parâmetros:
     -----------
     df: DataFrame
         DataFrame com os dados
-
+        
     Retorna:
     --------
     Dict[str, int]: Dicionário com total de candidatos por região
     """
+    # Verificar se temos dados válidos
     if df is None or df.empty or 'SG_UF_PROVA' not in df.columns:
         return {}
-
+    
     try:
-        from utils.helpers.regiao_utils import ESTADO_PARA_REGIAO
-        # Vetorizado: .map() com dicionário em vez de .apply() row-by-row
-        regioes = df['SG_UF_PROVA'].map(ESTADO_PARA_REGIAO)
-        contagem = regioes.value_counts().to_dict()
+        # Criar coluna temporária com a região de cada estado
+        df_temp = df.copy()
+        df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].apply(obter_regiao_do_estado)
+        
+        # Contar candidatos por região
+        contagem = df_temp['REGIAO'].value_counts().to_dict()
+        
         # Remover região vazia se existir
-        contagem.pop('', None)
+        if '' in contagem:
+            del contagem['']
+            
         return contagem
-
+        
     except Exception as e:
         return {}
 
@@ -293,32 +323,17 @@ def analisar_distribuicao_notas(
         if df_valido.empty:
             return _criar_analise_distribuicao_vazia()
         
-        # Usar a coluna convertida para os cálculos (vetorizado)
+        # Usar a coluna convertida para os cálculos
         coluna_valida = coluna_convertida[df_valido.index]
-        valores = coluna_valida.dropna().values
-        valores = valores[np.isfinite(valores)]
-
-        if len(valores) == 0:
-            return _criar_analise_distribuicao_vazia()
-
-        # Calcular todas as estatísticas de uma vez (sem loops/wrappers)
-        media = float(np.mean(valores))
-        mediana = float(np.median(valores))
-        min_valor = float(np.min(valores))
-        max_valor = float(np.max(valores))
-        desvio_padrao = float(np.std(valores, ddof=1)) if len(valores) > 1 else 0.0
-
-        # Curtose e assimetria via scipy (1 chamada cada)
-        from scipy import stats as sp_stats
-        curtose = float(sp_stats.kurtosis(valores, fisher=True)) if len(valores) >= 4 else 0.0
-        assimetria = float(sp_stats.skew(valores)) if len(valores) >= 4 else 0.0
-
-        # Validar resultados
-        media = media if np.isfinite(media) else 0.0
-        mediana = mediana if np.isfinite(mediana) else 0.0
-        desvio_padrao = desvio_padrao if np.isfinite(desvio_padrao) else 0.0
-        curtose = curtose if np.isfinite(curtose) else 0.0
-        assimetria = assimetria if np.isfinite(assimetria) else 0.0
+        
+        # Calcular estatísticas básicas
+        media = calcular_seguro(coluna_valida, 'media')
+        mediana = calcular_seguro(coluna_valida, 'mediana')
+        min_valor = calcular_seguro(coluna_valida, 'min')
+        max_valor = calcular_seguro(coluna_valida, 'max')
+        desvio_padrao = calcular_seguro(coluna_valida, 'std')
+        curtose = calcular_seguro(coluna_valida, 'curtose')
+        assimetria = calcular_seguro(coluna_valida, 'assimetria')
         
         # Calcular percentis de forma segura
         percentis = _calcular_percentis_seguros(coluna_valida, [10, 25, 50, 75, 90, 95, 99])
@@ -575,7 +590,7 @@ def _calcular_intervalo_confianca(serie: pd.Series, nivel: float = 0.95) -> Tupl
         # Calcular erro padrão
         try:
             erro_padrao = stats.sem(serie_limpa)
-        except Exception:
+        except:
             # Fallback manual
             erro_padrao = serie_limpa.std(ddof=1) / np.sqrt(len(serie_limpa))
         
@@ -586,7 +601,7 @@ def _calcular_intervalo_confianca(serie: pd.Series, nivel: float = 0.95) -> Tupl
         # Calcular intervalo de confiança
         try:
             intervalo = stats.t.interval(nivel, len(serie_limpa)-1, loc=media, scale=erro_padrao)
-        except Exception:
+        except:
             # Fallback simples
             margem_erro = 1.96 * erro_padrao  # Aproximação para grandes amostras
             intervalo = (media - margem_erro, media + margem_erro)
@@ -645,9 +660,9 @@ def analisar_faltas(
         df_normalizado = _normalizar_tipos_faltas(df_faltas)
         
         # Filtrar para tipos específicos de falta
-        df_ambos_dias = df_normalizado[df_normalizado['Tipo de Falta'] == 'Faltou nos dois dias']
-        df_dia1 = df_normalizado[df_normalizado['Tipo de Falta'] == 'Faltou somente no primeiro dia']
-        df_dia2 = df_normalizado[df_normalizado['Tipo de Falta'] == 'Faltou somente no segundo dia']
+        df_ambos_dias = df_normalizado[df_normalizado['Tipo de Falta'] == 'Faltou nos dois dias'].copy()
+        df_dia1 = df_normalizado[df_normalizado['Tipo de Falta'] == 'Faltou somente no primeiro dia'].copy()
+        df_dia2 = df_normalizado[df_normalizado['Tipo de Falta'] == 'Faltou somente no segundo dia'].copy()
 
         # Calcular médias por tipo de falta
         media_faltas_ambos_dias = df_ambos_dias['Percentual de Faltas'].mean() if not df_ambos_dias.empty else 0
@@ -769,9 +784,33 @@ def _criar_analise_faltas_vazia() -> Dict[str, Any]:
 def _normalizar_tipos_faltas(df: pd.DataFrame) -> pd.DataFrame:
     """
     Normaliza os tipos de faltas para nomenclatura padrão.
-    Retorna o DataFrame sem modificação (nomenclatura já padronizada na preparação).
+    
+    Parâmetros:
+    -----------
+    df: DataFrame
+        DataFrame com dados de faltas
+        
+    Retorna:
+    --------
+    DataFrame: DataFrame com tipos de faltas normalizados
     """
-    return df
+    # Criar cópia para não modificar o original
+    df_normalizado = df.copy()
+    
+    # Mapeamento para normalização
+    mapeamento = {
+        'Faltou nos dois dias': 'Faltou nos dois dias',
+        'Faltou no segundo dia': 'Faltou no segundo dia',
+        'Faltou no primeiro dia': 'Faltou no primeiro dia',
+        'Faltou apenas no segundo dia': 'Faltou apenas no segundo dia',
+        'Faltou apenas no primeiro dia': 'Faltou apenas no primeiro dia'
+    }
+    
+    # Aplicar normalização
+    for padrao, normalizacao in mapeamento.items():
+        df_normalizado.loc[df_normalizado['Tipo de Falta'].str.contains(padrao, case=False), 'Tipo de Falta'] = normalizacao
+    
+    return df_normalizado
 
 
 def _identificar_estados_maior_evasao(df: pd.DataFrame, top_n: int = 3) -> List[Dict[str, Any]]:
@@ -979,40 +1018,48 @@ def analisar_metricas_por_regiao(
         return {}
     
     try:
-        cols_notas = [c for c in colunas_notas if c in df.columns]
-        if not cols_notas:
+        # Criar coluna temporária com a região
+        df_temp = df.copy()
+        df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].apply(obter_regiao_do_estado)
+        
+        # Remover valores vazios ou nulos na coluna de região
+        df_temp = df_temp[df_temp['REGIAO'] != '']
+        
+        # Verificar se temos dados após filtragem
+        if df_temp.empty:
             return {}
-
-        # Vetorizado: .map() para região + groupby().mean() para tudo de uma vez
-        regioes = df['SG_UF_PROVA'].map(ESTADO_PARA_REGIAO)
-        regioes = regioes[regioes.notna() & (regioes != '')]
-
-        if regioes.empty:
-            return {}
-
-        # Substituir notas <= 0 por NaN para ignorar nos cálculos
-        df_notas = df[cols_notas].copy()
-        df_notas[df_notas <= 0] = np.nan
-        df_notas['REGIAO'] = regioes.values
-
-        # Uma única operação vetorizada: médias por região e competência
-        medias = df_notas.groupby('REGIAO')[cols_notas].mean().round(2)
-        totais = df_notas.groupby('REGIAO').size()
-
-        # Construir resultado
+        
+        # Calcular métricas por região
         resultados = {}
-        for regiao in medias.index:
+        for regiao in df_temp['REGIAO'].unique():
+            dados_regiao = df_temp[df_temp['REGIAO'] == regiao]
+            
+            # Inicializar métricas para esta região
             metricas_regiao = {}
-            for col in cols_notas:
-                val = medias.loc[regiao, col]
-                metricas_regiao[col] = float(val) if pd.notna(val) else 0.0
-
+            
+            # Calcular média para cada coluna de notas
+            for coluna in colunas_notas:
+                if coluna in dados_regiao.columns:
+                    notas_validas = dados_regiao[dados_regiao[coluna] > 0][coluna]
+                    if len(notas_validas) > 0:
+                        metricas_regiao[coluna] = round(notas_validas.mean(), 2)
+                    else:
+                        metricas_regiao[coluna] = 0.0
+            
+            # Calcular média geral da região
             valores_validos = [v for v in metricas_regiao.values() if v > 0]
-            metricas_regiao['media_geral'] = round(sum(valores_validos) / len(valores_validos), 2) if valores_validos else 0.0
-            metricas_regiao['total_candidatos'] = int(totais[regiao])
+            if valores_validos:
+                metricas_regiao['media_geral'] = round(sum(valores_validos) / len(valores_validos), 2)
+            else:
+                metricas_regiao['media_geral'] = 0.0
+                
+            # Adicionar total de candidatos
+            metricas_regiao['total_candidatos'] = len(dados_regiao)
+            
+            # Adicionar ao resultado
             resultados[regiao] = metricas_regiao
-
+        
         return resultados
-
+        
     except Exception as e:
         return {}

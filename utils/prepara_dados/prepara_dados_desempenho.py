@@ -135,16 +135,17 @@ def preparar_dados_comparativo(
 
 @memory_intensive_function
 def _calcular_medias_por_categoria(
-    df: pd.DataFrame,
-    coluna_categoria: str,
-    colunas_notas: List[str],
+    df: pd.DataFrame, 
+    coluna_categoria: str, 
+    colunas_notas: List[str], 
     competencia_mapping: Dict[str, str],
     mapeamento: Optional[Dict[Any, str]] = None
 ) -> List[Dict[str, Any]]:
     """
     Calcula médias de desempenho para cada combinação de categoria e competência.
-    Versão vetorizada — usa groupby().mean() em vez de loops Python.
-
+    
+    Função auxiliar para melhorar legibilidade e manutenção.
+    
     Parâmetros:
     -----------
     df : DataFrame
@@ -157,54 +158,108 @@ def _calcular_medias_por_categoria(
         Mapeamento de códigos de competência para nomes legíveis
     mapeamento : Dict, opcional
         Mapeamento de valores numéricos de categoria para textos legíveis
-
+        
     Retorna:
     --------
     List[Dict[str, Any]]: Lista de dicionários com os resultados calculados
     """
-    if df.empty or coluna_categoria not in df.columns:
-        return []
-
-    # Filtrar apenas colunas de notas que existem no DataFrame
-    cols_notas = [c for c in colunas_notas if c in df.columns]
-    if not cols_notas:
-        return []
-
-    # Remover linhas com categoria NaN
-    df_trabalho = df[[coluna_categoria] + cols_notas].dropna(subset=[coluna_categoria])
-    if df_trabalho.empty:
-        return []
-
-    try:
-        # Substituir notas <= 0 por NaN (notas inválidas/ausentes)
-        df_notas = df_trabalho[cols_notas].copy()
-        df_notas[df_notas <= 0] = np.nan
-        df_notas[coluna_categoria] = df_trabalho[coluna_categoria].values
-
-        # UMA ÚNICA operação vetorizada: groupby + mean
-        medias = df_notas.groupby(coluna_categoria, observed=True)[cols_notas].mean()
-
-        # Construir resultados no formato esperado
-        resultados = []
-        for categoria in medias.index:
-            if pd.isna(categoria):
-                continue
-            # Aplicar mapeamento de categoria para nome de exibição
+    resultados = []
+    
+    # Verificar se temos dados válidos
+    if df.empty:
+        return resultados
+    
+    # Verificar se a coluna categoria existe
+    if coluna_categoria not in df.columns:
+        return resultados
+    
+    # Obter categorias únicas de forma eficiente
+    categorias_unicas = df[coluna_categoria].unique()
+    categorias_unicas = [cat for cat in categorias_unicas if pd.notna(cat)]  # Remover NaN
+    total_categorias = len(categorias_unicas)
+    
+    if total_categorias == 0:
+        return resultados
+    
+    # Verificar se há muitas categorias (pode afetar performance)
+    if total_categorias > CONFIG_PROCESSAMENTO['max_categorias_alerta']:
+        pass  # Continuar processamento mesmo com muitas categorias
+    
+    # Agrupar dados para economizar memória e melhorar performance
+    if total_categorias <= CONFIG_PROCESSAMENTO['limiar_agrupamento']:
+        # Cálculo eficiente com agrupamento - adicionar observed=True para evitar warning
+        df_agrupado = df.groupby(coluna_categoria, observed=True)
+        
+        for categoria in categorias_unicas:
+            # Determinar o valor de exibição da categoria
             categoria_exibicao = mapeamento.get(categoria, str(categoria)) if mapeamento else str(categoria)
-
-            for col in cols_notas:
-                media_val = medias.loc[categoria, col]
-                competencia_nome = competencia_mapping.get(col, col)
+            
+            try:
+                # Obter grupo de dados para a categoria
+                dados_categoria = df_agrupado.get_group(categoria)
+                
+                # Calcular médias para cada competência
+                for competencia in colunas_notas:
+                    if competencia not in dados_categoria.columns:
+                        continue
+                        
+                    # Filtrar apenas notas válidas (maiores que zero)
+                    notas_validas = dados_categoria[dados_categoria[competencia] > 0][competencia]
+                    
+                    if len(notas_validas) == 0:
+                        # Se não há notas válidas, usar 0 como média
+                        media_comp = 0
+                    else:
+                        # Calcular média ou usar zero se não houver notas válidas
+                        media_comp = calcular_seguro(notas_validas, 'media')
+                    
+                    competencia_nome = competencia_mapping.get(competencia, competencia)
+                    
+                    resultados.append({
+                        'Categoria': categoria_exibicao,
+                        'Competência': competencia_nome,
+                        'Média': round(media_comp, 2)
+                    })
+            except KeyError:
+                # Categoria pode não existir no agrupamento (caso raro)
+                continue
+    else:
+        # Método alternativo para muitas categorias (processamento em lotes)
+        for i, categoria in enumerate(categorias_unicas):
+            # Filtrar dados para a categoria atual
+            dados_categoria = df[df[coluna_categoria] == categoria]
+            
+            # Determinar o valor de exibição da categoria
+            categoria_exibicao = mapeamento.get(categoria, str(categoria)) if mapeamento else str(categoria)
+            
+            # Calcular médias para cada competência
+            for competencia in colunas_notas:
+                if competencia not in dados_categoria.columns:
+                    continue
+                    
+                # Filtrar apenas notas válidas (maiores que zero)
+                notas_validas = dados_categoria[dados_categoria[competencia] > 0][competencia]
+                
+                if len(notas_validas) == 0:
+                    # Se não há notas válidas, usar 0 como média
+                    media_comp = 0
+                else:
+                    # Calcular média ou usar zero se não houver notas válidas
+                    media_comp = calcular_seguro(notas_validas, 'media')
+                
+                competencia_nome = competencia_mapping.get(competencia, competencia)
+                
                 resultados.append({
                     'Categoria': categoria_exibicao,
                     'Competência': competencia_nome,
-                    'Média': round(float(media_val), 2) if pd.notna(media_val) else 0
+                    'Média': round(media_comp, 2)
                 })
-
-        return resultados
-
-    except Exception as e:
-        return []
+            
+            # Liberar memória a cada lote processado
+            if (i+1) % CONFIG_PROCESSAMENTO['tamanho_lote'] == 0:
+                release_memory(dados_categoria)
+    
+    return resultados
 
 
 @optimized_cache(ttl=1800)
@@ -556,15 +611,15 @@ def preparar_dados_grafico_linha_desempenho(
 
 @memory_intensive_function
 def _processar_estados_em_lotes(
-    microdados: pd.DataFrame,
-    estados: List[str],
-    colunas_notas: List[str],
+    microdados: pd.DataFrame, 
+    estados: List[str], 
+    colunas_notas: List[str], 
     competencia_mapping: Dict[str, str]
 ) -> List[Dict[str, Any]]:
     """
-    Calcula médias de desempenho por estado e área de conhecimento.
-    Versão vetorizada — usa groupby().mean() em vez de loops.
-
+    Processa estados em lotes para calcular médias de desempenho.
+    Função auxiliar para melhorar legibilidade e manutenção.
+    
     Parâmetros:
     -----------
     microdados : DataFrame
@@ -575,59 +630,71 @@ def _processar_estados_em_lotes(
         Colunas com notas a processar
     competencia_mapping : Dict
         Mapeamento de códigos para nomes de competências
-
+        
     Retorna:
     --------
     List[Dict[str, Any]]: Lista de resultados calculados
     """
+    resultados = []
+    total_estados = len(estados)
+    
+    # Agrupar por estado para processamento mais eficiente
     try:
-        cols_notas = [c for c in colunas_notas if c in microdados.columns]
-        if not cols_notas:
-            return []
-
-        # Filtrar estados solicitados
-        df = microdados[microdados['SG_UF_PROVA'].isin(estados)]
-        if df.empty:
-            return []
-
-        # Substituir notas <= 0 por NaN
-        df_notas = df[cols_notas].copy()
-        df_notas[df_notas <= 0] = np.nan
-        df_notas['SG_UF_PROVA'] = df['SG_UF_PROVA'].values
-
-        # Uma única operação vetorizada: média por estado e competência
-        medias = df_notas.groupby('SG_UF_PROVA')[cols_notas].mean()
-
-        # Construir resultados no formato esperado
-        resultados = []
-        for estado in estados:
-            if estado not in medias.index:
-                continue
-
-            medias_estado = []
-            for area in cols_notas:
-                media_val = medias.loc[estado, area]
-                media_arredondada = round(float(media_val), 2) if pd.notna(media_val) else 0.0
-                resultados.append({
-                    'Estado': estado,
-                    'Área': competencia_mapping.get(area, area),
-                    'Média': media_arredondada
-                })
-                if media_arredondada > 0:
-                    medias_estado.append(media_arredondada)
-
-            # Média geral do estado
-            if medias_estado:
-                resultados.append({
-                    'Estado': estado,
-                    'Área': 'Média Geral',
-                    'Média': round(sum(medias_estado) / len(medias_estado), 2)
-                })
-
-        return resultados
-
+        grupos_estado = microdados.groupby('SG_UF_PROVA')
     except Exception as e:
-        return []
+        return resultados
+    
+    # Processar cada estado
+    for i, estado in enumerate(estados):
+        try:
+            # Tentar obter dados do estado atual
+            dados_estado = grupos_estado.get_group(estado)
+        except KeyError:
+            # Estado não encontrado no agrupamento, pular
+            continue
+        
+        if len(dados_estado) == 0:
+            continue  # Pular estados sem dados
+        
+        # Armazenar médias para calcular média geral
+        medias_estado = []
+        
+        # Calcular média para cada área de conhecimento
+        for area in colunas_notas:
+            if area not in dados_estado.columns:
+                continue
+                
+            # Filtrar notas válidas de forma mais eficiente
+            notas = dados_estado[area].values
+            notas_validas = notas[notas > 0]
+            
+            # Calcular média com função otimizada
+            media_area = calcular_seguro(notas_validas, 'media')
+            media_area = round(media_area, 2)
+            
+            # Adicionar ao resultado
+            resultados.append({
+                'Estado': estado,
+                'Área': competencia_mapping[area],
+                'Média': media_area
+            })
+            
+            # Armazenar para média geral
+            medias_estado.append(media_area)
+        
+        # Adicionar média geral para o estado
+        if medias_estado:
+            resultados.append({
+                'Estado': estado,
+                'Área': 'Média Geral',
+                'Média': round(sum(medias_estado) / len(medias_estado), 2)
+            })
+        
+        # Liberar memória a cada X estados processados
+        if (i+1) % CONFIG_PROCESSAMENTO['tamanho_lote_estados'] == 0:
+            release_memory()
+    
+    return resultados
 
 
 def _otimizar_tipos_dados(
@@ -675,6 +742,48 @@ def _otimizar_tipos_dados(
 
 
 def _agrupar_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
-    """Agrupa dados por região. Usa função centralizada de regiao_utils."""
-    from utils.helpers.regiao_utils import agrupar_dados_por_regiao
-    return agrupar_dados_por_regiao(df, coluna_estado='Estado', coluna_valor='Média', coluna_grupo='Área')
+    """
+    Agrupa os dados por região em vez de por estado.
+    Função auxiliar para melhorar legibilidade e manutenção.
+    
+    Parâmetros:
+    -----------
+    df : DataFrame
+        DataFrame com dados por estado
+        
+    Retorna:
+    --------
+    DataFrame: DataFrame com dados agrupados por região
+    """
+    # Importar localmente para evitar importação circular
+    from utils.helpers.mappings import get_mappings
+    mappings = get_mappings()
+    regioes_mapping = mappings['regioes_mapping']
+    
+    # Verificar se temos dados para processar
+    if df is None or df.empty:
+        return df
+    
+    try:
+        # Criar um mapeamento de estado para região
+        estado_para_regiao = {estado: regiao 
+                             for regiao, estados in regioes_mapping.items() 
+                             for estado in estados}
+        
+        # Adicionar coluna de região
+        df_com_regiao = df.copy()
+        df_com_regiao['Região'] = df_com_regiao['Estado'].map(estado_para_regiao)
+        
+        # Agrupar por região e área
+        df_agrupado = df_com_regiao.groupby(['Região', 'Área'])['Média'].mean().reset_index()
+        
+        # Renomear coluna de região para manter compatibilidade
+        df_agrupado = df_agrupado.rename(columns={'Região': 'Estado'})
+        
+        # Otimizar tipo de dados da coluna de região - SUDESTE REMOVIDO
+        regioes = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sul']
+        df_agrupado['Estado'] = pd.Categorical(df_agrupado['Estado'], categories=regioes)
+        
+        return df_agrupado
+    except Exception as e:
+        return df  # Retornar dados originais em caso de erro
