@@ -4,12 +4,7 @@ from typing import Dict, List, Tuple, Optional, Any
 from data.data_loader import calcular_seguro
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function
 from utils.helpers.regiao_utils import obter_regiao_do_estado
-from utils.helpers.mappings import get_mappings
-
-# Obter mapeamentos e constantes
-mappings = get_mappings()
-CONFIG_PROCESSAMENTO = mappings.get('config_processamento', {})
-LIMIARES_ESTATISTICOS = mappings.get('limiares_estatisticos', {})
+from utils.helpers.constants import CONFIG_PROCESSAMENTO, LIMIARES_ESTATISTICOS
 
 @optimized_cache(ttl=1800)  # Cache válido por 30 minutos
 def analisar_metricas_principais(
@@ -117,6 +112,7 @@ def analisar_metricas_principais(
             'totais_por_regiao': totais_por_regiao
         }
     except Exception as e:
+        import logging; logging.warning(f"Erro em analisar_metricas_principais: {e}")
         return _criar_metricas_principais_vazias()
 
 
@@ -146,13 +142,13 @@ def _criar_metricas_principais_vazias() -> Dict[str, Any]:
 
 @memory_intensive_function
 def _calcular_medias_estados_competencias(
-    df: pd.DataFrame, 
-    estados: List[str], 
+    df: pd.DataFrame,
+    estados: List[str],
     colunas_notas: List[str]
 ) -> Dict[str, Any]:
     """
-    Calcula médias por estado e competência de forma otimizada.
-    
+    Calcula médias por estado e competência de forma vetorizada.
+
     Parâmetros:
     -----------
     df: DataFrame
@@ -161,70 +157,45 @@ def _calcular_medias_estados_competencias(
         Lista de estados para análise
     colunas_notas: List[str]
         Lista de colunas com notas
-        
+
     Retorna:
     --------
     Dict[str, Any]: Dicionário com médias calculadas
     """
-    # Inicializar estruturas de dados
-    todas_medias = []
-    medias_por_estado = {}
-    medias_por_competencia = {}
-    
     try:
-        # Agrupar por estado para melhor desempenho
-        grupos_estado = df.groupby('SG_UF_PROVA', observed=False)
-        
-        # Processar cada estado
-        for estado in estados:
-            try:
-                dados_estado = grupos_estado.get_group(estado)
-            except KeyError:
-                continue  # Estado não encontrado, pular
-                
-            medias_estado_atual = []
-            
-            # Processar cada competência
-            for col in colunas_notas:
-                if col not in dados_estado.columns:
-                    continue
-                    
-                # Filtrar notas válidas (maiores que 0, diferentes de -1, e não nulas)
-                # -1 representa candidatos ausentes no ENEM
-                notas_validas = dados_estado[
-                    (dados_estado[col] > 0) & 
-                    (dados_estado[col] != -1) & 
-                    (dados_estado[col].notna())
-                ][col]
-                
-                if len(notas_validas) > 0:
-                    # Calcular média
-                    media = calcular_seguro(notas_validas, 'media')
-                    
-                    # Armazenar resultados
-                    todas_medias.append(media)
-                    medias_estado_atual.append(media)
-                    
-                    # Atualizar médias por competência
-                    if col not in medias_por_competencia:
-                        medias_por_competencia[col] = []
-                    medias_por_competencia[col].append(media)
-            
-            # Calcular média geral do estado
-            if medias_estado_atual:
-                medias_por_estado[estado] = np.mean(medias_estado_atual)
-        
-        # Calcular média por competência
-        for comp, valores in medias_por_competencia.items():
-            medias_por_competencia[comp] = np.mean(valores) if valores else 0
-        
+        # Filtrar apenas estados solicitados e colunas necessárias
+        colunas_disponiveis = [c for c in colunas_notas if c in df.columns]
+        if not colunas_disponiveis or 'SG_UF_PROVA' not in df.columns:
+            return {'todas_medias': [], 'medias_por_estado': {}, 'medias_por_competencia': {}}
+
+        df_filtrado = df[df['SG_UF_PROVA'].isin(estados)][['SG_UF_PROVA'] + colunas_disponiveis]
+
+        # Substituir notas inválidas (<= 0) por NaN para que groupby.mean() as ignore
+        df_trabalho = df_filtrado.copy()
+        df_trabalho[colunas_disponiveis] = df_trabalho[colunas_disponiveis].where(
+            df_trabalho[colunas_disponiveis] > 0
+        )
+
+        # UMA operação vetorizada: groupby + mean para todas as competências de todos os estados
+        medias_df = df_trabalho.groupby('SG_UF_PROVA', observed=True)[colunas_disponiveis].mean()
+
+        # Extrair resultados
+        todas_medias = medias_df.values[np.isfinite(medias_df.values)].tolist()
+
+        # Médias por estado (média das competências por estado)
+        medias_por_estado = medias_df.mean(axis=1).to_dict()
+
+        # Médias por competência (média entre estados)
+        medias_por_competencia = medias_df.mean(axis=0).to_dict()
+
         return {
             'todas_medias': todas_medias,
             'medias_por_estado': medias_por_estado,
             'medias_por_competencia': medias_por_competencia
         }
-        
+
     except Exception as e:
+        import logging; logging.warning(f"Erro em _calcular_medias_estados_competencias: {e}")
         return {
             'todas_medias': [],
             'medias_por_estado': {},
@@ -264,6 +235,7 @@ def _calcular_totais_por_regiao(df: pd.DataFrame) -> Dict[str, int]:
         return contagem
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em _calcular_totais_por_regiao: {e}")
         return {}
 
 
@@ -382,6 +354,7 @@ def analisar_distribuicao_notas(
             'amplitude': round(max_valor - min_valor, 2) if np.isfinite(max_valor - min_valor) else 0.0
         }
     except Exception as e:
+        import logging; logging.warning(f"Erro em analisar_distribuicao_notas: {e}")
         return _criar_analise_distribuicao_vazia()
 
 
@@ -454,6 +427,7 @@ def _calcular_percentis_seguros(serie: pd.Series, pontos_percentis: List[int]) -
         
         return {p: np.percentile(serie_limpa, p) for p in pontos_percentis}
     except Exception as e:
+        import logging; logging.warning(f"Erro em _calcular_percentis_seguros: {e}")
         return {p: 0.0 for p in pontos_percentis}
 
 
@@ -492,6 +466,7 @@ def _calcular_faixas_desempenho(df: pd.DataFrame, coluna: str, total: int) -> Di
             '900 ou mais': len(df[df[coluna] >= 900]) / total * 100
         }
     except Exception as e:
+        import logging; logging.warning(f"Erro em _calcular_faixas_desempenho: {e}")
         return {
             'Abaixo de 300': 0.0,
             '300 a 500': 0.0,
@@ -536,6 +511,7 @@ def _calcular_conceitos(df: pd.DataFrame, coluna: str, total: int) -> Dict[str, 
             'Excelente (850 ou mais)': len(df[df[coluna] >= 850]) / total * 100
         }
     except Exception as e:
+        import logging; logging.warning(f"Erro em _calcular_conceitos: {e}")
         return {
             'Insuficiente (abaixo de 450)': 0.0,
             'Regular (450 a 600)': 0.0,
@@ -613,6 +589,7 @@ def _calcular_intervalo_confianca(serie: pd.Series, nivel: float = 0.95) -> Tupl
         return intervalo
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em _calcular_intervalo_confianca: {e}")
         return (0.0, 0.0)
 
 
@@ -750,6 +727,7 @@ def analisar_faltas(
             'estados_menor_evasao': estados_menor_evasao
         }
     except Exception as e:
+        import logging; logging.warning(f"Erro em analisar_faltas: {e}")
         return _criar_analise_faltas_vazia()
 
 
@@ -848,6 +826,7 @@ def _identificar_estados_maior_evasao(df: pd.DataFrame, top_n: int = 3) -> List[
         return resultado
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em _identificar_estados_maior_evasao: {e}")
         return []
 
 
@@ -886,6 +865,7 @@ def _identificar_estados_menor_evasao(df: pd.DataFrame, top_n: int = 3) -> List[
         return resultado
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em _identificar_estados_menor_evasao: {e}")
         return []
 
 
@@ -985,6 +965,7 @@ def analisar_desempenho_por_faixa_nota(
         }
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em analisar_desempenho_por_faixa_nota: {e}")
         return {
             'contagem': {},
             'percentual': {},
@@ -1062,4 +1043,5 @@ def analisar_metricas_por_regiao(
         return resultados
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em analisar_metricas_por_regiao: {e}")
         return {}

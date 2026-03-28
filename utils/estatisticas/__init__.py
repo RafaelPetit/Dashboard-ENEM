@@ -16,7 +16,6 @@ from .estatisticas_aspectos_sociais import (
     analisar_correlacao_categorias,
     analisar_distribuicao_regional,
     calcular_estatisticas_por_categoria,
-    analisar_tendencias_temporais
 )
 
 from .estatistica_analise_geral import (

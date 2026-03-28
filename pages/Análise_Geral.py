@@ -616,7 +616,7 @@ def exibir_analise_evasao(
                 )
                 
                 if ordenar:
-                    metricas_opcoes = ["Presentes", "Faltantes somente Dia 1", "Faltantes somente Dia 2", "Faltantes Ambos"]
+                    metricas_opcoes = ["Presentes", "Faltantes Dia 1", "Faltantes Dia 2", "Faltantes Ambos"]
                     metrica_ordenacao = st.selectbox(
                         "Ordenar por:",
                         options=metricas_opcoes,
@@ -698,9 +698,6 @@ def main():
         st.warning("⚠️ Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
         return
     
-    # Obter dados do session state
-    # estados_selecionados = st.session_state.estados_selecionados
-    # locais_selecionados = st.session_state.locais_selecionados
     mappings = st.session_state.mappings
     
     # Extrair mapeamentos necessários

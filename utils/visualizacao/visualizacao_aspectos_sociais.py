@@ -6,12 +6,7 @@ from typing import Dict, Tuple, Any
 from utils.visualizacao.componentes import criar_grafico_vazio
 from utils.visualizacao.config_graficos import cores_padrao
 from utils.helpers.cache_utils import memory_intensive_function
-from utils.helpers.mappings import get_mappings
-
-# Obter configurações de mapeamentos centralizados
-mappings = get_mappings()
-CONFIG_VIZ = mappings.get('config_visualizacao', {})
-LIMIARES_PROCESSAMENTO = mappings.get('limiares_processamento', {})
+from utils.helpers.constants import CONFIG_VISUALIZACAO as CONFIG_VIZ, LIMIARES_PROCESSAMENTO
 
 # Constantes para configuração de gráficos (a partir de mapeamentos)
 ALTURA_PADRAO = CONFIG_VIZ.get('altura_padrao_grafico', 500)
@@ -112,6 +107,7 @@ def criar_grafico_heatmap(
         return fig, explicacao
     
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_grafico_heatmap: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
 
 # Corrigir a função criar_grafico_barras_empilhadas
@@ -204,6 +200,7 @@ def criar_grafico_barras_empilhadas(
         return fig, explicacao
     
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_grafico_barras_empilhadas: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
 
 @memory_intensive_function
@@ -314,6 +311,7 @@ def criar_grafico_sankey(
         return fig, explicacao
     
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_grafico_sankey: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
 
 
@@ -379,6 +377,7 @@ def criar_grafico_distribuicao(
         return fig
     
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_grafico_distribuicao: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -472,6 +471,7 @@ def criar_grafico_aspectos_por_estado(
         return fig
     
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_grafico_aspectos_por_estado: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 

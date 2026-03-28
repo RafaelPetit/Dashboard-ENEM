@@ -73,47 +73,6 @@ def init_desempenho_session_state():
 def get_cached_data_desempenho(estados_selecionados: List[str]):
     return get_cached_data("desempenho", estados_selecionados)
 
-def exibir_secao_visualizacao(titulo, tooltip_text, tooltip_id, processar_func, exibir_func, explicacao_func, expander_func=None, **kwargs):
-    """
-    Função auxiliar para exibir uma seção de visualização padronizada com spinner, explicação e expander opcional.
-    
-    Parâmetros:
-    -----------
-    titulo : str
-        Título da seção
-    tooltip_text : str 
-        Texto do tooltip
-    tooltip_id : str
-        ID do tooltip
-    processar_func : function
-        Função para processamento de dados
-    exibir_func : function
-        Função para exibir visualização
-    explicacao_func : function
-        Função para obter o texto de explicação
-    expander_func : function, opcional
-        Função para criar o expander com análise detalhada
-    kwargs : dict
-        Argumentos adicionais para as funções
-    """
-    titulo_com_tooltip(titulo, tooltip_text, tooltip_id)
-    
-    with st.spinner("Processando dados..."):
-        dados_processados = processar_func(**kwargs)
-    
-    with st.spinner("Gerando visualização..."):
-        fig = exibir_func(dados_processados, **kwargs)
-        st.plotly_chart(fig, use_container_width=True)
-    
-    explicacao = explicacao_func(**kwargs)
-    st.info(explicacao)
-    
-    if expander_func:
-        expander_func(dados_processados, **kwargs)
-    
-    # Limpeza de memória otimizada
-    release_memory([dados_processados, fig])
-
 def render_desempenho(microdados, microdados_estados, estados_selecionados, 
                      locais_selecionados, colunas_notas, competencia_mapping, race_mapping, 
                      variaveis_categoricas, desempenho_mapping):
@@ -523,9 +482,6 @@ def main():
         st.warning("⚠️ Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
         return 
         
-    # Obter dados do session state
-    # estados_selecionados = st.session_state.estados_selecionados
-    # locais_selecionados = st.session_state.locais_selecionados
     mappings = st.session_state.mappings
     
     # Extrair mapeamentos necessários

@@ -5,12 +5,7 @@ from typing import Dict, List, Optional, Any
 from utils.visualizacao.componentes import criar_grafico_vazio
 from utils.visualizacao.config_graficos import aplicar_layout_padrao, cores_padrao
 from utils.helpers.cache_utils import memory_intensive_function, release_memory
-from utils.helpers.mappings import get_mappings
-
-# Obter mapeamentos e constantes
-mappings = get_mappings()
-CONFIG_VIZ = mappings.get('config_visualizacao', {})
-LIMIARES_ESTATISTICOS = mappings.get('limiares_estatisticos', {})
+from utils.helpers.constants import CONFIG_VISUALIZACAO as CONFIG_VIZ, LIMIARES_ESTATISTICOS
 
 @memory_intensive_function
 def criar_histograma(
@@ -88,6 +83,7 @@ def criar_histograma(
         return fig
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_histograma: {e}")
         return criar_grafico_vazio(f"Erro ao criar histograma: {str(e)}")
     finally:
         # Liberar memória
@@ -163,6 +159,7 @@ def criar_grafico_faltas(
         return fig
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_grafico_faltas: {e}")
         return criar_grafico_vazio(f"Erro ao criar análise de faltas: {str(e)}")
     finally:
         # Liberar memória
@@ -279,6 +276,7 @@ def criar_grafico_media_por_estado(
         return fig
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_grafico_media_por_estado: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -331,6 +329,7 @@ def criar_grafico_comparativo_areas(
         return fig
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_grafico_comparativo_areas: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -389,6 +388,7 @@ def criar_grafico_evasao(
         return fig
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_grafico_evasao: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -598,6 +598,7 @@ def _ordenar_estados_por_falta(
         return df_ordenado.sort_values('Estado')
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em _ordenar_estados_por_falta: {e}")
         return df  # Retornar o DataFrame original em caso de erro
 
 
@@ -914,6 +915,7 @@ def _ordenar_dados_evasao(
         return df_ordenado.sort_values('Estado')
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em _ordenar_dados_evasao: {e}")
         return df  # Retornar o DataFrame original em caso de erro
 
 

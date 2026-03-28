@@ -3,11 +3,9 @@ import numpy as np
 from typing import Dict, Tuple, Any, Optional, List
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function
 from utils.estatisticas.metricas_desempenho import calcular_indicadores_desigualdade
+from utils.helpers.constants import LIMIARES_ESTATISTICOS
 from utils.helpers.mappings import get_mappings
 
-# Obter limiares para análise estatística dos mapeamentos centralizados
-mappings = get_mappings()
-LIMIARES_ESTATISTICOS = mappings['limiares_estatisticos']
 LIMITE_CORRELACAO_FRACA = LIMIARES_ESTATISTICOS['correlacao_fraca']
 LIMITE_CORRELACAO_MODERADA = LIMIARES_ESTATISTICOS['correlacao_moderada']
 
@@ -59,6 +57,7 @@ def calcular_correlacao_competencias(
         return correlacao, interpretacao
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em calcular_correlacao_competencias: {e}")
         return 0.0, "Erro no cálculo"
 
 
@@ -142,6 +141,7 @@ def gerar_estatisticas_descritivas(
     try:
         return dados.describe().round(precisao)
     except Exception as e:
+        import logging; logging.warning(f"Erro em gerar_estatisticas_descritivas: {e}")
         return pd.Series({
             'count': 0, 'mean': 0, 'std': 0, 'min': 0, 
             '25%': 0, '50%': 0, '75%': 0, 'max': 0
@@ -250,163 +250,101 @@ def _criar_resultado_analise_vazio() -> Dict[str, Any]:
 @memory_intensive_function
 @optimized_cache(ttl=1800)
 def calcular_estatisticas_comparativas(
-    df_resultados: pd.DataFrame, 
+    df_resultados: pd.DataFrame,
     variavel_selecionada: str
 ) -> Dict[str, Any]:
     """
     Calcula estatísticas para análise comparativa entre categorias.
-    
-    Parâmetros:
-    -----------
-    df_resultados: DataFrame
-        DataFrame com os resultados por categoria e competência
-    variavel_selecionada: str
-        Nome da variável categórica analisada
-        
-    Retorna:
-    --------
-    Dict[str, Any]: Dicionário com estatísticas calculadas
     """
-    # Verificar se temos dados válidos
     if df_resultados is None or df_resultados.empty:
         return _criar_resultado_comparativo_vazio()
-    
-    # Verificar se as colunas necessárias existem
+
     colunas_necessarias = ['Competência', 'Categoria', 'Média']
     if not all(col in df_resultados.columns for col in colunas_necessarias):
         return _criar_resultado_comparativo_vazio()
-    
-    # Inicializar dicionário de resultados
-    resultados = {
-        'maior_disparidade': {'competencia': None, 'diferenca': 0, 'categoria_max': None, 'categoria_min': None},
-        'menor_disparidade': {'competencia': None, 'diferenca': float('inf'), 'categoria_max': None, 'categoria_min': None},
-        'disparidades_por_competencia': {},
-        'indicadores_globais': {}
-    }
-    
+
     try:
-        # Obter lista de competências únicas
         competencias = df_resultados['Competência'].unique()
-        
-        # Verificar se temos competências para analisar
         if len(competencias) == 0:
             return _criar_resultado_comparativo_vazio()
-            
-        # Calcular indicadores globais (usando todas as competências)
+
+        # Indicadores globais
         try:
-            # Calcular indicadores de desigualdade para todas as competências
             indicadores_globais = calcular_indicadores_desigualdade(
-                df_resultados, 
-                coluna_categoria='Categoria',
-                coluna_valor='Média'
+                df_resultados, coluna_categoria='Categoria', coluna_valor='Média'
             )
-            resultados['indicadores_globais'] = indicadores_globais
-        except Exception as e:
-            return indicadores_globais
-        
-        # Calcular para cada competência
+        except Exception:
+            indicadores_globais = {'razao_max_min': 0, 'coef_variacao': 0, 'range_percentual': 0}
+
+        # Calcular disparidades por competência
+        disparidades = {}
         for competencia in competencias:
-            # Filtrar dados apenas desta competência
-            df_comp = df_resultados[df_resultados['Competência'] == competencia]
-            
-            # Verificar se temos pelo menos duas categorias para comparar
-            if len(df_comp) <= 1:
-                continue
-                
-            # Obter valor máximo e mínimo
-            max_valor = df_comp['Média'].max()
-            min_valor = df_comp['Média'].min()
-            
-            try:
-                categoria_max = df_comp.loc[df_comp['Média'].idxmax()]['Categoria']
-                categoria_min = df_comp.loc[df_comp['Média'].idxmin()]['Categoria']
-            except (KeyError, ValueError):
-                # Método alternativo se idxmax/idxmin falhar
-                df_max = df_comp[df_comp['Média'] == max_valor].iloc[0] if len(df_comp[df_comp['Média'] == max_valor]) > 0 else None
-                df_min = df_comp[df_comp['Média'] == min_valor].iloc[0] if len(df_comp[df_comp['Média'] == min_valor]) > 0 else None
-                
-                if df_max is None or df_min is None:
-                    continue
-                    
-                categoria_max = df_max['Categoria']
-                categoria_min = df_min['Categoria']
-            
-            # Calcular diferença entre máximo e mínimo
-            diferenca = max_valor - min_valor
-            diferenca_percentual = (diferenca / min_valor * 100) if min_valor > 0 else 0
-            
-            # Calcular indicadores de desigualdade para esta competência
-            try:
-                indicadores = calcular_indicadores_desigualdade(
-                    df_comp, 
-                    coluna_categoria='Categoria',
-                    coluna_valor='Média'
-                )
-            except Exception as e:
-                indicadores = {
-                    'razao_max_min': 0,
-                    'coef_variacao': 0,
-                    'range_percentual': 0
-                }
-            
-            # Armazenar dados desta competência
-            resultados['disparidades_por_competencia'][competencia] = {
-                'diferenca': diferenca,
-                'diferenca_percentual': diferenca_percentual,
-                'categoria_max': categoria_max,
-                'categoria_min': categoria_min,
-                'valor_max': max_valor,
-                'valor_min': min_valor,
-                'razao_max_min': indicadores['razao_max_min'],
-                'coef_variacao': indicadores['coef_variacao'],
-                'range_percentual': indicadores['range_percentual']
-            }
-            
-            # Atualizar maior e menor disparidade global
-            if diferenca > resultados['maior_disparidade']['diferenca']:
-                resultados['maior_disparidade'] = {
-                    'competencia': competencia,
-                    'diferenca': diferenca,
-                    'diferenca_percentual': diferenca_percentual,
-                    'categoria_max': categoria_max,
-                    'categoria_min': categoria_min,
-                    'valor_max': max_valor,
-                    'valor_min': min_valor,
-                    'razao_max_min': indicadores['razao_max_min'],
-                    'coef_variacao': indicadores['coef_variacao']
-                }
-            
-            if diferenca < resultados['menor_disparidade']['diferenca'] and diferenca > 0:
-                resultados['menor_disparidade'] = {
-                    'competencia': competencia,
-                    'diferenca': diferenca,
-                    'diferenca_percentual': diferenca_percentual,
-                    'categoria_max': categoria_max,
-                    'categoria_min': categoria_min,
-                    'valor_max': max_valor,
-                    'valor_min': min_valor,
-                    'razao_max_min': indicadores['razao_max_min'],
-                    'coef_variacao': indicadores['coef_variacao']
-                }
-        
-        # Verificar se encontramos alguma disparidade
-        if resultados['menor_disparidade']['diferenca'] == float('inf'):
-            resultados['menor_disparidade'] = {
-                'competencia': None,
-                'diferenca': 0,
-                'diferenca_percentual': 0,
-                'categoria_max': None,
-                'categoria_min': None,
-                'valor_max': 0,
-                'valor_min': 0,
-                'razao_max_min': 0,
-                'coef_variacao': 0
-            }
-            
-        return resultados
-        
+            disp = _calcular_disparidade_competencia(df_resultados, competencia)
+            if disp is not None:
+                disparidades[competencia] = disp
+
+        # Identificar maior e menor disparidade
+        maior = {'competencia': None, 'diferenca': 0}
+        menor = {'competencia': None, 'diferenca': float('inf')}
+        for comp, disp in disparidades.items():
+            if disp['diferenca'] > maior['diferenca']:
+                maior = {**disp, 'competencia': comp}
+            if 0 < disp['diferenca'] < menor['diferenca']:
+                menor = {**disp, 'competencia': comp}
+
+        if menor['diferenca'] == float('inf'):
+            menor = {'competencia': None, 'diferenca': 0, 'diferenca_percentual': 0,
+                      'categoria_max': None, 'categoria_min': None, 'valor_max': 0, 'valor_min': 0,
+                      'razao_max_min': 0, 'coef_variacao': 0}
+
+        return {
+            'maior_disparidade': maior,
+            'menor_disparidade': menor,
+            'disparidades_por_competencia': disparidades,
+            'indicadores_globais': indicadores_globais
+        }
+
     except Exception as e:
+        import logging; logging.warning(f"Erro em calcular_estatisticas_comparativas: {e}")
         return _criar_resultado_comparativo_vazio()
+
+
+def _calcular_disparidade_competencia(df_resultados: pd.DataFrame, competencia: str) -> Optional[Dict[str, Any]]:
+    """Calcula disparidade entre categorias para uma competência específica."""
+    df_comp = df_resultados[df_resultados['Competência'] == competencia]
+    if len(df_comp) <= 1:
+        return None
+
+    max_valor = df_comp['Média'].max()
+    min_valor = df_comp['Média'].min()
+
+    try:
+        categoria_max = df_comp.loc[df_comp['Média'].idxmax()]['Categoria']
+        categoria_min = df_comp.loc[df_comp['Média'].idxmin()]['Categoria']
+    except (KeyError, ValueError):
+        return None
+
+    diferenca = max_valor - min_valor
+    diferenca_percentual = (diferenca / min_valor * 100) if min_valor > 0 else 0
+
+    try:
+        indicadores = calcular_indicadores_desigualdade(
+            df_comp, coluna_categoria='Categoria', coluna_valor='Média'
+        )
+    except Exception:
+        indicadores = {'razao_max_min': 0, 'coef_variacao': 0, 'range_percentual': 0}
+
+    return {
+        'diferenca': diferenca,
+        'diferenca_percentual': diferenca_percentual,
+        'categoria_max': categoria_max,
+        'categoria_min': categoria_min,
+        'valor_max': max_valor,
+        'valor_min': min_valor,
+        'razao_max_min': indicadores['razao_max_min'],
+        'coef_variacao': indicadores['coef_variacao'],
+        'range_percentual': indicadores.get('range_percentual', 0)
+    }
 
 
 def _criar_resultado_comparativo_vazio() -> Dict[str, Any]:
@@ -481,6 +419,7 @@ def calcular_percentis_desempenho(
         return resultado
     
     except Exception as e:
+        import logging; logging.warning(f"Erro em calcular_percentis_desempenho: {e}")
         return {f"P{int(p*100)}": 0 for p in percentis}
 
 
@@ -560,6 +499,7 @@ def analisar_variabilidade_entre_categorias(
         }
     
     except Exception as e:
+        import logging; logging.warning(f"Erro em analisar_variabilidade_entre_categorias: {e}")
         return {
             'coef_variacao': 0,
             'amplitude': 0,

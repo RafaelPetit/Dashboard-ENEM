@@ -9,11 +9,7 @@ from utils.estatisticas.estatisticas_aspectos_sociais import (
     analisar_distribuicao_regional,
 )
 
-from utils.helpers.mappings import get_mappings
-
-# Obter limiares dos mapeamentos centralizados
-mappings = get_mappings()
-LIMIARES_ESTATISTICOS = mappings.get('limiares_estatisticos', {})
+from utils.helpers.constants import LIMIARES_ESTATISTICOS
 
 # Constantes para classificação de variabilidade
 LIMITE_VARIABILIDADE_BAIXA = LIMIARES_ESTATISTICOS.get('variabilidade_baixa', 15)
@@ -64,37 +60,37 @@ def criar_expander_analise_correlacao(
     nome_x = variaveis_sociais[var_x].get('nome', var_x)
     nome_y = variaveis_sociais[var_y].get('nome', var_y)
     
-    with st.expander(f"📊 Análise estatística da correlação: {nome_x} × {nome_y}"):
+    with st.expander(f"Ver análise estatística da correlação: {nome_x} × {nome_y}"):
         try:
             # Realizar análise de correlação
             metricas = analisar_correlacao_categorias(df_correlacao, var_x_plot, var_y_plot)
             
             # Seção 1: Resumo Executivo
-            st.write("### 🎯 Resumo Executivo")
+            st.write("### Resumo Executivo")
             _mostrar_resumo_associacao(metricas, variaveis_sociais, var_x, var_y)
             
             st.divider()
             
             # Seção 2: Métricas Estatísticas
-            st.write("### 📈 Métricas Estatísticas")
+            st.write("### Métricas Estatísticas")
             _mostrar_metricas_estatisticas(metricas)
             
             st.divider()
             
             # Seção 3: Análise de Combinações
-            st.write("### 🔍 Análise de Combinações")
+            st.write("### Análise de Combinações")
             _mostrar_analise_categorias(df_correlacao, var_x_plot, var_y_plot, variaveis_sociais, var_x, var_y)
             
             st.divider()
             
             # Seção 4: Interpretação e Insights
-            st.write("### 💡 Interpretação e Insights")
+            st.write("### Interpretação e Insights")
             _mostrar_interpretacao_correlacao(metricas, variaveis_sociais, var_x, var_y)
             
             st.divider()
             
             # Seção 5: Downloads e Exportação
-            st.write("### 💾 Downloads e Exportação")
+            st.write("### Downloads e Exportação")
             _mostrar_downloads_correlacao(df_correlacao, metricas, var_x, var_y, variaveis_sociais)
             
         except Exception as e:
@@ -133,19 +129,19 @@ def criar_expander_dados_distribuicao(
     # Obter nome amigável do aspecto social
     nome_aspecto = variaveis_sociais[aspecto_social].get("nome", aspecto_social)
     
-    with st.expander(f"📊 Análise estatística da distribuição: {nome_aspecto}"):
+    with st.expander(f"Ver análise estatística da distribuição: {nome_aspecto}"):
         try:
             # Calcular estatísticas de distribuição
             estatisticas = calcular_estatisticas_distribuicao(contagem_aspecto)
             
             # Seção 1: Resumo Executivo
-            st.write("### 🎯 Resumo Executivo")
+            st.write("### Resumo Executivo")
             _mostrar_resumo_distribuicao(estatisticas, nome_aspecto, contagem_aspecto)
             
             st.divider()
             
             # Seção 2: Métricas Estatísticas
-            st.write("### 📈 Métricas Estatísticas")
+            st.write("### Métricas Estatísticas")
             _mostrar_metricas_distribuicao(estatisticas, nome_aspecto)
             
             st.divider()
@@ -157,19 +153,19 @@ def criar_expander_dados_distribuicao(
             st.divider()
             
             # Seção 4: Ranking e Padrões
-            st.write("### 🏆 Ranking e Padrões")
+            st.write("### Ranking e Padrões")
             _mostrar_ranking_categorias(contagem_aspecto, nome_aspecto)
             
             st.divider()
             
             # Seção 5: Insights e Interpretação
-            st.write("### 💡 Insights e Interpretação")
+            st.write("### Insights e Interpretação")
             _mostrar_insights_distribuicao(estatisticas, contagem_aspecto, nome_aspecto)
             
             st.divider()
             
             # Seção 6: Tabela Interativa
-            st.write("### 📋 Tabela Interativa")
+            st.write("### Tabela Interativa")
             _mostrar_tabela_interativa_distribuicao(contagem_aspecto, aspecto_social)
             
             st.divider()
@@ -259,7 +255,7 @@ def criar_expander_dados_completos_estado(
     if df_dados is None or df_dados.empty:
         return
         
-    with st.expander(f"📊 Análise completa dos dados por {tipo_localidade}"):
+    with st.expander(f"Ver análise completa dos dados por {tipo_localidade}"):
         try:
             # Verificar se temos dados suficientes
             colunas_necessarias = ['Estado', 'Categoria', 'Percentual']

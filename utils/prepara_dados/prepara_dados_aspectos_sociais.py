@@ -3,12 +3,7 @@ import numpy as np
 from typing import Dict, List, Tuple, Any
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from utils.prepara_dados.validacao_dados import validar_completude_dados
-from utils.helpers.mappings import get_mappings
-
-# Obter mapeamentos e constantes
-mappings = get_mappings()
-CONFIG_PROCESSAMENTO = mappings['config_processamento']
-LIMIARES_PROCESSAMENTO = mappings['limiares_processamento']
+from utils.helpers.constants import CONFIG_PROCESSAMENTO, LIMIARES_PROCESSAMENTO
 
 @optimized_cache(ttl=1800)  # Cache válido por 30 minutos
 def preparar_dados_correlacao(
@@ -106,8 +101,9 @@ def aplicar_mapeamento(
             
             return coluna_nome
         except Exception as e:
+            import logging; logging.warning(f"Erro em aplicar_mapeamento: {e}")
             return variavel
-    
+
     return variavel
 
 
@@ -186,6 +182,7 @@ def contar_candidatos_por_categoria(
         
         return contagem
     except Exception as e:
+        import logging; logging.warning(f"Erro em contar_candidatos_por_categoria: {e}")
         return pd.DataFrame(columns=['Categoria', 'Quantidade', 'Percentual'])
 
 
@@ -263,6 +260,7 @@ def ordenar_categorias(
         return contagem_aspecto.sort_values('Quantidade', ascending=False)
     
     except Exception as e:
+        import logging; logging.warning(f"Erro em ordenar_categorias: {e}")
         return contagem_aspecto  # Retornar dados sem ordenação em caso de erro
 
 
@@ -320,6 +318,7 @@ def preparar_dados_heatmap(
         return normalized_pivot
     
     except Exception as e:
+        import logging; logging.warning(f"Erro em preparar_dados_heatmap: {e}")
         return pd.DataFrame()
 
 
@@ -358,8 +357,8 @@ def preparar_dados_barras_empilhadas(
         if contagem.empty:
             return pd.DataFrame()
         
-        # Preparar dados para barras empilhadas
-        df_barras = contagem.copy()
+        # Preparar dados para barras empilhadas (já é DataFrame novo do groupby)
+        df_barras = contagem
         
         # Calcular totais por categoria X (mais eficiente)
         totais = df_barras.groupby(var_x_plot, observed=True)['Contagem'].sum()
@@ -380,6 +379,7 @@ def preparar_dados_barras_empilhadas(
         return df_barras
     
     except Exception as e:
+        import logging; logging.warning(f"Erro em preparar_dados_barras_empilhadas: {e}")
         return pd.DataFrame()
 
 
@@ -436,6 +436,7 @@ def preparar_dados_sankey(
         return labels, source, target, value
     
     except Exception as e:
+        import logging; logging.warning(f"Erro em preparar_dados_sankey: {e}")
         return [], [], [], []
 
 
@@ -508,6 +509,7 @@ def preparar_dados_grafico_aspectos_por_estado(
         return df_resultado
     
     except Exception as e:
+        import logging; logging.warning(f"Erro em preparar_dados_grafico_aspectos_por_estado: {e}")
         return pd.DataFrame()
 
 
@@ -590,6 +592,7 @@ def _processar_aspectos_por_estado(
         return resultados
 
     except Exception as e:
+        import logging; logging.warning(f"Erro em _processar_aspectos_por_estado: {e}")
         return []
 
 
@@ -623,4 +626,5 @@ def _agrupar_por_regiao(
         return df_agrupado
 
     except Exception as e:
-        return df  
+        import logging; logging.warning(f"Erro em _agrupar_por_regiao: {e}")
+        return df

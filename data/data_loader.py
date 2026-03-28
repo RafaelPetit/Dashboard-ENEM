@@ -208,17 +208,17 @@ def optimize_dtypes(df: pd.DataFrame, dtypes: str) -> pd.DataFrame:
 
     notas_cols = [col for col in df.columns if col.startswith('NU_NOTA_')]
 
-
+    # Notas originais do ENEM são multiplicadas por 10 no Parquet (ex: 5000 = 500.0).
+    # Dividimos por 10 para restaurar a escala real (0-1000) em float64.
     if dtypes in ['desempenho', 'geral']:
        df[notas_cols] = df[notas_cols] / 10.0
        df[notas_cols] = df[notas_cols].astype('float64')
 
+    # No dataset 'geral', -1 indica ausência do candidato na prova
     if dtypes in ['geral']:
         df[notas_cols] = df[notas_cols].replace(-1, np.nan)
 
     return df
 
 
-# release_memory() movida para utils/helpers/cache_utils.py
-# Importar de lá para compatibilidade
 from utils.helpers.cache_utils import release_memory

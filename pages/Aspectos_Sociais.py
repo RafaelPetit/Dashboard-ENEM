@@ -490,9 +490,6 @@ def main():
         st.warning("⚠️ Selecione pelo menos um estado no filtro lateral para visualizar os dados.")
         return
 
-    # Obter dados do session state
-    # estados_selecionados = st.session_state.estados_selecionados
-    # locais_selecionados = st.session_state.locais_selecionados
     mappings = st.session_state.mappings
     
     # Extrair mapeamentos necessários

@@ -3,15 +3,13 @@ from typing import Dict, List, Tuple, Optional, Any
 from data.data_loader import calcular_seguro
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
 from utils.helpers.regiao_utils import obter_regiao_do_estado
-from utils.helpers.mappings import get_mappings
-
-# Obter mapeamentos e constantes
-mappings = get_mappings()
-competencia_mapping = mappings['competencia_mapping']
-colunas_notas = mappings['colunas_notas']
-CONFIG_PROCESSAMENTO = mappings['config_processamento']
-LIMIARES_PROCESSAMENTO = mappings['limiares_processamento']
-CONFIG_VISUALIZACAO = mappings['config_visualizacao']
+from utils.helpers.constants import (
+    COMPETENCIA_MAPPING as competencia_mapping,
+    COLUNAS_NOTAS as colunas_notas,
+    CONFIG_PROCESSAMENTO,
+    LIMIARES_PROCESSAMENTO,
+    CONFIG_VISUALIZACAO,
+)
 
 @optimized_cache(ttl=1800)  # Cache válido por 30 minutos
 def preparar_dados_histograma(
@@ -52,6 +50,7 @@ def preparar_dados_histograma(
         nome_area = competencia_mapping.get(coluna, coluna)
         return df_valido, coluna, nome_area
     except Exception as e:
+        import logging; logging.warning(f"Erro em preparar_dados_histograma: {e}")
         return pd.DataFrame(), coluna, competencia_mapping.get(coluna, coluna)
 
 
@@ -107,6 +106,7 @@ def preparar_dados_grafico_faltas(
             df_faltas['Área'] = df_faltas['Tipo de Falta']
         return df_faltas
     except Exception as e:
+        import logging; logging.warning(f"Erro em preparar_dados_grafico_faltas: {e}")
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas', 'Área'])
 
 
@@ -141,6 +141,7 @@ def _calcular_faltas_por_localidade(
     try:
         grupos = df.groupby(coluna_agrupamento, observed=True)
     except Exception as e:
+        import logging; logging.warning(f"Erro em _calcular_faltas_por_localidade: {e}")
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas'])
     for i, local in enumerate(localidades):
         try:
@@ -148,6 +149,7 @@ def _calcular_faltas_por_localidade(
         except KeyError:
             continue
         except Exception as e:
+            import logging; logging.warning(f"Erro em _calcular_faltas_por_localidade: {e}")
             continue
         total_candidatos = len(dados_local)
         if total_candidatos == 0:
@@ -160,6 +162,7 @@ def _calcular_faltas_por_localidade(
         try:
             valores_presenca = dados_local['TP_PRESENCA_GERAL'].value_counts()
         except Exception as e:
+            import logging; logging.warning(f"Erro em _calcular_faltas_por_localidade: {e}")
             continue
         for codigo, info in categorias_faltas.items():
             contagem = valores_presenca.get(codigo, 0)
@@ -252,6 +255,7 @@ def preparar_dados_metricas_principais(
             'desempenho_regioes': desempenho_regioes
         }
     except Exception as e:
+        import logging; logging.warning(f"Erro em preparar_dados_metricas_principais: {e}")
         return _gerar_metricas_vazias(colunas_notas)
 
 
@@ -406,6 +410,7 @@ def preparar_dados_media_geral_estados(
             
         return df_resultado
     except Exception as e:
+        import logging; logging.warning(f"Erro em preparar_dados_media_geral_estados: {e}")
         return pd.DataFrame(columns=['Local', 'Média Geral'])
 
 
@@ -441,6 +446,7 @@ def _agrupar_estados_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
             df_agrupado[col] = df_agrupado[col].round(2)
         return df_agrupado
     except Exception as e:
+        import logging; logging.warning(f"Erro em _agrupar_estados_por_regiao: {e}")
         return df
 
 
@@ -502,8 +508,8 @@ def preparar_dados_evasao(
             # Adicionar dados ao resultado
             resultado.extend([
                 {'Estado': estado, 'Métrica': 'Presentes', 'Valor': round(percentual_presentes, 2), 'Contagem': presentes},
-                {'Estado': estado, 'Métrica': 'Faltantes Somente Dia 1', 'Valor': round(percentual_faltas_dia1, 2), 'Contagem': faltas_dia1},
-                {'Estado': estado, 'Métrica': 'Faltantes Somente Dia 2', 'Valor': round(percentual_faltas_dia2, 2), 'Contagem': faltas_dia2},
+                {'Estado': estado, 'Métrica': 'Faltantes Dia 1', 'Valor': round(percentual_faltas_dia1, 2), 'Contagem': faltas_dia1},
+                {'Estado': estado, 'Métrica': 'Faltantes Dia 2', 'Valor': round(percentual_faltas_dia2, 2), 'Contagem': faltas_dia2},
                 {'Estado': estado, 'Métrica': 'Faltantes Ambos', 'Valor': round(percentual_faltas_ambos, 2), 'Contagem': faltas_ambos}
             ])
         # Criar DataFrame otimizado
@@ -517,6 +523,7 @@ def preparar_dados_evasao(
             )
         return df_resultado
     except Exception as e:
+        import logging; logging.warning(f"Erro em preparar_dados_evasao: {e}")
         return pd.DataFrame(columns=['Estado', 'Métrica', 'Valor'])
 
 
@@ -586,4 +593,5 @@ def preparar_dados_comparativo_areas(
             
         return df_resultado
     except Exception as e:
+        import logging; logging.warning(f"Erro em preparar_dados_comparativo_areas: {e}")
         return pd.DataFrame(columns=['Area', 'Media', 'DesvioPadrao', 'Mediana'])

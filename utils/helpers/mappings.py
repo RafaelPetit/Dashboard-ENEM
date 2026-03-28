@@ -102,7 +102,7 @@ def get_mappings():
         4: '3 a 5 salários mínimos',
         5: '5 a 10 salários mínimos',
         6: '10 a 20 salários mínimos',
-        7: ' > 20 salários mínimos'
+        7: '> 20 salários mínimos'
     }
 
     conclusao_ensino_medio_mapping = {

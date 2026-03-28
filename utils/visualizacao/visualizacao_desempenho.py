@@ -9,7 +9,11 @@ from typing import Dict, Optional, Any
 from utils.visualizacao.componentes import criar_grafico_vazio
 from utils.visualizacao.config_graficos import aplicar_layout_padrao, cores_padrao
 from utils.helpers.cache_utils import memory_intensive_function
-from utils.helpers.mappings import get_mappings
+from utils.helpers.constants import (
+    CONFIG_VISUALIZACAO as CONFIG_VIZ,
+    MAPEAMENTO_FAIXAS_SALARIAIS as MAPEAMENTO_FAIXAS,
+    LIMIARES,
+)
 
 # Suprimir warnings específicos que podem aparecer em cálculos estatísticos
 warnings.filterwarnings('ignore', category=RuntimeWarning, module='scipy')
@@ -17,12 +21,6 @@ warnings.filterwarnings('ignore', category=RuntimeWarning, module='numpy')
 warnings.filterwarnings('ignore', message='overflow encountered in scalar power')
 warnings.filterwarnings('ignore', message='overflow encountered in reduce')
 warnings.filterwarnings('ignore', message='invalid value encountered in scalar subtract')
-
-# Obter configurações de mapeamentos centralizados
-mappings = get_mappings()
-CONFIG_VIZ = mappings['config_visualizacao']
-MAPEAMENTO_FAIXAS = mappings['mapeamento_faixas_salariais']
-LIMIARES = mappings['limiares']
 
 # Constantes para configuração de gráficos (a partir de mapeamentos)
 ANGULO_EIXO_X = CONFIG_VIZ['angulo_eixo_x']
@@ -109,6 +107,7 @@ def criar_grafico_comparativo_barras(
         return fig
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_grafico_comparativo_barras: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -164,6 +163,7 @@ def criar_grafico_linha_desempenho(
         try:
             competencias_unicas = df_linha['Competência'].unique()
         except Exception as e:
+            import logging; logging.warning(f"Erro em criar_grafico_linha_desempenho: {e}")
             return criar_grafico_vazio("Erro ao processar competências dos dados")
         
         filtro_texto = f" - {competencia_filtro}" if competencia_filtro and len(competencias_unicas) == 1 else ""
@@ -195,6 +195,7 @@ def criar_grafico_linha_desempenho(
         return fig
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_grafico_linha_desempenho: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -258,6 +259,7 @@ def criar_grafico_linha_estados(
         return fig
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_grafico_linha_estados: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -320,6 +322,7 @@ def criar_grafico_scatter(
         return fig
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em criar_grafico_scatter: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -405,6 +408,7 @@ def adicionar_linha_tendencia(
         return fig
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em adicionar_linha_tendencia: {e}")
         return fig
 
 
@@ -544,6 +548,7 @@ def _filtrar_dados_validos_scatter(
         return df_filtrado
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em _filtrar_dados_validos_scatter: {e}")
         # Retornar dataframe vazio em caso de erro, mas manter as colunas originais
         try:
             return pd.DataFrame(columns=df.columns)
@@ -653,6 +658,7 @@ def _criar_scatter_colorido_por_faixa(
         return fig
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em _criar_scatter_colorido_por_faixa: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -707,6 +713,7 @@ def _criar_scatter_simples(
         return fig
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em _criar_scatter_simples: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
@@ -801,6 +808,7 @@ def _adicionar_linha_tendencia_scatter(
         return fig
         
     except Exception as e:
+        import logging; logging.warning(f"Erro em _adicionar_linha_tendencia_scatter: {e}")
         return fig
 
 

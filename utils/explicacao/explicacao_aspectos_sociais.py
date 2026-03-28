@@ -1,10 +1,6 @@
 from typing import Any, Optional
-from utils.helpers.mappings import get_mappings
 import pandas as pd
-
-# Obter limiares dos mapeamentos centralizados
-mappings = get_mappings()
-LIMIARES_ESTATISTICOS = mappings.get('limiares_estatisticos', {})
+from utils.helpers.constants import LIMIARES_ESTATISTICOS
 
 # Constantes para classificação de correlação
 LIMITE_CORRELACAO_FRACA = LIMIARES_ESTATISTICOS.get('correlacao_fraca', 0.3)

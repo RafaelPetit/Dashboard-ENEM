@@ -4,17 +4,15 @@ import numpy as np
 import warnings
 from typing import Dict, List, Any, Tuple
 from utils.estatisticas.estatistica_desempenho import analisar_desempenho_por_estado, calcular_estatisticas_comparativas
-from utils.helpers.mappings import get_mappings
 from utils.helpers.regiao_utils import obter_regiao_do_estado, ESTADO_PARA_REGIAO, adicionar_regiao_aos_estados
 from utils.estatisticas.estatistica_desempenho import gerar_estatisticas_descritivas
+from utils.expander.expander_helpers import exibir_estatistica as _exibir_estatistica
 
 # Suprimir warnings específicos de cálculos matemáticos
 warnings.filterwarnings('ignore', message='invalid value encountered in scalar subtract')
 warnings.filterwarnings('ignore', category=RuntimeWarning, module='numpy')
 
-# Obter limiares dos mapeamentos centralizados
-mappings = get_mappings()
-LIMIARES_ESTATISTICOS = mappings['limiares_estatisticos']
+from utils.helpers.constants import LIMIARES_ESTATISTICOS
 
 # Constantes para classificação de variabilidade
 LIMITE_VARIABILIDADE_BAIXA = LIMIARES_ESTATISTICOS['variabilidade_baixa']
@@ -214,7 +212,7 @@ def _mostrar_disparidades_entre_categorias(
     
     for competencia in competencias_analise:
         try:
-            df_comp = df_resultados[df_resultados['Competência'] == competencia].copy()
+            df_comp = df_resultados[df_resultados['Competência'] == competencia]
             
             if df_comp.empty:
                 continue
@@ -285,7 +283,7 @@ def _mostrar_variabilidade_entre_categorias(
     
     for competencia in competencias_analise:
         try:
-            df_comp = df_resultados[df_resultados['Competência'] == competencia].copy()
+            df_comp = df_resultados[df_resultados['Competência'] == competencia]
             
             if df_comp.empty or df_comp['Média'].isna().all():
                 continue
@@ -694,20 +692,7 @@ def _mostrar_ranking_completo(
             st.warning(f"Não foi possível gerar o ranking: {str(e)}")
 
 
-# Funções auxiliares genéricas
-
-def _exibir_estatistica(
-    titulo: str, 
-    valor: Any, 
-    prefixo: str = "• "
-) -> None:
-    """
-    Exibe um item de estatística no formato padrão.
-    """
-    if titulo:
-        st.write(f"{prefixo}**{titulo}:** {valor}")
-    else:
-        st.write(f"{prefixo}{valor}")
+# _exibir_estatistica importada de utils.expander.expander_helpers
 
 
 def calcular_estatisticas_competencia(

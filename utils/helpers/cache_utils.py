@@ -13,22 +13,14 @@ MEMORIA_LIMITE_AVISO = 0.8  # 80% de uso de memória para aviso
 
 def release_memory(obj: Optional[Union[Any, List[Any]]] = None) -> None:
     """
-    Libera memória de objetos específicos ou executa coleta de lixo geral.
-    
-    Parâmetros:
-    -----------
-    obj : objeto ou lista de objetos, opcional
-        Objeto(s) a ser(em) explicitamente marcado(s) para coleta de lixo
+    Sinaliza objetos para coleta de lixo.
+    Nota: `del` aqui remove a referência LOCAL ao parâmetro, não a variável do chamador.
+    O chamador deve fazer `del var` diretamente para liberar sua referência.
+    gc.collect() é chamado apenas periodicamente, não a cada chamada.
     """
-    if obj is not None:
-        if isinstance(obj, list):
-            for item in obj:
-                del item
-        else:
-            del obj
-    
-    # Executar coleta de lixo
-    gc.collect()
+    # gc.collect() é custoso — deixar o Python coletar automaticamente
+    # Chamar apenas em pontos estratégicos (fim de análise completa)
+    pass
 
 
 def optimized_cache(ttl: int = DEFAULT_TTL, max_entries: Optional[int] = None) -> Callable[[Callable[..., T]], Callable[..., T]]:
@@ -126,15 +118,9 @@ def memory_intensive_function(func: Callable[..., T]) -> Callable[..., T]:
     """
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> T:
-        # Executar coleta de lixo antes
-        gc.collect()
-        
-        # Executar a função
         result = func(*args, **kwargs)
-        
-        # Executar coleta de lixo depois
+        # gc.collect() apenas após execução, não antes (custoso demais)
         gc.collect()
-        
         return result
-    
+
     return wrapper

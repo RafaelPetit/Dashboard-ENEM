@@ -12,12 +12,7 @@ from utils.estatisticas.estatistica_analise_geral import (
 from utils.explicacao.explicacao_analise_geral import (
     get_interpretacao_distribuicao
 )
-from utils.helpers.mappings import get_mappings
-
-# Obter mapeamentos e constantes
-mappings = get_mappings()
-LIMIARES_ESTATISTICOS = mappings.get('limiares_estatisticos', {})
-CONFIG_VISUALIZACAO = mappings.get('config_visualizacao', {})
+from utils.helpers.constants import LIMIARES_ESTATISTICOS, CONFIG_VISUALIZACAO
 
 
 # Funções auxiliares para análise de histograma
@@ -1065,34 +1060,26 @@ def _mostrar_resumo_comparativo_areas(df_areas: pd.DataFrame, melhor_area: Dict[
 
 def _mostrar_analise_dificuldade_relativa(df_areas: pd.DataFrame) -> None:
     """
-    Mostra uma análise robusta e profissional sobre a dificuldade relativa entre áreas de conhecimento,
-    incluindo explicações sobre o gráfico, insights estatísticos e interpretações educacionais.
-
-    Parâmetros:
-    -----------
-    df_areas : DataFrame
-        DataFrame com dados comparativos entre áreas (deve conter colunas 'Area', 'Media', 'DesvioPadrao', 'Mediana', 'Minimo', 'Maximo')
+    Mostra análise sobre a dificuldade relativa entre áreas de conhecimento.
     """
-    import streamlit as st
-    import plotly.express as px
-    import pandas as pd
-
     st.write("### Dificuldade Relativa entre Áreas de Conhecimento")
 
     if df_areas is None or df_areas.empty:
         st.warning("Dados insuficientes para análise de dificuldade relativa entre áreas.")
         return
 
-    # Gráfico: Ranking de médias das áreas
+    _mostrar_graficos_dificuldade(df_areas)
+    _mostrar_tabela_resumo_areas(df_areas)
+    _mostrar_insights_dificuldade(df_areas)
+
+
+def _mostrar_graficos_dificuldade(df_areas: pd.DataFrame) -> None:
+    """Exibe gráficos de ranking e dispersão por área."""
     st.write("#### Ranking de Desempenho Médio")
     fig = px.bar(
         df_areas.sort_values("Media", ascending=True),
-        x="Media",
-        y="Area",
-        orientation="h",
-        text="Media",
-        color="Media",
-        color_continuous_scale="Blues",
+        x="Media", y="Area", orientation="h", text="Media",
+        color="Media", color_continuous_scale="Blues",
         labels={"Media": "Nota Média", "Area": "Área de Conhecimento"},
         title="Ranking das Áreas por Nota Média"
     )
@@ -1100,17 +1087,12 @@ def _mostrar_analise_dificuldade_relativa(df_areas: pd.DataFrame) -> None:
     fig.update_layout(plot_bgcolor='white', height=400)
     st.plotly_chart(fig, use_container_width=True)
 
-    # Gráfico: Dispersão das notas (Desvio Padrão)
     if "DesvioPadrao" in df_areas.columns:
         st.write("#### Dispersão das Notas por Área")
         fig_disp = px.bar(
             df_areas.sort_values("DesvioPadrao", ascending=False),
-            x="DesvioPadrao",
-            y="Area",
-            orientation="h",
-            text="DesvioPadrao",
-            color="DesvioPadrao",
-            color_continuous_scale="Oranges",
+            x="DesvioPadrao", y="Area", orientation="h", text="DesvioPadrao",
+            color="DesvioPadrao", color_continuous_scale="Oranges",
             labels={"DesvioPadrao": "Desvio Padrão", "Area": "Área de Conhecimento"},
             title="Dispersão das Notas (Desvio Padrão) por Área"
         )
@@ -1118,7 +1100,9 @@ def _mostrar_analise_dificuldade_relativa(df_areas: pd.DataFrame) -> None:
         fig_disp.update_layout(plot_bgcolor='white', height=400)
         st.plotly_chart(fig_disp, use_container_width=True)
 
-    # Tabela resumo com principais estatísticas
+
+def _mostrar_tabela_resumo_areas(df_areas: pd.DataFrame) -> None:
+    """Exibe tabela resumo com estatísticas por área."""
     st.write("#### Estatísticas Resumidas por Área")
     colunas_exibir = ["Area", "Media", "Mediana", "DesvioPadrao", "Minimo", "Maximo"]
     colunas_presentes = [col for col in colunas_exibir if col in df_areas.columns]
@@ -1131,42 +1115,36 @@ def _mostrar_analise_dificuldade_relativa(df_areas: pd.DataFrame) -> None:
             "Minimo": st.column_config.NumberColumn("Mínimo", format="%.2f"),
             "Maximo": st.column_config.NumberColumn("Máximo", format="%.2f"),
         },
-        hide_index=True,
-        use_container_width=True
+        hide_index=True, use_container_width=True
     )
 
-    # Insights e explicações
+
+def _mostrar_insights_dificuldade(df_areas: pd.DataFrame) -> None:
+    """Exibe insights e interpretação educacional sobre dificuldade relativa."""
     st.write("#### Interpretação e Insights")
     melhor = df_areas.loc[df_areas["Media"].idxmax()]
     pior = df_areas.loc[df_areas["Media"].idxmin()]
-    maior_disp = df_areas.loc[df_areas["DesvioPadrao"].idxmax()] if "DesvioPadrao" in df_areas.columns else None
-    menor_disp = df_areas.loc[df_areas["DesvioPadrao"].idxmin()] if "DesvioPadrao" in df_areas.columns else None
 
-    st.markdown(f"""
-- **Área com maior média:** <b>{melhor['Area']}</b> ({melhor['Media']:.2f})
-- **Área com menor média:** <b>{pior['Area']}</b> ({pior['Media']:.2f})
-- **Diferença absoluta:** <b>{abs(melhor['Media'] - pior['Media']):.2f} pontos</b>
-- **Diferença percentual:** <b>{(abs(melhor['Media'] - pior['Media']) / pior['Media'] * 100):.2f}%</b>
-""", unsafe_allow_html=True)
+    diferenca_abs = abs(melhor['Media'] - pior['Media'])
+    diferenca_pct = (diferenca_abs / pior['Media'] * 100) if pior['Media'] > 0 else 0
 
-    if maior_disp is not None and menor_disp is not None:
-        st.markdown(f"""
-- **Maior dispersão (desvio padrão):** <b>{maior_disp['Area']}</b> ({maior_disp['DesvioPadrao']:.2f})
-- **Menor dispersão (desvio padrão):** <b>{menor_disp['Area']}</b> ({menor_disp['DesvioPadrao']:.2f})
-""", unsafe_allow_html=True)
+    st.write(f"- **Área com maior média:** {melhor['Area']} ({melhor['Media']:.2f})")
+    st.write(f"- **Área com menor média:** {pior['Area']} ({pior['Media']:.2f})")
+    st.write(f"- **Diferença absoluta:** {diferenca_abs:.2f} pontos")
+    st.write(f"- **Diferença percentual:** {diferenca_pct:.2f}%")
 
-    # Interpretação educacional
+    if "DesvioPadrao" in df_areas.columns:
+        maior_disp = df_areas.loc[df_areas["DesvioPadrao"].idxmax()]
+        menor_disp = df_areas.loc[df_areas["DesvioPadrao"].idxmin()]
+        st.write(f"- **Maior dispersão:** {maior_disp['Area']} ({maior_disp['DesvioPadrao']:.2f})")
+        st.write(f"- **Menor dispersão:** {menor_disp['Area']} ({menor_disp['DesvioPadrao']:.2f})")
+
     st.info("""
     **Como interpretar a dificuldade relativa entre áreas?**
 
     - Áreas com **menor média** podem indicar maior dificuldade dos candidatos, seja por maior complexidade dos conteúdos, deficiências no ensino ou menor afinidade dos estudantes.
-    - Áreas com **maior desvio padrão** sugerem maior heterogeneidade no desempenho, indicando que alguns grupos conseguem bons resultados enquanto outros têm dificuldades.
-    - Diferenças percentuais elevadas entre as médias das áreas podem sinalizar a necessidade de políticas educacionais específicas para equilibrar o ensino e o aprendizado.
-
-    **Sugestões de análise:**
-    - Investigar fatores curriculares, metodológicos ou socioeconômicos que possam explicar as diferenças.
-    - Observar se áreas tradicionalmente consideradas "difíceis" (como Matemática) realmente apresentam médias mais baixas e maior dispersão.
-    - Utilizar esses dados para orientar intervenções pedagógicas e políticas públicas voltadas à redução das desigualdades entre áreas
+    - Áreas com **maior desvio padrão** sugerem maior heterogeneidade no desempenho.
+    - Diferenças percentuais elevadas entre as médias podem sinalizar a necessidade de políticas educacionais específicas.
     """)
 
 def criar_expander_analise_histograma(

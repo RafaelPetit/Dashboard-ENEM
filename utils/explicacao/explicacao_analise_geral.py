@@ -1,10 +1,5 @@
 from typing import Optional, Tuple
-from utils.helpers.mappings import get_mappings
-
-# Obter mapeamentos e constantes centralizados
-mappings = get_mappings()
-LIMIARES_ESTATISTICOS = mappings.get('limiares_estatisticos', {})
-CONFIG_VISUALIZACAO = mappings.get('config_visualizacao', {})
+from utils.helpers.constants import LIMIARES_ESTATISTICOS, CONFIG_VISUALIZACAO
 
 def get_tooltip_metricas_principais() -> str:
     """
