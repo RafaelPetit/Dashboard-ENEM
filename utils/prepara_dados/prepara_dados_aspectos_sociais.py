@@ -295,7 +295,7 @@ def preparar_dados_heatmap(
     
     try:
         # Contar ocorrências para cada combinação (método otimizado)
-        contagem = df_correlacao.groupby([var_x_plot, var_y_plot]).size().reset_index(name='Contagem')
+        contagem = df_correlacao.groupby([var_x_plot, var_y_plot], observed=True).size().reset_index(name='Contagem')
         
         # Verificar se temos contagens para trabalhar
         if contagem.empty:
@@ -352,7 +352,7 @@ def preparar_dados_barras_empilhadas(
     
     try:
         # Contar ocorrências para cada combinação (método otimizado)
-        contagem = df_correlacao.groupby([var_x_plot, var_y_plot]).size().reset_index(name='Contagem')
+        contagem = df_correlacao.groupby([var_x_plot, var_y_plot], observed=True).size().reset_index(name='Contagem')
         
         # Verificar se temos contagens para trabalhar
         if contagem.empty:
@@ -362,7 +362,7 @@ def preparar_dados_barras_empilhadas(
         df_barras = contagem.copy()
         
         # Calcular totais por categoria X (mais eficiente)
-        totais = df_barras.groupby(var_x_plot)['Contagem'].sum()
+        totais = df_barras.groupby(var_x_plot, observed=True)['Contagem'].sum()
         
         # Converter para dicionário para acesso mais rápido
         totais_dict = totais.to_dict()
@@ -412,7 +412,7 @@ def preparar_dados_sankey(
     
     try:
         # Contar ocorrências para cada combinação (método otimizado)
-        contagem = df_correlacao.groupby([var_x_plot, var_y_plot]).size().reset_index(name='Contagem')
+        contagem = df_correlacao.groupby([var_x_plot, var_y_plot], observed=True).size().reset_index(name='Contagem')
         
         # Verificar se temos contagens para trabalhar
         if contagem.empty:
@@ -611,7 +611,7 @@ def _agrupar_por_regiao(
         df_com_regiao['Região'] = df_com_regiao['Estado'].map(ESTADO_PARA_REGIAO)
 
         # Percentual: média por região/categoria; Quantidade: soma
-        df_agrupado = df_com_regiao.groupby(['Região', 'Categoria']).agg(
+        df_agrupado = df_com_regiao.groupby(['Região', 'Categoria'], observed=True).agg(
             Percentual=('Percentual', 'mean'),
             Quantidade=('Quantidade', 'sum')
         ).reset_index()

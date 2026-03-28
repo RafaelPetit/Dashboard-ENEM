@@ -32,8 +32,6 @@ def init_page_session_state() -> None:
 
     if 'estados_selecionados' not in st.session_state:
         st.session_state.estados_selecionados = []
-        st.warning("⚠️ Nenhum estado selecionado. Volte à página inicial para configurar os filtros.")
-        st.stop()
 
     if 'locais_selecionados' not in st.session_state:
         st.session_state.locais_selecionados = []
