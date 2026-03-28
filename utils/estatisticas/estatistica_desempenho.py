@@ -4,7 +4,6 @@ from typing import Dict, Tuple, Any, Optional, List
 from utils.helpers.cache_utils import optimized_cache, memory_intensive_function
 from utils.estatisticas.metricas_desempenho import calcular_indicadores_desigualdade
 from utils.helpers.constants import LIMIARES_ESTATISTICOS
-from utils.helpers.mappings import get_mappings
 
 LIMITE_CORRELACAO_FRACA = LIMIARES_ESTATISTICOS['correlacao_fraca']
 LIMITE_CORRELACAO_MODERADA = LIMIARES_ESTATISTICOS['correlacao_moderada']
@@ -39,7 +38,8 @@ def calcular_correlacao_competencias(
     df_valido = df[(df[eixo_x] > 0) & (df[eixo_y] > 0)].dropna(subset=[eixo_x, eixo_y])
     
     # Verificar se temos amostras suficientes para cálculo válido
-    min_amostras = mappings['limiares_processamento']['min_amostras_correlacao']
+    from utils.helpers.constants import LIMIARES_PROCESSAMENTO
+    min_amostras = LIMIARES_PROCESSAMENTO.get('min_amostras_correlacao', 30)
     if len(df_valido) < min_amostras:
         return 0.0, f"Amostras insuficientes (n={len(df_valido)})"
     

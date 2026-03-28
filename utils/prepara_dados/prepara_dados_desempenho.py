@@ -352,7 +352,8 @@ def preparar_dados_desempenho_geral(
     colunas_necessarias = list(colunas_notas)
     
     # Adicionar colunas demográficas que existem no DataFrame
-    for col in mappings['variaveis_categoricas']:
+    from utils.helpers.constants import VARIAVEIS_CATEGORICAS
+    for col in VARIAVEIS_CATEGORICAS:
         if col in microdados.columns:
             colunas_necessarias.append(col)
     

@@ -77,10 +77,8 @@ _TOOLTIP_CSS = """
 
 
 def _injetar_css_tooltip():
-    """Injeta CSS de tooltip uma única vez por sessão Streamlit."""
-    if '_tooltip_css_injected' not in st.session_state:
-        st.markdown(_TOOLTIP_CSS, unsafe_allow_html=True)
-        st.session_state._tooltip_css_injected = True
+    """Injeta CSS de tooltip. Chamado a cada uso — Streamlit reconstrói o DOM em cada rerun."""
+    st.markdown(_TOOLTIP_CSS, unsafe_allow_html=True)
 
 
 def titulo_com_tooltip(titulo, explicacao, chave=None):

@@ -1118,7 +1118,8 @@ def _adicionar_regiao_aos_estados(df: pd.DataFrame) -> pd.DataFrame:
         df_com_regiao = df.copy()
         
         # Obter mapeamento de regiões
-        regioes_mapping = mappings.get('regioes_mapping', {})
+        from utils.helpers.constants import REGIOES_MAPPING
+        regioes_mapping = REGIOES_MAPPING
         
         # Criar mapeamento invertido (de estado para região)
         estado_para_regiao = {}
@@ -1344,7 +1345,7 @@ def _mostrar_resumo_distribuicao(estatisticas: Dict, nome_aspecto: str, contagem
         categoria_dominante = contagem_aspecto.loc[contagem_aspecto['Percentual'].idxmax()]
 
         # Obter mapping de nomes amigáveis
-        categorias_mapping = mappings.get('categorias', {}).get(nome_aspecto, {})
+        categorias_mapping = {}
 
         # Nome amigável da categoria dominante
         categoria_nome = categorias_mapping.get(str(categoria_dominante['Categoria']), str(categoria_dominante['Categoria']))
@@ -1429,7 +1430,7 @@ def _mostrar_ranking_categorias(contagem_aspecto: pd.DataFrame, nome_aspecto: st
         df_ordenado = contagem_aspecto.sort_values('Percentual', ascending=False).reset_index(drop=True)
 
         # Tenta obter o dicionário de mapeamento de categorias para o aspecto
-        categorias_mapping = mappings.get('categorias', {}).get(nome_aspecto, {})
+        categorias_mapping = {}
 
         col1, col2 = st.columns(2)
 
