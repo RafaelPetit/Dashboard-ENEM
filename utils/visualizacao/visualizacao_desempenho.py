@@ -652,9 +652,9 @@ def _criar_scatter_colorido_por_faixa(
         
         # Aplicar layout padrão
         fig = aplicar_layout_padrao(fig, titulo)
-        
+
         return fig
-        
+
     except Exception as e:
         import logging; logging.warning(f"Erro em _criar_scatter_colorido_por_faixa: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
@@ -849,31 +849,46 @@ def _estilizar_grafico_scatter(
         selector=dict(mode='markers')
     )
     
+    # Detectar se ha legenda com muitos itens (ex: faixa salarial)
+    num_traces = len(fig.data)
+    legend_cfg = {}
+    if num_traces > 3:
+        # Muitos itens: legenda vertical a direita do grafico
+        legend_cfg = dict(
+            orientation="v",
+            yanchor="top",
+            y=1,
+            xanchor="left",
+            x=1.02,
+            font=dict(size=11)
+        )
+
     # Estilização do gráfico
     fig.update_layout(
         height=CONFIG_VIZ['altura_padrao_grafico'],
         xaxis_title=competencia_mapping.get(eixo_x, eixo_x),
         yaxis_title=competencia_mapping.get(eixo_y, eixo_y),
         xaxis=dict(
-            showgrid=True, 
-            gridwidth=1, 
+            showgrid=True,
+            gridwidth=1,
             gridcolor='rgba(0,0,0,0.1)',
             tickformat='.0f'
         ),
         yaxis=dict(
-            showgrid=True, 
-            gridwidth=1, 
+            showgrid=True,
+            gridwidth=1,
             gridcolor='rgba(0,0,0,0.1)',
             tickformat='.0f'
         ),
         plot_bgcolor='white',
         hoverlabel=dict(
-            bgcolor="white", 
-            font_size=12, 
+            bgcolor="white",
+            font_size=12,
             font_family="Arial"
-        )
+        ),
+        **({'legend': legend_cfg} if legend_cfg else {})
     )
-    
+
     return fig
 
 
