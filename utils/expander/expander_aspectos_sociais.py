@@ -478,18 +478,18 @@ def _mostrar_insights_padroes(df_dados: pd.DataFrame, tipo_localidade: str) -> N
         if tipo_localidade.lower() == "estado":
             df_com_regiao = _adicionar_regiao_aos_estados(df_dados)
             
-            if 'Regiao' in df_com_regiao.columns:
-                analise_regional = df_com_regiao.groupby('Regiao')['Percentual'].agg(['mean', 'std']).reset_index()
-                analise_regional.columns = ['Regiao', 'Media', 'Desvio']
+            if 'Região' in df_com_regiao.columns:
+                analise_regional = df_com_regiao.groupby('Região')['Percentual'].agg(['mean', 'std']).reset_index()
+                analise_regional.columns = ['Região', 'Media', 'Desvio']
                 analise_regional = analise_regional.sort_values('Media', ascending=False)
-                
+
                 st.markdown("**📍 Padrões por região:**")
                 for i, row in analise_regional.iterrows():
-                    st.write(f"• **{row['Regiao']}:** {row['Media']:.1f}% (±{row['Desvio']:.1f}%)")
-                
+                    st.write(f"• **{row['Região']}:** {row['Media']:.1f}% (±{row['Desvio']:.1f}%)")
+
                 # Identificar região com maior variabilidade
                 regiao_mais_variavel = analise_regional.loc[analise_regional['Desvio'].idxmax()]
-                st.write(f"• **Região com maior variabilidade interna:** {regiao_mais_variavel['Regiao']}")
+                st.write(f"• **Região com maior variabilidade interna:** {regiao_mais_variavel['Região']}")
         
         # Análise de distribuição
         st.markdown("**📊 Características da distribuição:**")
@@ -1005,8 +1005,8 @@ def _mostrar_ranking_localidades(
         # Mostrar top 10
         st.write("**Top 10:**")
         top_10 = df_ranking.head(10)
-        for i, row in top_10.iterrows():
-            st.write(f"{i+1}. {row['Estado']}: {row['Percentual']:.1f}%")
+        for pos, (_, row) in enumerate(top_10.iterrows(), 1):
+            st.write(f"{pos}. {row['Estado']}: {row['Percentual']:.1f}%")
         
     except Exception as e:
         st.error(f"Erro ao gerar ranking: {str(e)}")
@@ -1450,12 +1450,13 @@ def _mostrar_ranking_categorias(contagem_aspecto: pd.DataFrame, nome_aspecto: st
         with col2:
             st.markdown("**🔻 5 Menores Categorias:**")
             bottom_5 = df_ordenado.tail(5)
-            for i, row in bottom_5.iterrows():
+            total_categorias = len(df_ordenado)
+            for pos, (_, row) in enumerate(bottom_5.iterrows()):
                 percentual = row['Percentual']
                 quantidade = row['Quantidade']
-                categoria_codigo = row['Categoria'] if 'Categoria' in row else (row.name if hasattr(row, 'name') else str(i+1))
+                categoria_codigo = row['Categoria'] if 'Categoria' in row else (row.name if hasattr(row, 'name') else str(pos+1))
                 categoria_nome = categorias_mapping.get(str(categoria_codigo), str(categoria_codigo))
-                st.markdown(f"**{len(df_ordenado)-i}º** {categoria_nome}")
+                st.markdown(f"**{total_categorias - len(bottom_5) + pos + 1}º** {categoria_nome}")
                 st.progress(percentual / 100)
                 st.write(f"   {percentual:.1f}% ({quantidade:,} casos)")
 

@@ -2,7 +2,7 @@ import pandas as pd
 import warnings
 from typing import Dict, List, Tuple, Optional, Any, Union
 from data.data_loader import calcular_seguro
-from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
+from utils.helpers.cache_utils import optimized_cache
 from utils.prepara_dados.validacao_dados import validar_completude_dados
 from utils.helpers.constants import (
     COMPETENCIA_MAPPING as competencia_mapping,
@@ -124,13 +124,11 @@ def preparar_dados_comparativo(
         df_resultados = df_resultados.sort_values('Categoria')
     
     # Liberar memória da cópia de trabalho
-    release_memory(df_trabalho)
     
     # Retornar dataframe otimizado
     return df_resultados
 
 
-@memory_intensive_function
 def _calcular_medias_por_categoria(
     df: pd.DataFrame,
     coluna_categoria: str,
@@ -440,36 +438,12 @@ def filtrar_dados_scatter(
     df = dados[colunas_necessarias].copy()
     tamanho_inicial = len(df)
     
-    # Aplicar filtros de forma mais robusta - usar sempre método manual
+    # Aplicar filtros de forma mais robusta (extraido em P3.15)
     try:
-        # Aplicar filtro de notas zero primeiro
         if excluir_notas_zero:
             df = df[(df[eixo_x] > 0) & (df[eixo_y] > 0)]
-        
-        # Aplicar filtros demográficos manualmente
-        if filtro_sexo and filtro_sexo != 'Todos' and 'TP_SEXO' in df.columns:
-            df = df[df['TP_SEXO'].isin([filtro_sexo, str(filtro_sexo)])]
-            
-        if filtro_tipo_escola and filtro_tipo_escola != 'Todos' and 'TP_DEPENDENCIA_ADM_ESC' in df.columns:
-            if filtro_tipo_escola == 'Pública':
-                df = df[df['TP_DEPENDENCIA_ADM_ESC'].isin([1, 2, 3, '1', '2', '3', 1.0, 2.0, 3.0])]
-            elif filtro_tipo_escola == 'Privada':
-                df = df[df['TP_DEPENDENCIA_ADM_ESC'].isin([4, '4', 4.0])]
-                
-        if filtro_raca and 'TP_COR_RACA' in df.columns:
-            df = df[df['TP_COR_RACA'] == filtro_raca]
-            
-        if filtro_faixa_salarial is not None and 'TP_FAIXA_SALARIAL' in df.columns:
-            if isinstance(filtro_faixa_salarial, list):
-                valores_aceitos = []
-                for f in filtro_faixa_salarial:
-                    valores_aceitos.extend([f, str(f), float(f)])
-                df = df[df['TP_FAIXA_SALARIAL'].isin(valores_aceitos)]
-            else:
-                df = df[df['TP_FAIXA_SALARIAL'].isin([filtro_faixa_salarial, str(filtro_faixa_salarial), float(filtro_faixa_salarial)])]
-                
-    except Exception as e:
-        # Em caso de erro, aplicar apenas filtro básico
+        df = _aplicar_filtros_demograficos(df, filtro_sexo, filtro_tipo_escola, filtro_raca, filtro_faixa_salarial)
+    except Exception:
         if excluir_notas_zero:
             df = df[(df[eixo_x] > 0) & (df[eixo_y] > 0)]
     
@@ -484,6 +458,38 @@ def filtrar_dados_scatter(
     registros_removidos = tamanho_inicial - len(df)
     
     return df, registros_removidos
+
+
+def _aplicar_filtros_demograficos(
+    df: pd.DataFrame,
+    filtro_sexo: Optional[str],
+    filtro_tipo_escola: Optional[str],
+    filtro_raca: Optional[str],
+    filtro_faixa_salarial: Optional[Union[int, List[int]]]
+) -> pd.DataFrame:
+    """Aplica filtros demograficos ao DataFrame de scatter (fix P3.15)."""
+    if filtro_sexo and filtro_sexo != 'Todos' and 'TP_SEXO' in df.columns:
+        df = df[df['TP_SEXO'].isin([filtro_sexo, str(filtro_sexo)])]
+
+    if filtro_tipo_escola and filtro_tipo_escola != 'Todos' and 'TP_DEPENDENCIA_ADM_ESC' in df.columns:
+        if filtro_tipo_escola == 'Pública':
+            df = df[df['TP_DEPENDENCIA_ADM_ESC'].isin([1, 2, 3, '1', '2', '3', 1.0, 2.0, 3.0])]
+        elif filtro_tipo_escola == 'Privada':
+            df = df[df['TP_DEPENDENCIA_ADM_ESC'].isin([4, '4', 4.0])]
+
+    if filtro_raca and 'TP_COR_RACA' in df.columns:
+        df = df[df['TP_COR_RACA'] == filtro_raca]
+
+    if filtro_faixa_salarial is not None and 'TP_FAIXA_SALARIAL' in df.columns:
+        if isinstance(filtro_faixa_salarial, list):
+            valores_aceitos = []
+            for f in filtro_faixa_salarial:
+                valores_aceitos.extend([f, str(f), float(f)])
+            df = df[df['TP_FAIXA_SALARIAL'].isin(valores_aceitos)]
+        else:
+            df = df[df['TP_FAIXA_SALARIAL'].isin([filtro_faixa_salarial, str(filtro_faixa_salarial), float(filtro_faixa_salarial)])]
+
+    return df
 
 
 @optimized_cache(ttl=3600)
@@ -547,7 +553,6 @@ def preparar_dados_grafico_linha_desempenho(
     return df_final
 
 
-@memory_intensive_function
 def _processar_estados_em_lotes(
     microdados: pd.DataFrame,
     estados: List[str],
@@ -668,49 +673,55 @@ def _otimizar_tipos_dados(
     return df
 
 
+def preparar_dados_estados_para_visualizacao(df_grafico, area_selecionada, ordenar_por_nota, mostrar_apenas_area):
+    """
+    Prepara os dados de estados/regiões para visualização, aplicando filtros e ordenação.
+    Movido de Desempenho.py para utils (fix P3.3).
+    """
+    if ordenar_por_nota and area_selecionada:
+        df_plot = df_grafico.copy()
+        media_por_estado = df_plot[df_plot['Área'] == area_selecionada]
+        ordem_estados = media_por_estado.sort_values('Média', ascending=False)['Estado'].tolist()
+        df_plot['Estado'] = pd.Categorical(df_plot['Estado'], categories=ordem_estados, ordered=True)
+        df_plot = df_plot.sort_values('Estado')
+        if mostrar_apenas_area:
+            df_plot = df_plot[df_plot['Área'] == area_selecionada]
+    else:
+        df_plot = df_grafico
+        if mostrar_apenas_area and area_selecionada:
+            df_plot = df_plot[df_plot['Área'] == area_selecionada]
+    return df_plot
+
+
+def determinar_variabilidade(desvio_padrao, mostrar_apenas_area):
+    """
+    Determina a classificação de variabilidade com base no desvio padrão.
+    Movido de Desempenho.py para utils (fix P3.3).
+    """
+    if not mostrar_apenas_area:
+        return "variável"
+    if desvio_padrao > 15:
+        return "alta"
+    elif desvio_padrao > 8:
+        return "moderada"
+    else:
+        return "baixa"
+
+
 def _agrupar_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
     """
     Agrupa os dados por região em vez de por estado.
-    Função auxiliar para melhorar legibilidade e manutenção.
-    
-    Parâmetros:
-    -----------
-    df : DataFrame
-        DataFrame com dados por estado
-        
-    Retorna:
-    --------
-    DataFrame: DataFrame com dados agrupados por região
+    Coluna de entrada: 'Estado'. Agrupa por ['Região', 'Área']. Saida: 'Estado' (regioes).
     """
-    # Importar localmente para evitar importação circular
-    from utils.helpers.mappings import get_mappings
-    mappings = get_mappings()
-    regioes_mapping = mappings['regioes_mapping']
-    
-    # Verificar se temos dados para processar
     if df is None or df.empty:
         return df
-    
     try:
-        # Criar um mapeamento de estado para região
-        estado_para_regiao = {estado: regiao 
-                             for regiao, estados in regioes_mapping.items() 
-                             for estado in estados}
-        
-        # Adicionar coluna de região
+        from utils.helpers.regiao_utils import ESTADO_PARA_REGIAO, REGIOES_BRASIL
         df_com_regiao = df.copy()
-        df_com_regiao['Região'] = df_com_regiao['Estado'].map(estado_para_regiao)
-        
-        # Agrupar por região e área
+        df_com_regiao['Região'] = df_com_regiao['Estado'].map(ESTADO_PARA_REGIAO)
         df_agrupado = df_com_regiao.groupby(['Região', 'Área'])['Média'].mean().reset_index()
-        
-        # Renomear coluna de região para manter compatibilidade
         df_agrupado = df_agrupado.rename(columns={'Região': 'Estado'})
-        
-        # Otimizar tipo de dados da coluna de região
-        regioes = list(regioes_mapping.keys())
-        df_agrupado['Estado'] = pd.Categorical(df_agrupado['Estado'], categories=regioes)
-        
+        df_agrupado['Estado'] = pd.Categorical(df_agrupado['Estado'], categories=list(REGIOES_BRASIL.keys()))
         return df_agrupado
     except Exception as e:
-        return df  # Retornar dados originais em caso de erro
+        return df

@@ -5,7 +5,7 @@ from typing import List, Optional, Callable
 
 from utils.helpers.sidebar_filter import render_sidebar_filters
 from utils.helpers.tooltip import titulo_com_tooltip
-from utils.helpers.cache_utils import release_memory, optimized_cache
+
 from utils.helpers.page_utils import clear_page_cache, init_page_session_state, get_cached_data
 from data.data_loader import filter_data_by_states
 from utils.helpers.mappings import get_mappings
@@ -61,14 +61,6 @@ st.set_page_config(
 
 pd.options.display.float_format = '{:,.2f}'.format
 
-def clear_aspectos_cache():
-    clear_page_cache("aspectos_sociais")
-
-def init_aspectos_session_state():
-    init_page_session_state()
-
-def get_cached_data_aspectos(estados_selecionados: List[str]):
-    return get_cached_data("aspectos_sociais", estados_selecionados)
 
 def render_aspectos_sociais(microdados_estados, estados_selecionados, locais_selecionados, variaveis_sociais):
     """
@@ -91,7 +83,7 @@ def render_aspectos_sociais(microdados_estados, estados_selecionados, locais_sel
         return
     
     # Mensagem informativa sobre filtros aplicados
-    mensagem = "Analisando Aspectos Sociais para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
+    mensagem = "Analisando Aspectos Sociais para todo o Brasil" if len(estados_selecionados) >= 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
     st.info(mensagem)
     
     # Permitir ao usuário selecionar a análise desejada
@@ -114,7 +106,6 @@ def render_aspectos_sociais(microdados_estados, estados_selecionados, locais_sel
         st.warning("Tente selecionar outra visualização ou verificar os filtros aplicados.")
     
     # Limpeza de memória otimizada
-    release_memory(microdados_estados)
 
 def render_correlacao_aspectos_sociais(microdados_estados, estados_selecionados, locais_selecionados, variaveis_sociais):
     """
@@ -228,7 +219,6 @@ def render_correlacao_aspectos_sociais(microdados_estados, estados_selecionados,
         criar_expander_analise_correlacao(df_preparado, var_x, var_y, var_x_plot, var_y_plot, variaveis_sociais)
         
         # Liberar memória após uso - OTIMIZAÇÃO ADICIONADA
-        release_memory([df_preparado, fig])
         
     except Exception as e:
         st.error(f"Erro ao exibir correlação de aspectos sociais: {str(e)}")
@@ -323,7 +313,6 @@ def render_distribuicao_aspectos_sociais(microdados_estados, variaveis_sociais):
         criar_expander_dados_distribuicao(contagem_aspecto, aspecto_social, variaveis_sociais)
         
         # Liberar memória após uso - OTIMIZAÇÃO ADICIONADA
-        release_memory([df_preparado, contagem_aspecto, fig])
         
     except Exception as e:
         st.error(f"Erro ao exibir distribuição de aspectos sociais: {str(e)}")
@@ -387,11 +376,13 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
         # Usar componente criar_filtros_estados
         filtros = criar_filtros_estados(df_filtros)
 
-        # Aplicar filtros
-        df_plot = df_filtros.copy()
+        # Aplicar filtros (copy apenas quando vai mutar com Categorical)
         if filtros['ordenar_por_nota'] and filtros['area_selecionada']:
+            df_plot = df_filtros.copy()
             df_plot = _ordenar_dados_por_categoria(df_plot.rename(columns={"Área": "Categoria"}), filtros['area_selecionada'])
             df_plot = df_plot.rename(columns={"Categoria": "Área"})
+        else:
+            df_plot = df_filtros
         if filtros['mostrar_apenas_area'] and filtros['area_selecionada']:
             df_plot = df_plot[df_plot['Área'] == filtros['area_selecionada']]
 
@@ -428,7 +419,6 @@ def render_aspectos_por_estado(microdados_estados, estados_selecionados, variave
             )
         
         criar_expander_dados_completos_estado(df_por_estado, tipo_localidade)
-        release_memory([df_por_estado, df_plot, fig])
         
     except Exception as e:
         st.error(f"Erro ao exibir aspectos sociais por estado: {str(e)}")
@@ -475,10 +465,10 @@ def main():
     """Função principal da página Aspectos Sociais"""
     
     # Limpeza de cache
-    clear_aspectos_cache()
+    clear_page_cache("aspectos_sociais")
     
     # Inicializar session state
-    init_aspectos_session_state()
+    init_page_session_state()
     
     # Renderizar filtros e obter seleções
     estados_selecionados, locais_selecionados = render_sidebar_filters()
@@ -498,7 +488,7 @@ def main():
     try:
         # Carregar dados para estados selecionados
         with st.spinner("Carregando dados de aspectos sociais..."):
-            microdados_completos = get_cached_data_aspectos(estados_selecionados)
+            microdados_completos = get_cached_data("aspectos_sociais")
             
             # Filtrar dados pelos estados selecionados
             microdados_estados = filter_data_by_states(microdados_completos, estados_selecionados)
@@ -520,11 +510,6 @@ def main():
         st.info("💡 Tente recarregar a página ou verifique se os dados estão disponíveis.")
     
     finally:
-        # Limpeza final de memória
-        if 'microdados_completos' in locals():
-            release_memory(microdados_completos)
-        if 'microdados_estados' in locals():
-            release_memory(microdados_estados)
         gc.collect()
 
 # Executar página

@@ -4,7 +4,6 @@ from .data_loader import (
     agrupar_estados_em_regioes,
     calcular_seguro,
     optimize_dtypes,
-    release_memory,
 )
 
 __all__ = [
@@ -13,5 +12,4 @@ __all__ = [
     "agrupar_estados_em_regioes",
     "calcular_seguro",
     "optimize_dtypes",
-    "release_memory",
 ]

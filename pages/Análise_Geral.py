@@ -5,7 +5,6 @@ from typing import Dict, List, Any, Optional
 
 from utils.helpers.tooltip import titulo_com_tooltip, custom_metric_with_tooltip
 from utils.visualizacao.componentes import criar_filtros_estados
-from utils.helpers.cache_utils import release_memory
 from utils.helpers.page_utils import clear_page_cache, init_page_session_state, get_cached_data, get_all_cached_data
 from data.data_loader import filter_data_by_states
 
@@ -72,17 +71,6 @@ st.set_page_config(
     layout="wide"
 )
 
-def clear_geral_cache():
-    clear_page_cache("geral")
-
-def init_geral_session_state():
-    init_page_session_state()
-
-def get_cached_data_geral(estados_selecionados: List[str]):
-    return get_cached_data("geral", estados_selecionados)
-
-def get_all_data_geral():
-    return get_all_cached_data("geral")
 
 def render_geral(
     microdados_estados: pd.DataFrame, 
@@ -115,7 +103,7 @@ def render_geral(
         return
     
     # Mostrar mensagem sobre os filtros aplicados
-    mensagem = f"Analisando Dados Gerais para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
+    mensagem = "Analisando Dados Gerais para todo o Brasil" if len(locais_selecionados) == 0 or len(estados_selecionados) >= 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
     st.info(mensagem)
     
     # Exibir métricas principais (sempre visíveis)
@@ -143,7 +131,6 @@ def render_geral(
         st.warning("Tente selecionar outra visualização ou verificar os filtros aplicados.")
     
     # Limpeza de memória otimizada
-    release_memory(microdados_estados)
 
 def exibir_metricas_principais(
     microdados_estados: pd.DataFrame, 
@@ -254,7 +241,6 @@ def exibir_histograma_notas(
             st.plotly_chart(fig_hist, use_container_width=True)
             
             # Liberar memória do gráfico
-            release_memory(fig_hist)
         
         # Exibir explicação contextualizada do histograma
         explicacao = get_explicacao_histograma(
@@ -271,7 +257,6 @@ def exibir_histograma_notas(
         criar_expander_analise_faixas_desempenho(df_valido, coluna_hist, nome_area_hist)
         
         # Liberar memória
-        release_memory([df_valido, estatisticas])
         
     except Exception as e:
         st.error(f"Erro ao exibir histograma: {str(e)}")
@@ -317,8 +302,7 @@ def exibir_analise_faltas(
                     coluna_agrupamento='SG_UF_PROVA'
                 )
             else:
-                microdados_estados_regiao = microdados_estados.copy()
-                microdados_estados_regiao = microdados_estados_regiao[microdados_estados_regiao['SG_REGIAO'].notna()]
+                microdados_estados_regiao = microdados_estados[microdados_estados['SG_REGIAO'].notna()]
                 regioes = list(microdados_estados_regiao['SG_REGIAO'].unique())
                 df_faltas = preparar_dados_grafico_faltas(
                     microdados_estados_regiao,
@@ -355,7 +339,6 @@ def exibir_analise_faltas(
             st.plotly_chart(fig, use_container_width=True)
 
             # Liberar memória do gráfico
-            release_memory(fig)
 
         # Extrair dados para explicação
         taxa_media_geral = analise_faltas_dados['taxa_media_geral']
@@ -387,7 +370,6 @@ def exibir_analise_faltas(
             exibir_analise_evasao(microdados_estados, estados_selecionados)
 
         # Liberar memória
-        release_memory([df_faltas, analise_faltas_dados])
 
     except Exception as e:
         st.error(f"Erro ao exibir análise de faltas: {str(e)}")
@@ -455,7 +437,6 @@ def exibir_analise_regional(
             st.plotly_chart(fig, use_container_width=True)
             
             # Liberar memória do gráfico
-            release_memory(fig)
         
         # Preparar dados para explicação
         tipo_localidade = "região" if agrupar_por_regiao else "estado"
@@ -488,7 +469,6 @@ def exibir_analise_regional(
         criar_expander_analise_regional(microdados_estados, colunas_notas, competencia_mapping)
         
         # Liberar memória
-        release_memory(df_medias)
         
     except Exception as e:
         st.error(f"Erro ao exibir análise regional: {str(e)}")
@@ -546,7 +526,6 @@ def exibir_comparativo_areas(
             st.plotly_chart(fig, use_container_width=True)
             
             # Liberar memória do gráfico
-            release_memory(fig)
         
         # Identificar áreas com melhor e pior desempenho
         df_sorted = df_areas.sort_values('Media', ascending=False)
@@ -578,7 +557,6 @@ def exibir_comparativo_areas(
         criar_expander_analise_comparativo_areas(df_areas)
         
         # Liberar memória
-        release_memory(df_areas)
         
     except Exception as e:
         st.error(f"Erro ao exibir comparativo entre áreas: {str(e)}")
@@ -642,7 +620,6 @@ def exibir_analise_evasao(
             st.plotly_chart(fig, use_container_width=True)
             
             # Liberar memória do gráfico
-            release_memory(fig)
         
         # Calcular métricas para explicação
         taxa_media_presenca = df_evasao[df_evasao['Métrica'] == 'Presentes']['Valor'].mean()
@@ -671,7 +648,6 @@ def exibir_analise_evasao(
         st.info(explicacao)
         
         # Liberar memória
-        release_memory(df_evasao)
         
     except Exception as e:
         st.error(f"Erro ao exibir análise de evasão: {str(e)}")
@@ -683,10 +659,10 @@ def main():
     """Função principal da página Geral"""
     
     # Limpeza de cache
-    clear_geral_cache()
+    clear_page_cache("geral")
     
     # Inicializar session state
-    init_geral_session_state()
+    init_page_session_state()
     
     estados_selecionados, locais_selecionados = render_sidebar_filters()
 
@@ -708,7 +684,7 @@ def main():
         # Carregar dados para estados selecionados
         with st.spinner("Carregando dados da análise geral..."):
             # Carregar dados completos (todos os estados) para cálculo de totais corretos
-            microdados_completos = get_all_data_geral()
+            microdados_completos = get_all_cached_data("geral")
             
             # Filtrar dados pelos estados selecionados para análise
             microdados_estados = filter_data_by_states(microdados_completos, estados_selecionados)
@@ -732,11 +708,6 @@ def main():
         st.info("💡 Tente recarregar a página ou verifique se os dados estão disponíveis.")
     
     finally:
-        # Limpeza final de memória
-        if 'microdados_completos' in locals():
-            release_memory(microdados_completos)
-        if 'microdados_estados' in locals():
-            release_memory(microdados_estados)
         gc.collect()
 
 # Executar página

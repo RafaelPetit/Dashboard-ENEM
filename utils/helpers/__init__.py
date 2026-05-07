@@ -1,9 +1,6 @@
 from .cache_utils import (
     optimized_cache,
-    memory_intensive_function,
-    release_memory,
     clear_all_cache,
-    get_memory_usage
 )
 
 from .regiao_utils import (

@@ -1,3 +1,4 @@
+import html
 import streamlit as st
 import gc
 
@@ -11,8 +12,8 @@ CONFIG_PROJETO = {
     'email_orientador': 'cesarcx@gmail.com',
     'versao': 'v2.1.0',
     'ultima_atualizacao': '11/07/2025',
-    'total_registros': '2.056.502',
-    'cobertura_regional': '52,29%',
+    'total_registros': '3.933.955',
+    'cobertura_regional': '100%',
     'variaveis_analiticas': '31',
 }
 
@@ -143,33 +144,21 @@ def init_session_state():
     if 'last_data_update' not in st.session_state:
         st.session_state.last_data_update = CONFIG_PROJETO['ultima_atualizacao']
 
-# Função para limpar cache e memória entre navegações
-def clear_page_memory():
-    """Limpa cache específico de páginas"""
-    # Limpar apenas cache relacionado a dados específicos de páginas
-    if hasattr(st.cache_data, 'clear'):
-        st.cache_data.clear()
-    gc.collect()
-
 # Inicializar session state
 init_session_state()
 
 
-# Título principal com indicação regional
-st.title("🌎 Dashboard ENEM 2023 - Região Sul/Sudeste e Centro-Oeste")
+# Título principal
+st.title("🌎 Dashboard ENEM 2023 - Brasil")
 st.markdown("#### Plataforma de Análise Acadêmica para Pesquisa Educacional")
 
-# Aviso importante sobre a divisão regional
+# Informação sobre cobertura
 st.markdown("""
-<div class="warning-card">
-    <h4>📍 Cobertura Regional desta Plataforma</h4>
+<div class="success-card">
+    <h4>📍 Cobertura Nacional Completa</h4>
     <p>
-        Esta versão da plataforma contém dados das regiões <strong>Sul, Sudeste e Centro-Oeste</strong>. Para análise das regiões <strong>Norte e Nordeste</strong>, acesse a <strong>Versão abaixo</strong> da plataforma.
-    </p>
-    <p style="margin-top: 1rem;">
-        <a href="https://enem-insights-norte.streamlit.app/" target="_blank" class="link-button">
-            🌐 Acessar Versão Norte (AC, AP, AM, PA, RO, RR, TO, AL, BA, CE, MA, PB, PE, PI, RN, SE)
-        </a>
+        Esta plataforma contém os microdados oficiais do ENEM 2023 de <strong>todos os 27 estados brasileiros</strong>,
+        abrangendo as cinco regiões do país: Norte, Nordeste, Centro-Oeste, Sudeste e Sul.
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -205,8 +194,8 @@ with main_col1:
         <h3>🏠 Análise Geral</h3>
         <p><span class="badge">Estatísticas Descritivas</span><span class="badge">Distribuições</span><span class="badge">Comparativos Regionais</span></p>
         <p>
-            Oferece uma visão abrangente e panorâmica do cenário educacional das regiões Sul, Sudeste e Centro-Oeste no ENEM 2023. 
-            Este módulo implementa análises estatísticas descritivas robustas, incluindo métricas de tendência central, 
+            Oferece uma visão abrangente e panorâmica do cenário educacional brasileiro no ENEM 2023.
+            Este módulo implementa análises estatísticas descritivas robustas, incluindo métricas de tendência central,
             dispersão e forma das distribuições, proporcionando insights fundamentais sobre os padrões de desempenho educacional.
         </p>
         <ul>
@@ -265,70 +254,53 @@ with main_col2:
         <h3>📍 Filtros Aplicados</h3>
     </div>
     """, unsafe_allow_html=True)
-    
-    st.info("🌎 **Escopo**: Regiões Sul, Sudeste e Centro-Oeste")
-    
+
+    st.info("🌎 **Escopo**: Brasil — todos os 27 estados")
+
     # Status do sistema
     st.markdown("""
     <div class="success-card">
-        <h3>🔍 Informações do Dataset Regional</h3>
+        <h3>🔍 Informações do Dataset</h3>
     </div>
     """, unsafe_allow_html=True)
-    
+
     # Métricas sobre o dataset
     col1, col2 = st.columns(2)
 
-
     with col1:
-        st.metric("Registros Regionais", CONFIG_PROJETO['total_registros'], help="Candidatos das regiões Sul, Sudeste e Centro-Oeste")
-        st.metric("Cobertura Regional", CONFIG_PROJETO['cobertura_regional'], help="Percentual do território nacional coberto nesta versão")
+        st.metric("Total de Registros", CONFIG_PROJETO['total_registros'], help="Candidatos de todo o Brasil")
+        st.metric("Cobertura", CONFIG_PROJETO['cobertura_regional'], help="Percentual do território nacional coberto")
 
     with col2:
         st.metric("Variáveis Analíticas", CONFIG_PROJETO['variaveis_analiticas'], help="Total de variáveis processadas e otimizadas")
         st.metric("Processamento", st.session_state.last_data_update, help="Data da última otimização dos dados")
-    
-    # Estados incluídos nesta versão
+
+    # Regiões incluídas
     st.markdown("""
     <div class="feature-card">
         <h3>🗺️ Regiões Incluídas</h3>
     </div>
     """, unsafe_allow_html=True)
-    
+
     st.markdown("""
-    **Sul:** PR, RS, SC
-                
-    **Sudeste:** SP, RJ, MG, ES  
-    
+    **Norte:** AC, AP, AM, PA, RO, RR, TO
+
+    **Nordeste:** AL, BA, CE, MA, PB, PE, PI, RN, SE
+
     **Centro-Oeste:** DF, GO, MT, MS
-    
-    Para análise de Norte e Nordeste utilize a versão abaixo:
+
+    **Sudeste:** SP, RJ, MG, ES
+
+    **Sul:** PR, RS, SC
     """)
-    
-    # Card específico para redirecionamento à versão Norte
-    st.markdown("""
-    <div class="info-card">
-        <h3>🌐 Precisa Analisar Outras Regiões?</h3>
-        <p>
-            Se você precisa analisar dados das regiões <strong>Norte, Nordeste</strong>, acesse nossa versão complementar:
-        </p>
-        <p style="text-align: center; margin-top: 1rem;">
-            <a href="https://enem-insights-norte.streamlit.app/" target="_blank" class="link-button">
-                📊 Dashboard ENEM Norte
-            </a>
-        </p>
-        <p style="font-size: 12px; margin-top: 0.5rem; text-align: center;">
-            <em>Mesma metodologia, dados complementares</em>
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
+
     # Guia rápido
     st.markdown("""
     <div class="feature-card">
         <h3>🚀 Guia de Navegação</h3>
     </div>
     """, unsafe_allow_html=True)
-    
+
     st.markdown("""
     1. **Configure os filtros** na barra lateral para delimitar sua análise
     2. **Navegue sequencialmente** pelos módulos analíticos no menu
@@ -379,10 +351,10 @@ with method_col3:
     <div class="feature-card">
         <h4>📋 Limitações e Considerações Éticas</h4>
         <p>
-            Esta pesquisa apresenta resultados observacionais que não estabelecem relações causais. 
-            Trabalha exclusivamente com dados oficiais do INEP, respeitando integralmente as políticas 
-            de privacidade, anonimização e uso ético das informações. A divisão regional visa otimização 
-            técnica sem prejuízo à qualidade analítica.
+            Esta pesquisa apresenta resultados observacionais que não estabelecem relações causais.
+            Trabalha exclusivamente com dados oficiais do INEP, respeitando integralmente as políticas
+            de privacidade, anonimização e uso ético das informações. Os dados abrangem todos os
+            27 estados brasileiros, permitindo análises nacionais e regionais completas.
         </p>
         <p><span class="badge">Ética em Pesquisa</span><span class="badge">LGPD Compliance</span></p>
     </div>
@@ -414,10 +386,10 @@ with footer_col2:
     st.markdown(f"""
     <div style='text-align: center; color: #475569;'>
         <p style='font-size: 16px;'><b>Plataforma de Análise Científica do ENEM 2023</b></p>
-        <p style='font-size: 14px; margin-top: 1rem;'>Projeto de pesquisa desenvolvido como contribuição científica 
+        <p style='font-size: 14px; margin-top: 1rem;'>Projeto de pesquisa desenvolvido como contribuição científica
         para a compreensão dos fatores que influenciam o desempenho educacional.</p>
         <hr style='margin: 15px 0; border-color: #E2E8F0;'>
-        <p style='font-size: 11px; margin-top: 5px;'>{CONFIG_PROJETO['versao']} </p>
+        <p style='font-size: 11px; margin-top: 5px;'>{html.escape(CONFIG_PROJETO['versao'])} </p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -426,11 +398,11 @@ with footer_col3:
     <div style='text-align: right; color: #475569;'>
         <p style='font-size: 16px;'><b>Equipe de Pesquisa</b></p>
         <p style='font-size: 14px; margin-bottom: 5px; margin-top: 10px;'><b>Pesquisador Responsável:</b></p>
-        <p style='font-size: 14px; margin-top: 0;'>{CONFIG_PROJETO['pesquisador']}</p>
-        <p style='font-size: 12px; margin-top: -2px;'>{CONFIG_PROJETO['email_pesquisador']}</p>
+        <p style='font-size: 14px; margin-top: 0;'>{html.escape(CONFIG_PROJETO['pesquisador'])}</p>
+        <p style='font-size: 12px; margin-top: -2px;'>{html.escape(CONFIG_PROJETO['email_pesquisador'])}</p>
         <p style='font-size: 14px; margin-bottom: 5px; margin-top: 15px;'><b>Orientador Científico:</b></p>
-        <p style='font-size: 14px; margin-top: 0;'>{CONFIG_PROJETO['orientador']}</p>
-        <p style='font-size: 12px; margin-top: -5px;'>{CONFIG_PROJETO['email_orientador']}</p>
+        <p style='font-size: 14px; margin-top: 0;'>{html.escape(CONFIG_PROJETO['orientador'])}</p>
+        <p style='font-size: 12px; margin-top: -5px;'>{html.escape(CONFIG_PROJETO['email_orientador'])}</p>
     </div>
     """, unsafe_allow_html=True)
 

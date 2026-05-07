@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Any
-from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
+from utils.helpers.cache_utils import optimized_cache
 from utils.prepara_dados.validacao_dados import validar_completude_dados
 from utils.helpers.constants import CONFIG_PROCESSAMENTO, LIMIARES_PROCESSAMENTO
 
@@ -148,7 +148,6 @@ def preparar_dados_distribuicao(
     return df_dist, coluna_plot
 
 
-@memory_intensive_function
 def contar_candidatos_por_categoria(
     df: pd.DataFrame, 
     coluna_plot: str
@@ -264,7 +263,6 @@ def ordenar_categorias(
         return contagem_aspecto  # Retornar dados sem ordenação em caso de erro
 
 
-@memory_intensive_function
 def preparar_dados_heatmap(
     df_correlacao: pd.DataFrame, 
     var_x_plot: str, 
@@ -322,7 +320,6 @@ def preparar_dados_heatmap(
         return pd.DataFrame()
 
 
-@memory_intensive_function
 def preparar_dados_barras_empilhadas(
     df_correlacao: pd.DataFrame, 
     var_x_plot: str, 
@@ -362,12 +359,17 @@ def preparar_dados_barras_empilhadas(
         
         # Calcular totais por categoria X (mais eficiente)
         totais = df_barras.groupby(var_x_plot, observed=True)['Contagem'].sum()
-        
+
         # Converter para dicionário para acesso mais rápido
         totais_dict = totais.to_dict()
-        
-        # Adicionar coluna de Total para facilitar cálculos
-        df_barras['Total'] = df_barras[var_x_plot].map(totais_dict)
+
+        # Adicionar coluna de Total — converter para string se Categorical para evitar
+        # "Unordered Categoricals can only compare equality or not"
+        chave_map = df_barras[var_x_plot]
+        if hasattr(chave_map, 'cat'):
+            chave_map = chave_map.astype(str)
+            totais_dict = {str(k): v for k, v in totais_dict.items()}
+        df_barras['Total'] = chave_map.map(totais_dict)
         
         # Calcular percentual de forma vetorizada
         df_barras['Percentual'] = np.where(
@@ -383,7 +385,6 @@ def preparar_dados_barras_empilhadas(
         return pd.DataFrame()
 
 
-@memory_intensive_function
 def preparar_dados_sankey(
     df_correlacao: pd.DataFrame, 
     var_x_plot: str, 
@@ -513,7 +514,6 @@ def preparar_dados_grafico_aspectos_por_estado(
         return pd.DataFrame()
 
 
-@memory_intensive_function
 def _processar_aspectos_por_estado(
     microdados: pd.DataFrame,
     aspecto_social: str,

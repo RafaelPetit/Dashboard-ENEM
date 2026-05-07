@@ -36,7 +36,7 @@ def calcular_indicadores_desigualdade(
     
     # Criar dicionário de resultados
     resultados = {
-        'razao_max_min': max_valor / min_valor if min_valor > 0 else float('inf'),
+        'razao_max_min': max_valor / min_valor if min_valor > 0 else 0.0,
         'coef_variacao': (desvio_padrao / media_geral * 100) if media_geral > 0 else 0,
         'range_percentual': ((max_valor - min_valor) / media_geral * 100) if media_geral > 0 else 0
     }

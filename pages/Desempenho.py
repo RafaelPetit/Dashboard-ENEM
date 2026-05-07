@@ -5,18 +5,22 @@ from typing import List
 
 from utils.helpers.sidebar_filter import render_sidebar_filters
 from utils.helpers.tooltip import titulo_com_tooltip
-from utils.helpers.cache_utils import release_memory
+
 from utils.helpers.page_utils import clear_page_cache, init_page_session_state, get_cached_data
 from data.data_loader import filter_data_by_states
 from utils.helpers.mappings import get_mappings
 
 # Imports para preparação de dados
 from utils.prepara_dados import (
-    preparar_dados_comparativo, 
+    preparar_dados_comparativo,
     preparar_dados_grafico_linha,
     preparar_dados_desempenho_geral,
     filtrar_dados_scatter,
     preparar_dados_grafico_linha_desempenho
+)
+from utils.prepara_dados.prepara_dados_desempenho import (
+    preparar_dados_estados_para_visualizacao,
+    determinar_variabilidade
 )
 
 # Imports para visualizações
@@ -64,15 +68,6 @@ st.set_page_config(
 
 pd.options.display.float_format = '{:,.2f}'.format
 
-def clear_desempenho_cache():
-    clear_page_cache("desempenho")
-
-def init_desempenho_session_state():
-    init_page_session_state()
-
-def get_cached_data_desempenho(estados_selecionados: List[str]):
-    return get_cached_data("desempenho", estados_selecionados)
-
 def render_desempenho(microdados, microdados_estados, estados_selecionados, 
                      locais_selecionados, colunas_notas, competencia_mapping, race_mapping, 
                      variaveis_categoricas, desempenho_mapping):
@@ -106,7 +101,7 @@ def render_desempenho(microdados, microdados_estados, estados_selecionados,
         return
     
     # Mensagem informativa sobre filtros aplicados
-    mensagem = f"Analisando Desempenho para todo o Brasil" if len(estados_selecionados) == 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
+    mensagem = "Analisando Desempenho para todo o Brasil" if len(estados_selecionados) >= 27 else f"Dados filtrados para: {', '.join(locais_selecionados)}"
     st.info(mensagem)
     
     # Usamos um placeholder para microdados_full que só será carregado se necessário
@@ -126,7 +121,6 @@ def render_desempenho(microdados, microdados_estados, estados_selecionados,
             with st.spinner("Preparando dados para análise comparativa..."):
                 microdados_full = preparar_dados_desempenho_geral(microdados_estados, colunas_notas, desempenho_mapping)
             render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_notas, competencia_mapping)
-            release_memory(microdados_full)  # Libera memória após uso
         elif analise_selecionada == "Relação entre Competências":
             render_relacao_competencias(microdados_estados, colunas_notas, competencia_mapping, race_mapping)
         else:
@@ -136,7 +130,6 @@ def render_desempenho(microdados, microdados_estados, estados_selecionados,
         st.warning("Tente selecionar outra visualização ou verificar os filtros aplicados.")
     
     # Limpeza de memória otimizada
-    release_memory(microdados_estados)
 
 def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_notas, competencia_mapping):
     """
@@ -221,7 +214,6 @@ def render_analise_comparativa(microdados_full, variaveis_categoricas, colunas_n
     criar_expander_analise_comparativa(df_resultados, variavel_selecionada, variaveis_categoricas, competencia_mapping, config_filtros)
     
     # Liberar memória
-    release_memory([df_resultados, df_visualizacao, fig])
 
 def render_relacao_competencias(microdados_estados, colunas_notas, competencia_mapping, race_mapping):
     """
@@ -291,7 +283,6 @@ def render_relacao_competencias(microdados_estados, colunas_notas, competencia_m
     criar_expander_relacao_competencias(dados_filtrados, config_filtros, competencia_mapping, correlacao, interpretacao)
     
     # Liberar memória
-    release_memory([dados_filtrados, fig])
 
 def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_notas, competencia_mapping):
     """
@@ -385,80 +376,6 @@ def render_desempenho_estados(microdados_estados, estados_selecionados, colunas_
     st.info(explicacao)
     criar_expander_desempenho_estados(df_grafico, area_analise, analise, tipo_localidade)
     
-    # Liberar memória se não é uma referência ao original
-    if id(df_plot) != id(df_grafico):
-        release_memory(df_plot)
-    release_memory([df_grafico, fig])
-
-def preparar_dados_estados_para_visualizacao(df_grafico, area_selecionada, ordenar_por_nota, mostrar_apenas_area):
-    """
-    Prepara os dados de estados/regiões para visualização, aplicando filtros e ordenação.
-    
-    Parâmetros:
-    -----------
-    df_grafico : DataFrame
-        DataFrame com dados de desempenho por estado/região
-    area_selecionada : str
-        Área de conhecimento selecionada
-    ordenar_por_nota : bool
-        Indica se deve ordenar por nota
-    mostrar_apenas_area : bool
-        Indica se deve mostrar apenas a área selecionada
-        
-    Retorna:
-    --------
-    DataFrame: DataFrame preparado para visualização
-    """
-    # Otimização: evita cópia desnecessária se não precisar ordenar
-    if ordenar_por_nota and area_selecionada:
-        # Aplicar ordenação e filtro
-        df_plot = df_grafico.copy()
-        
-        # Obter ordem dos estados/regiões pela área selecionada
-        media_por_estado = df_plot[df_plot['Área'] == area_selecionada]
-        ordem_estados = media_por_estado.sort_values('Média', ascending=False)['Estado'].tolist()
-        
-        # Aplicar ordenação como categoria
-        df_plot['Estado'] = pd.Categorical(df_plot['Estado'], categories=ordem_estados, ordered=True)
-        df_plot = df_plot.sort_values('Estado')
-        
-        # Filtrar para mostrar apenas a área selecionada se solicitado
-        if mostrar_apenas_area:
-            df_plot = df_plot[df_plot['Área'] == area_selecionada]
-    else:
-        # Se não precisar ordenar, usa o DataFrame original sem cópia
-        df_plot = df_grafico
-        
-        # Filtrar para mostrar apenas a área selecionada se solicitado
-        if mostrar_apenas_area and area_selecionada:
-            df_plot = df_plot[df_plot['Área'] == area_selecionada]
-    
-    return df_plot
-
-def determinar_variabilidade(desvio_padrao, mostrar_apenas_area):
-    """
-    Determina a classificação de variabilidade com base no desvio padrão.
-    
-    Parâmetros:
-    -----------
-    desvio_padrao : float
-        Valor do desvio padrão
-    mostrar_apenas_area : bool
-        Indica se está mostrando apenas uma área específica
-        
-    Retorna:
-    --------
-    str: Classificação de variabilidade
-    """
-    if not mostrar_apenas_area:
-        return "variável"
-    
-    if desvio_padrao > 15:
-        return "alta"
-    elif desvio_padrao > 8:
-        return "moderada"
-    else:
-        return "baixa"
 
 # ===================== MAIN - EXECUÇÃO DA PÁGINA =====================
 
@@ -466,10 +383,10 @@ def main():
     """Função principal da página Desempenho"""
     
     # Limpeza de cache
-    clear_desempenho_cache()
+    clear_page_cache("desempenho")
     
     # Inicializar session state
-    init_desempenho_session_state()
+    init_page_session_state()
 
     estados_selecionados, locais_selecionados = render_sidebar_filters()
     
@@ -494,7 +411,7 @@ def main():
     try:
         # Carregar dados para estados selecionados
         with st.spinner("Carregando dados de desempenho..."):
-            microdados_completos = get_cached_data_desempenho(estados_selecionados)
+            microdados_completos = get_cached_data("desempenho")
             
             # Filtrar dados pelos estados selecionados
             microdados_estados = filter_data_by_states(microdados_completos, estados_selecionados)
@@ -525,11 +442,6 @@ def main():
         st.info("💡 Tente recarregar a página ou verifique se os dados estão disponíveis.")
     
     finally:
-        # Limpeza final de memória
-        if 'microdados_completos' in locals():
-            release_memory(microdados_completos)
-        if 'microdados_estados' in locals():
-            release_memory(microdados_estados)
         gc.collect()
 
 # Executar página

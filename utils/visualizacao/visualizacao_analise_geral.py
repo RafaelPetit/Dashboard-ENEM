@@ -4,10 +4,8 @@ import pandas as pd
 from typing import Dict, List, Optional, Any
 from utils.visualizacao.componentes import criar_grafico_vazio
 from utils.visualizacao.config_graficos import aplicar_layout_padrao, cores_padrao
-from utils.helpers.cache_utils import memory_intensive_function, release_memory
 from utils.helpers.constants import CONFIG_VISUALIZACAO as CONFIG_VIZ, LIMIARES_ESTATISTICOS
 
-@memory_intensive_function
 def criar_histograma(
     df: pd.DataFrame, 
     coluna: str, 
@@ -86,11 +84,9 @@ def criar_histograma(
         import logging; logging.warning(f"Erro em criar_histograma: {e}")
         return criar_grafico_vazio(f"Erro ao criar histograma: {str(e)}")
     finally:
-        # Liberar memória
-        release_memory(df)
+        pass
 
 
-@memory_intensive_function
 def criar_grafico_faltas(
     df_faltas: pd.DataFrame, 
     order_by_area: Optional[str] = None, 
@@ -162,8 +158,7 @@ def criar_grafico_faltas(
         import logging; logging.warning(f"Erro em criar_grafico_faltas: {e}")
         return criar_grafico_vazio(f"Erro ao criar análise de faltas: {str(e)}")
     finally:
-        # Liberar memória
-        release_memory(df_faltas)
+        pass
 
 
 def criar_grafico_media_por_estado(

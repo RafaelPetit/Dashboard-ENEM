@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import gc
+import logging
 from typing import Dict, List
+from scipy import stats
 
 # ------------------------------------------------------------
 # FUNÇÕES DE CARREGAMENTO DE DADOS
@@ -143,8 +145,10 @@ def calcular_seguro(serie_dados, operacao='media'):
         if len(array_dados) == 0:
             return 0.0
             
-        # Para curtose e assimetria, precisamos de pelo menos 4 pontos
-        if operacao in ['curtose', 'assimetria'] and len(array_dados) < 4:
+        # Curtose requer >= 4 pontos, assimetria requer >= 3
+        if operacao == 'curtose' and len(array_dados) < 4:
+            return 0.0
+        if operacao == 'assimetria' and len(array_dados) < 3:
             return 0.0
             
         # Calcular estatística solicitada
@@ -162,11 +166,11 @@ def calcular_seguro(serie_dados, operacao='media'):
             resultado = float(np.std(array_dados, ddof=1))  # Usar ddof=1 para amostra
         elif operacao == 'curtose':
             # Calcular curtose usando scipy.stats
-            from scipy import stats
+
             resultado = float(stats.kurtosis(array_dados, fisher=True))  # Fisher=True para curtose excesso
         elif operacao == 'assimetria':
             # Calcular assimetria usando scipy.stats
-            from scipy import stats
+
             resultado = float(stats.skew(array_dados))
         else:
             return 0.0
@@ -178,7 +182,7 @@ def calcular_seguro(serie_dados, operacao='media'):
         return resultado
         
     except Exception as e:
-        import logging; logging.warning(f"Erro ao calcular {operacao}: {e}")
+        logging.warning(f"Erro ao calcular {operacao}: {e}")
         return 0.0
 
 
@@ -186,39 +190,27 @@ def calcular_seguro(serie_dados, operacao='media'):
 # FUNÇÕES DE OTIMIZAÇÃO DE MEMÓRIA
 # ------------------------------------------------------------
 
-def optimize_dtypes(df: pd.DataFrame, dtypes: str) -> pd.DataFrame:
+def optimize_dtypes(df: pd.DataFrame, tab_name: str) -> pd.DataFrame:
     """
-    Otimiza tipos de dados para reduzir uso de memória.
-    
-    Parâmetros:
-    -----------
-    df : DataFrame
-        DataFrame a ser otimizado
-        
-    Retorna:
-    --------
-    DataFrame: DataFrame com tipos de dados otimizados
+    Aplica tipos de dados do JSON de schema ao DataFrame.
+
+    Os parquets ja vem pre-otimizados pelo notebook Filtragem.ipynb:
+    - Notas divididas por 10, -1 substituido por NaN, dtype float32
+    - Colunas int com range pequeno ja em int8
+    - Colunas float ja em float32
+
+    Esta funcao apenas garante conformidade com o schema JSON
+    (defesa contra mudancas no formato do parquet).
     """
     if df.empty:
         return df
 
-    arquivo_dtypes = f'data/dtypes_{dtypes}.json'
+    arquivo_dtypes = f'data/dtypes_{tab_name}.json'
     dtypes_series = pd.read_json(arquivo_dtypes, orient='index', typ='series')
+    # Filtrar para apenas colunas presentes no DataFrame (evita KeyError)
+    dtypes_series = dtypes_series[dtypes_series.index.isin(df.columns)]
     df = df.astype(dtypes_series)
-
-    notas_cols = [col for col in df.columns if col.startswith('NU_NOTA_')]
-
-    # Notas originais do ENEM são multiplicadas por 10 no Parquet (ex: 5000 = 500.0).
-    # Dividimos por 10 para restaurar a escala real (0-1000) em float64.
-    if dtypes in ['desempenho', 'geral']:
-       df[notas_cols] = df[notas_cols] / 10.0
-       df[notas_cols] = df[notas_cols].astype('float64')
-
-    # No dataset 'geral', -1 indica ausência do candidato na prova
-    if dtypes in ['geral']:
-        df[notas_cols] = df[notas_cols].replace(-1, np.nan)
 
     return df
 
 
-from utils.helpers.cache_utils import release_memory

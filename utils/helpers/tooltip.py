@@ -1,6 +1,7 @@
+import html
 import streamlit as st
 
-# CSS compartilhado — injetado uma única vez por sessão
+# CSS compartilhado — injetado a cada chamada (seguro, <style> duplicado é inofensivo)
 _TOOLTIP_CSS = """
 <style>
 .tooltip-container {
@@ -16,6 +17,7 @@ _TOOLTIP_CSS = """
     cursor: help;
 }
 .tooltip-text {
+    display: block;
     visibility: hidden;
     width: 300px;
     background-color: #333;
@@ -77,7 +79,7 @@ _TOOLTIP_CSS = """
 
 
 def _injetar_css_tooltip():
-    """Injeta CSS de tooltip. Chamado a cada uso — Streamlit reconstrói o DOM em cada rerun."""
+    """Injeta CSS de tooltip. Chamada multipla e segura — <style> duplicado e inofensivo."""
     st.markdown(_TOOLTIP_CSS, unsafe_allow_html=True)
 
 
@@ -96,11 +98,13 @@ def titulo_com_tooltip(titulo, explicacao, chave=None):
     """
     _injetar_css_tooltip()
 
+    titulo_safe = html.escape(str(titulo))
+
     tooltip_html = f"""
     <div class="tooltip-container">
-        <h3>{titulo}</h3>
+        <h3>{titulo_safe}</h3>
         <div class="tooltip-icon">ⓘ
-            <div class="tooltip-text">{explicacao}</div>
+            <span class="tooltip-text">{explicacao}</span>
         </div>
     </div>
     """
@@ -128,6 +132,9 @@ def custom_metric_with_tooltip(label, value, delta=None, delta_color="normal", e
     """
     _injetar_css_tooltip()
 
+    label_safe = html.escape(str(label))
+    value_safe = html.escape(str(value))
+
     # Formatação do delta
     delta_html = ""
     if delta is not None:
@@ -143,7 +150,7 @@ def custom_metric_with_tooltip(label, value, delta=None, delta_color="normal", e
         else:
             color_class = "neutral"
 
-        delta_html = f'<div class="metric-delta {color_class}">{delta_value}</div>'
+        delta_html = f'<div class="metric-delta {color_class}">{html.escape(str(delta_value))}</div>'
 
     # Determinar posição do tooltip
     tooltip_position_class = ""
@@ -154,16 +161,15 @@ def custom_metric_with_tooltip(label, value, delta=None, delta_color="normal", e
             pass
 
     metric_html = f"""
-    <div class="custom-metric-container">
-        <div class="custom-metric">
-            <div class="metric-label">
-                {label}
-                <span class="tooltip-icon {tooltip_position_class}">ⓘ
-                    <div class="tooltip-text">{explicacao}</div>
-                </span>
-            </div>
-            <div class="metric-value">{value}</div>
-            {delta_html}
+    <div class="custom-metric">
+        <div class="metric-label">
+            {label_safe}
+            <span class="tooltip-icon {tooltip_position_class}">ⓘ
+                <span class="tooltip-text">{explicacao}</span>
+            </span>
+        </div>
+        <div class="metric-value">{value_safe}</div>
+        {delta_html}
     </div>
     """
 

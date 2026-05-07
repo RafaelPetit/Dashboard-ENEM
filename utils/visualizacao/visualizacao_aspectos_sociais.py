@@ -5,7 +5,6 @@ from plotly.graph_objs import Figure
 from typing import Dict, Tuple, Any
 from utils.visualizacao.componentes import criar_grafico_vazio
 from utils.visualizacao.config_graficos import cores_padrao
-from utils.helpers.cache_utils import memory_intensive_function
 from utils.helpers.constants import CONFIG_VISUALIZACAO as CONFIG_VIZ, LIMIARES_PROCESSAMENTO
 
 # Constantes para configuração de gráficos (a partir de mapeamentos)
@@ -14,7 +13,6 @@ OPACIDADE_PADRAO = CONFIG_VIZ.get('opacidade_padrao', 0.8)
 ANGULO_EIXO_X = CONFIG_VIZ.get('angulo_eixo_x', -45)
 MIN_AMOSTRAS_GRAFICO = LIMIARES_PROCESSAMENTO.get('min_amostras_grafico', 10)
 
-@memory_intensive_function
 def criar_grafico_heatmap(
     df_correlacao: pd.DataFrame, 
     var_x: str, 
@@ -112,7 +110,6 @@ def criar_grafico_heatmap(
 
 # Corrigir a função criar_grafico_barras_empilhadas
 
-@memory_intensive_function
 def criar_grafico_barras_empilhadas(
     df_correlacao: pd.DataFrame, 
     var_x: str, 
@@ -203,7 +200,6 @@ def criar_grafico_barras_empilhadas(
         import logging; logging.warning(f"Erro em criar_grafico_barras_empilhadas: {e}")
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
 
-@memory_intensive_function
 def criar_grafico_sankey(
     df_correlacao: pd.DataFrame, 
     var_x: str, 
@@ -315,7 +311,6 @@ def criar_grafico_sankey(
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}"), ""
 
 
-@memory_intensive_function
 def criar_grafico_distribuicao(
     contagem_aspecto: pd.DataFrame, 
     opcao_viz: str, 
@@ -381,7 +376,6 @@ def criar_grafico_distribuicao(
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
-@memory_intensive_function
 def criar_grafico_aspectos_por_estado(
     df_plot: pd.DataFrame, 
     aspecto_social: str, 

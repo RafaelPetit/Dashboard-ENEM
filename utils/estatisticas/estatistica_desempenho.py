@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, Tuple, Any, Optional, List
-from utils.helpers.cache_utils import optimized_cache, memory_intensive_function
+from utils.helpers.cache_utils import optimized_cache
 from utils.estatisticas.metricas_desempenho import calcular_indicadores_desigualdade
 from utils.helpers.constants import LIMIARES_ESTATISTICOS
 
@@ -57,7 +57,7 @@ def calcular_correlacao_competencias(
         return correlacao, interpretacao
         
     except Exception as e:
-        import logging; logging.warning(f"Erro em calcular_correlacao_competencias: {e}")
+        logging.warning(f"Erro em calcular_correlacao_competencias: {e}")
         return 0.0, "Erro no cálculo"
 
 
@@ -141,7 +141,7 @@ def gerar_estatisticas_descritivas(
     try:
         return dados.describe().round(precisao)
     except Exception as e:
-        import logging; logging.warning(f"Erro em gerar_estatisticas_descritivas: {e}")
+        logging.warning(f"Erro em gerar_estatisticas_descritivas: {e}")
         return pd.Series({
             'count': 0, 'mean': 0, 'std': 0, 'min': 0, 
             '25%': 0, '50%': 0, '75%': 0, 'max': 0
@@ -247,7 +247,6 @@ def _criar_resultado_analise_vazio() -> Dict[str, Any]:
     }
 
 
-@memory_intensive_function
 @optimized_cache(ttl=1800)
 def calcular_estatisticas_comparativas(
     df_resultados: pd.DataFrame,
@@ -305,7 +304,7 @@ def calcular_estatisticas_comparativas(
         }
 
     except Exception as e:
-        import logging; logging.warning(f"Erro em calcular_estatisticas_comparativas: {e}")
+        logging.warning(f"Erro em calcular_estatisticas_comparativas: {e}")
         return _criar_resultado_comparativo_vazio()
 
 
@@ -373,136 +372,3 @@ def _criar_resultado_comparativo_vazio() -> Dict[str, Any]:
             'range_percentual': 0
         }
     }
-
-
-@optimized_cache(ttl=1800)
-def calcular_percentis_desempenho(
-    df: pd.DataFrame, 
-    coluna: str, 
-    percentis: List[float] = [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]
-) -> Dict[str, float]:
-    """
-    Calcula percentis de desempenho para uma coluna específica.
-    
-    Parâmetros:
-    -----------
-    df: DataFrame
-        DataFrame contendo os dados
-    coluna: str
-        Nome da coluna para análise
-    percentis: List[float], default=[0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]
-        Lista de percentis a serem calculados
-        
-    Retorna:
-    --------
-    Dict[str, float]: Dicionário com percentis calculados
-    """
-    # Verificar se temos dados válidos
-    if df is None or df.empty or coluna not in df.columns:
-        return {f"P{int(p*100)}": 0 for p in percentis}
-    
-    # Filtrar valores válidos
-    valores = df[coluna].dropna()
-    valores = valores[valores > 0]
-    
-    # Verificar se ainda temos dados após filtragem
-    if len(valores) == 0:
-        return {f"P{int(p*100)}": 0 for p in percentis}
-    
-    try:
-        # Calcular percentis
-        resultado = {}
-        for p in percentis:
-            valor_percentil = valores.quantile(p)
-            resultado[f"P{int(p*100)}"] = round(valor_percentil, 2)
-        
-        return resultado
-    
-    except Exception as e:
-        import logging; logging.warning(f"Erro em calcular_percentis_desempenho: {e}")
-        return {f"P{int(p*100)}": 0 for p in percentis}
-
-
-@optimized_cache(ttl=1800)
-def analisar_variabilidade_entre_categorias(
-    df_resultados: pd.DataFrame, 
-    competencia: Optional[str] = None
-) -> Dict[str, Any]:
-    """
-    Analisa a variabilidade de desempenho entre diferentes categorias.
-    
-    Parâmetros:
-    -----------
-    df_resultados: DataFrame
-        DataFrame com os resultados por categoria e competência
-    competencia: str, opcional
-        Competência específica para análise. Se None, analisa todas.
-        
-    Retorna:
-    --------
-    Dict[str, Any]: Dicionário com medidas de variabilidade
-    """
-    # Verificar se temos dados válidos
-    if df_resultados is None or df_resultados.empty:
-        return {
-            'coef_variacao': 0,
-            'amplitude': 0,
-            'desvio_padrao': 0,
-            'variancia': 0
-        }
-    
-    # Filtrar por competência específica, se fornecida
-    if competencia is not None:
-        df_analise = df_resultados[df_resultados['Competência'] == competencia]
-    else:
-        df_analise = df_resultados
-    
-    # Verificar se temos dados após filtragem
-    if df_analise.empty:
-        return {
-            'coef_variacao': 0,
-            'amplitude': 0,
-            'desvio_padrao': 0,
-            'variancia': 0
-        }
-    
-    try:
-        # Calcular medidas de variabilidade
-        medias_por_categoria = df_analise.groupby('Categoria')['Média'].mean()
-        media_geral = medias_por_categoria.mean()
-        desvio_padrao = medias_por_categoria.std()
-        variancia = medias_por_categoria.var()
-        valor_min = medias_por_categoria.min()
-        valor_max = medias_por_categoria.max()
-        amplitude = valor_max - valor_min
-        
-        # Calcular coeficiente de variação (em porcentagem)
-        coef_variacao = (desvio_padrao / media_geral * 100) if media_geral > 0 else 0
-        
-        # Criar classificação da variabilidade
-        if coef_variacao < LIMIARES_ESTATISTICOS['variabilidade_baixa']:
-            classificacao = "Baixa variabilidade"
-        elif coef_variacao < LIMIARES_ESTATISTICOS['variabilidade_moderada']:
-            classificacao = "Variabilidade moderada"
-        else:
-            classificacao = "Alta variabilidade"
-        
-        return {
-            'coef_variacao': round(coef_variacao, 2),
-            'amplitude': round(amplitude, 2),
-            'desvio_padrao': round(desvio_padrao, 2),
-            'variancia': round(variancia, 2),
-            'media_geral': round(media_geral, 2),
-            'valor_min': round(valor_min, 2),
-            'valor_max': round(valor_max, 2),
-            'classificacao': classificacao
-        }
-    
-    except Exception as e:
-        import logging; logging.warning(f"Erro em analisar_variabilidade_entre_categorias: {e}")
-        return {
-            'coef_variacao': 0,
-            'amplitude': 0,
-            'desvio_padrao': 0,
-            'variancia': 0
-        }

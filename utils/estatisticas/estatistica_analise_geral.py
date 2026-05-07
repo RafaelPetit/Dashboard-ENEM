@@ -1,8 +1,9 @@
+import logging
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Tuple, Optional, Any
 from data.data_loader import calcular_seguro
-from utils.helpers.cache_utils import optimized_cache, memory_intensive_function
+from utils.helpers.cache_utils import optimized_cache
 from utils.helpers.regiao_utils import obter_regiao_do_estado
 from utils.helpers.constants import CONFIG_PROCESSAMENTO, LIMIARES_ESTATISTICOS
 
@@ -69,31 +70,15 @@ def analisar_metricas_principais(
         
         # Maior e menor média entre todas as áreas e estados
         maior_media = np.max(media_por_estado) if media_por_estado else 0.0
-        menor_media = np.min([m for m in media_por_estado if m > 0]) if media_por_estado else 0.0
+        medias_positivas = [m for m in media_por_estado if m > 0]
+        menor_media = np.min(medias_positivas) if medias_positivas else 0.0
         
         # Total de candidatos
         total_candidatos = len(microdados_estados)
-        
-        # Calcular taxa de presença (candidatos que fizeram pelo menos uma prova)
-        taxa_presenca = 0.0
-        if 'TP_PRESENCA_GERAL' in microdados_estados.columns:
-            # Código 3 = presente nos dois dias
-            candidatos_presentes = microdados_estados[microdados_estados['TP_PRESENCA_GERAL'] == 3].shape[0]
-            taxa_presenca = round(candidatos_presentes / total_candidatos * 100, 2) if total_candidatos > 0 else 0.0
-        else:
-            # Alternativa: calcular com base nas notas válidas
-            candidatos_presentes = 0
-            for col in colunas_notas:
-                if col in microdados_estados.columns:
-                    presentes_coluna = len(microdados_estados[
-                        (microdados_estados[col] > 0) & 
-                        (microdados_estados[col] != -1) & 
-                        (microdados_estados[col].notna())
-                    ])
-                    candidatos_presentes = max(candidatos_presentes, presentes_coluna)
-            
-            taxa_presenca = round(candidatos_presentes / total_candidatos * 100, 2) if total_candidatos > 0 else 0.0
-        
+
+        # Calcular taxa de presença (extraido em P3.15)
+        taxa_presenca = _calcular_taxa_presenca(microdados_estados, colunas_notas, total_candidatos)
+
         # Calcular totais por região
         totais_por_regiao = _calcular_totais_por_regiao(microdados_estados)
         
@@ -112,7 +97,7 @@ def analisar_metricas_principais(
             'totais_por_regiao': totais_por_regiao
         }
     except Exception as e:
-        import logging; logging.warning(f"Erro em analisar_metricas_principais: {e}")
+        logging.warning(f"Erro em analisar_metricas_principais: {e}")
         return _criar_metricas_principais_vazias()
 
 
@@ -140,7 +125,24 @@ def _criar_metricas_principais_vazias() -> Dict[str, Any]:
     }
 
 
-@memory_intensive_function
+def _calcular_taxa_presenca(df: pd.DataFrame, colunas_notas: List[str], total: int) -> float:
+    """Calcula a taxa de presenca dos candidatos (fix P3.15)."""
+    if total <= 0:
+        return 0.0
+    if 'TP_PRESENCA_GERAL' in df.columns:
+        candidatos_presentes = df[df['TP_PRESENCA_GERAL'] == 3].shape[0]
+        return round(candidatos_presentes / total * 100, 2)
+    # Fallback: calcular com base nas notas validas
+    candidatos_presentes = 0
+    for col in colunas_notas:
+        if col in df.columns:
+            presentes_coluna = len(df[
+                (df[col] > 0) & (df[col] != -1) & (df[col].notna())
+            ])
+            candidatos_presentes = max(candidatos_presentes, presentes_coluna)
+    return round(candidatos_presentes / total * 100, 2)
+
+
 def _calcular_medias_estados_competencias(
     df: pd.DataFrame,
     estados: List[str],
@@ -195,7 +197,7 @@ def _calcular_medias_estados_competencias(
         }
 
     except Exception as e:
-        import logging; logging.warning(f"Erro em _calcular_medias_estados_competencias: {e}")
+        logging.warning(f"Erro em _calcular_medias_estados_competencias: {e}")
         return {
             'todas_medias': [],
             'medias_por_estado': {},
@@ -221,13 +223,13 @@ def _calcular_totais_por_regiao(df: pd.DataFrame) -> Dict[str, int]:
         return {}
     
     try:
-        # Criar coluna temporária com a região de cada estado
-        df_temp = df.copy()
-        df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].apply(obter_regiao_do_estado)
-        
+        # Mapear estados para regiões de forma vetorizada (fix P2.4)
+        from utils.helpers.regiao_utils import ESTADO_PARA_REGIAO
+        regioes = df['SG_UF_PROVA'].map(ESTADO_PARA_REGIAO)
+
         # Contar candidatos por região
-        contagem = df_temp['REGIAO'].value_counts().to_dict()
-        
+        contagem = regioes.value_counts().to_dict()
+
         # Remover região vazia se existir
         if '' in contagem:
             del contagem['']
@@ -235,7 +237,7 @@ def _calcular_totais_por_regiao(df: pd.DataFrame) -> Dict[str, int]:
         return contagem
         
     except Exception as e:
-        import logging; logging.warning(f"Erro em _calcular_totais_por_regiao: {e}")
+        logging.warning(f"Erro em _calcular_totais_por_regiao: {e}")
         return {}
 
 
@@ -284,11 +286,12 @@ def analisar_distribuicao_notas(
         
         # Dados apenas para notas válidas (maiores que 0 e diferentes de -1)
         # -1 representa candidatos ausentes no ENEM
+        # Nota máxima do ENEM é 1000 — usar <= 1000 para incluir notas perfeitas
         df_valido = df_dados[
-            (coluna_convertida > 0) & 
-            (coluna_convertida != -1) & 
+            (coluna_convertida > 0) &
+            (coluna_convertida != -1) &
             (coluna_convertida.notna()) &
-            (coluna_convertida < 1000)  # Adicionar limite superior para evitar outliers extremos
+            (coluna_convertida <= 1000)
         ]
         
         # Verificar se temos dados suficientes após filtragem
@@ -318,44 +321,52 @@ def analisar_distribuicao_notas(
         # Análise de conceito (baseado em faixas típicas de nota do ENEM)
         conceitos = _calcular_conceitos(df_valido, coluna, total_valido)
         
-        # Calcular intervalo de confiança para a média (95%)
-        intervalo_confianca = _calcular_intervalo_confianca(coluna_valida)
-        
-        # Calcular coeficiente de variação (%) com validação
-        if media > 0 and desvio_padrao > 0 and not np.isnan(desvio_padrao) and not np.isinf(desvio_padrao):
-            coef_variacao = (desvio_padrao / media * 100)
-        else:
-            coef_variacao = 0.0
-        
-        # Validar se coef_variacao é finito
-        if not np.isfinite(coef_variacao):
-            coef_variacao = 0.0
-        
-        # Retornar análise completa com validações
-        return {
-            'total_valido': total_valido,
-            'total_candidatos': total_candidatos,  # Total real incluindo ausentes
-            'total_invalido': len(df_dados) - total_valido,
-            'media': round(media, 2) if np.isfinite(media) else 0.0,
-            'mediana': round(mediana, 2) if np.isfinite(mediana) else 0.0,
-            'min_valor': round(min_valor, 2) if np.isfinite(min_valor) else 0.0,
-            'max_valor': round(max_valor, 2) if np.isfinite(max_valor) else 0.0,
-            'desvio_padrao': round(desvio_padrao, 2) if np.isfinite(desvio_padrao) else 0.0,
-            'curtose': round(curtose, 4) if np.isfinite(curtose) else 0.0,
-            'assimetria': round(assimetria, 4) if np.isfinite(assimetria) else 0.0,
-            'percentis': {k: round(v, 2) if np.isfinite(v) else 0.0 for k, v in percentis.items()},
-            'faixas': {k: round(v, 2) if np.isfinite(v) else 0.0 for k, v in faixas.items()},
-            'conceitos': {k: round(v, 2) if np.isfinite(v) else 0.0 for k, v in conceitos.items()},
-            'intervalo_confianca': [
-                round(intervalo_confianca[0], 2) if np.isfinite(intervalo_confianca[0]) else 0.0,
-                round(intervalo_confianca[1], 2) if np.isfinite(intervalo_confianca[1]) else 0.0
-            ],
-            'coef_variacao': round(coef_variacao, 2) if np.isfinite(coef_variacao) else 0.0,
-            'amplitude': round(max_valor - min_valor, 2) if np.isfinite(max_valor - min_valor) else 0.0
-        }
+        # Montar resultado com validacao (extraido em P3.15)
+        return _montar_resultado_distribuicao(
+            total_valido=total_valido, total_candidatos=len(df_dados),
+            media=media, mediana=mediana, min_valor=min_valor, max_valor=max_valor,
+            desvio_padrao=desvio_padrao, curtose=curtose, assimetria=assimetria,
+            percentis=percentis, faixas=faixas, conceitos=conceitos,
+            coluna_valida=coluna_valida
+        )
     except Exception as e:
-        import logging; logging.warning(f"Erro em analisar_distribuicao_notas: {e}")
+        logging.warning(f"Erro em analisar_distribuicao_notas: {e}")
         return _criar_analise_distribuicao_vazia()
+
+
+def _safe_round(val: float, decimals: int = 2) -> float:
+    """Arredonda valor de forma segura, retornando 0.0 para nao-finitos."""
+    return round(val, decimals) if np.isfinite(val) else 0.0
+
+
+def _montar_resultado_distribuicao(
+    total_valido, total_candidatos, media, mediana, min_valor, max_valor,
+    desvio_padrao, curtose, assimetria, percentis, faixas, conceitos,
+    coluna_valida
+) -> Dict[str, Any]:
+    """Monta o dicionario de resultado da distribuicao com validacao de finitude (fix P3.15)."""
+    intervalo_confianca = _calcular_intervalo_confianca(coluna_valida)
+    coef_variacao = (desvio_padrao / media * 100) if (
+        media > 0 and desvio_padrao > 0 and np.isfinite(desvio_padrao)
+    ) else 0.0
+    if not np.isfinite(coef_variacao):
+        coef_variacao = 0.0
+
+    return {
+        'total_valido': total_valido,
+        'total_candidatos': total_candidatos,
+        'total_invalido': total_candidatos - total_valido,
+        'media': _safe_round(media), 'mediana': _safe_round(mediana),
+        'min_valor': _safe_round(min_valor), 'max_valor': _safe_round(max_valor),
+        'desvio_padrao': _safe_round(desvio_padrao),
+        'curtose': _safe_round(curtose, 4), 'assimetria': _safe_round(assimetria, 4),
+        'percentis': {k: _safe_round(v) for k, v in percentis.items()},
+        'faixas': {k: _safe_round(v) for k, v in faixas.items()},
+        'conceitos': {k: _safe_round(v) for k, v in conceitos.items()},
+        'intervalo_confianca': [_safe_round(intervalo_confianca[0]), _safe_round(intervalo_confianca[1])],
+        'coef_variacao': _safe_round(coef_variacao),
+        'amplitude': _safe_round(max_valor - min_valor),
+    }
 
 
 def _criar_analise_distribuicao_vazia() -> Dict[str, Any]:
@@ -427,7 +438,7 @@ def _calcular_percentis_seguros(serie: pd.Series, pontos_percentis: List[int]) -
         
         return {p: np.percentile(serie_limpa, p) for p in pontos_percentis}
     except Exception as e:
-        import logging; logging.warning(f"Erro em _calcular_percentis_seguros: {e}")
+        logging.warning(f"Erro em _calcular_percentis_seguros: {e}")
         return {p: 0.0 for p in pontos_percentis}
 
 
@@ -466,7 +477,7 @@ def _calcular_faixas_desempenho(df: pd.DataFrame, coluna: str, total: int) -> Di
             '900 ou mais': len(df[df[coluna] >= 900]) / total * 100
         }
     except Exception as e:
-        import logging; logging.warning(f"Erro em _calcular_faixas_desempenho: {e}")
+        logging.warning(f"Erro em _calcular_faixas_desempenho: {e}")
         return {
             'Abaixo de 300': 0.0,
             '300 a 500': 0.0,
@@ -511,7 +522,7 @@ def _calcular_conceitos(df: pd.DataFrame, coluna: str, total: int) -> Dict[str, 
             'Excelente (850 ou mais)': len(df[df[coluna] >= 850]) / total * 100
         }
     except Exception as e:
-        import logging; logging.warning(f"Erro em _calcular_conceitos: {e}")
+        logging.warning(f"Erro em _calcular_conceitos: {e}")
         return {
             'Insuficiente (abaixo de 450)': 0.0,
             'Regular (450 a 600)': 0.0,
@@ -589,7 +600,7 @@ def _calcular_intervalo_confianca(serie: pd.Series, nivel: float = 0.95) -> Tupl
         return intervalo
         
     except Exception as e:
-        import logging; logging.warning(f"Erro em _calcular_intervalo_confianca: {e}")
+        logging.warning(f"Erro em _calcular_intervalo_confianca: {e}")
         return (0.0, 0.0)
 
 
@@ -598,30 +609,11 @@ def analisar_faltas(
     df_faltas: pd.DataFrame
 ) -> Dict[str, Any]:
     """
-    Analisa padrões de faltas no ENEM com base nos dias de ausência.
-    
-    Parâmetros:
-    -----------
-    df_faltas : DataFrame
-        DataFrame preparado com dados de faltas
-        
-    Retorna:
-    --------
-    Dict[str, Any]
-        Dicionário com análises sobre faltas:
-        - taxa_media_geral: Taxa média geral de faltas
-        - estado_maior_falta: Estado com maior taxa de faltas
-        - estado_menor_falta: Estado com menor taxa de faltas
-        - medias_por_tipo: DataFrame com médias por tipo de falta
-        - tipo_mais_comum: Tipo de falta mais comum
-        - media_faltas_ambos_dias: Média de faltas em ambos os dias
-        - media_faltas_dia1: Média de faltas no primeiro dia
-        - media_faltas_dia2: Média de faltas no segundo dia
-        - diferenca_dias: Diferença entre faltas no segundo e primeiro dia
-        - desvio_padrao_faltas: Desvio padrão das faltas por estado
-        - variabilidade: Classificação da variabilidade de faltas
-        - estados_maior_evasao: Lista de estados com maior evasão
-        - estados_menor_evasao: Lista de estados com menor evasão
+    Analisa padroes de faltas no ENEM com base nos dias de ausencia.
+
+    Retorna dict com: taxa_media_geral, estado_maior/menor_falta, medias_por_tipo,
+    tipo_mais_comum, media_faltas_ambos_dias/dia1/dia2, diferenca_dias,
+    desvio_padrao_faltas, variabilidade, estados_maior/menor_evasao.
     """
     # Verificar se temos dados válidos
     if df_faltas is None or df_faltas.empty:
@@ -645,46 +637,14 @@ def analisar_faltas(
         media_faltas_ambos_dias = df_ambos_dias['Percentual de Faltas'].mean() if not df_ambos_dias.empty else 0
         media_faltas_dia1 = df_dia1['Percentual de Faltas'].mean() if not df_dia1.empty else 0
         media_faltas_dia2 = df_dia2['Percentual de Faltas'].mean() if not df_dia2.empty else 0
-        
-        # Calcular taxa média geral (soma das três médias)
         taxa_media_geral = media_faltas_ambos_dias + media_faltas_dia1 + media_faltas_dia2
-        
-        # Estado com maior taxa de faltas em ambos os dias
-        estado_maior_falta = None
-        estado_menor_falta = None
-        
-        if not df_ambos_dias.empty:
-            try:
-                idx_max = df_ambos_dias['Percentual de Faltas'].idxmax()
-                estado_maior_falta = df_ambos_dias.loc[idx_max].to_dict()
-            except (KeyError, ValueError):
-                # Alternativa se idxmax falhar
-                df_max = df_ambos_dias.loc[df_ambos_dias['Percentual de Faltas'] == df_ambos_dias['Percentual de Faltas'].max()]
-                if not df_max.empty:
-                    estado_maior_falta = df_max.iloc[0].to_dict()
-        
-        # Estado com menor taxa de faltas em ambos os dias
-        if not df_ambos_dias.empty:
-            try:
-                idx_min = df_ambos_dias['Percentual de Faltas'].idxmin()
-                estado_menor_falta = df_ambos_dias.loc[idx_min].to_dict()
-            except (KeyError, ValueError):
-                # Alternativa se idxmin falhar
-                df_min = df_ambos_dias.loc[df_ambos_dias['Percentual de Faltas'] == df_ambos_dias['Percentual de Faltas'].min()]
-                if not df_min.empty:
-                    estado_menor_falta = df_min.iloc[0].to_dict()
-        
-        # Tipo de falta mais comum (média mais alta)
-        tipo_mais_comum = 'Ambos os dias'
-        maior_media = media_faltas_ambos_dias
-        
-        if media_faltas_dia1 > maior_media:
-            tipo_mais_comum = 'Primeiro dia'
-            maior_media = media_faltas_dia1
-        
-        if media_faltas_dia2 > maior_media:
-            tipo_mais_comum = 'Segundo dia'
-            maior_media = media_faltas_dia2
+
+        # Encontrar estados extremos e tipo mais comum (extraido em P3.15)
+        estado_maior_falta = _encontrar_estado_extremo(df_ambos_dias, 'max')
+        estado_menor_falta = _encontrar_estado_extremo(df_ambos_dias, 'min')
+        tipo_mais_comum = _determinar_tipo_falta_mais_comum(
+            media_faltas_ambos_dias, media_faltas_dia1, media_faltas_dia2
+        )
         
         # Criar DataFrame com médias por tipo
         medias_por_tipo = pd.DataFrame({
@@ -727,8 +687,27 @@ def analisar_faltas(
             'estados_menor_evasao': estados_menor_evasao
         }
     except Exception as e:
-        import logging; logging.warning(f"Erro em analisar_faltas: {e}")
+        logging.warning(f"Erro em analisar_faltas: {e}")
         return _criar_analise_faltas_vazia()
+
+
+def _encontrar_estado_extremo(df: pd.DataFrame, modo: str) -> Optional[Dict[str, Any]]:
+    """Encontra o estado com maior ou menor percentual de faltas (fix P3.15)."""
+    if df is None or df.empty:
+        return None
+    try:
+        idx = df['Percentual de Faltas'].idxmax() if modo == 'max' else df['Percentual de Faltas'].idxmin()
+        return df.loc[idx].to_dict()
+    except (KeyError, ValueError):
+        valor_alvo = df['Percentual de Faltas'].max() if modo == 'max' else df['Percentual de Faltas'].min()
+        df_alvo = df.loc[df['Percentual de Faltas'] == valor_alvo]
+        return df_alvo.iloc[0].to_dict() if not df_alvo.empty else None
+
+
+def _determinar_tipo_falta_mais_comum(ambos: float, dia1: float, dia2: float) -> str:
+    """Determina qual tipo de falta tem maior media (fix P3.15)."""
+    tipos = {'Ambos os dias': ambos, 'Primeiro dia': dia1, 'Segundo dia': dia2}
+    return max(tipos, key=tipos.get)
 
 
 def _criar_analise_faltas_vazia() -> Dict[str, Any]:
@@ -744,7 +723,7 @@ def _criar_analise_faltas_vazia() -> Dict[str, Any]:
         'estado_maior_falta': None,
         'estado_menor_falta': None,
         'medias_por_tipo': pd.DataFrame({
-            'Tipo de Falta': ['Faltou nos dois dias', 'Faltou no somente primeiro dia', 'Faltou no somente segundo dia'],
+            'Tipo de Falta': ['Faltou nos dois dias', 'Faltou somente no primeiro dia', 'Faltou somente no segundo dia'],
             'Percentual de Faltas': [0.0, 0.0, 0.0]
         }),
         'tipo_mais_comum': 'N/A',
@@ -826,7 +805,7 @@ def _identificar_estados_maior_evasao(df: pd.DataFrame, top_n: int = 3) -> List[
         return resultado
         
     except Exception as e:
-        import logging; logging.warning(f"Erro em _identificar_estados_maior_evasao: {e}")
+        logging.warning(f"Erro em _identificar_estados_maior_evasao: {e}")
         return []
 
 
@@ -865,7 +844,7 @@ def _identificar_estados_menor_evasao(df: pd.DataFrame, top_n: int = 3) -> List[
         return resultado
         
     except Exception as e:
-        import logging; logging.warning(f"Erro em _identificar_estados_menor_evasao: {e}")
+        logging.warning(f"Erro em _identificar_estados_menor_evasao: {e}")
         return []
 
 
@@ -965,7 +944,7 @@ def analisar_desempenho_por_faixa_nota(
         }
         
     except Exception as e:
-        import logging; logging.warning(f"Erro em analisar_desempenho_por_faixa_nota: {e}")
+        logging.warning(f"Erro em analisar_desempenho_por_faixa_nota: {e}")
         return {
             'contagem': {},
             'percentual': {},
@@ -999,10 +978,11 @@ def analisar_metricas_por_regiao(
         return {}
     
     try:
-        # Criar coluna temporária com a região
+        # Mapear estados para regiões de forma vetorizada (fix P2.4)
+        from utils.helpers.regiao_utils import ESTADO_PARA_REGIAO
         df_temp = df.copy()
-        df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].apply(obter_regiao_do_estado)
-        
+        df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].map(ESTADO_PARA_REGIAO)
+
         # Remover valores vazios ou nulos na coluna de região
         df_temp = df_temp[df_temp['REGIAO'] != '']
         
@@ -1043,5 +1023,5 @@ def analisar_metricas_por_regiao(
         return resultados
         
     except Exception as e:
-        import logging; logging.warning(f"Erro em analisar_metricas_por_regiao: {e}")
+        logging.warning(f"Erro em analisar_metricas_por_regiao: {e}")
         return {}

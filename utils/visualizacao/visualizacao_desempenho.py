@@ -8,7 +8,6 @@ import warnings
 from typing import Dict, Optional, Any
 from utils.visualizacao.componentes import criar_grafico_vazio
 from utils.visualizacao.config_graficos import aplicar_layout_padrao, cores_padrao
-from utils.helpers.cache_utils import memory_intensive_function
 from utils.helpers.constants import (
     CONFIG_VISUALIZACAO as CONFIG_VIZ,
     MAPEAMENTO_FAIXAS_SALARIAIS as MAPEAMENTO_FAIXAS,
@@ -263,7 +262,6 @@ def criar_grafico_linha_estados(
         return criar_grafico_vazio(f"Erro ao criar visualização: {str(e)}")
 
 
-@memory_intensive_function
 def criar_grafico_scatter(
     df: pd.DataFrame, 
     eixo_x: str, 
@@ -751,12 +749,14 @@ def _adicionar_linha_tendencia_scatter(
         
         # Verificações adicionais para garantir que podemos fazer uma regressão confiável
         if len(x) > MIN_PONTOS_REGRESSAO and len(np.unique(x)) > MIN_VALORES_UNICOS:
-            # Validar dados antes da regressão para evitar overflow
-            x_valid = x[(x > 0) & (x < 1000) & np.isfinite(x)]
-            y_valid = y[(y > 0) & (y < 1000) & np.isfinite(y)]
-            
-            # Garantir que temos o mesmo número de pontos válidos
-            if len(x_valid) == len(y_valid) and len(x_valid) > MIN_PONTOS_REGRESSAO:
+            # Validar dados antes da regressão — usar máscara conjunta para
+            # garantir que x_valid e y_valid tenham o mesmo comprimento
+            mask = (x > 0) & (x <= 1000) & np.isfinite(x) & (y > 0) & (y <= 1000) & np.isfinite(y)
+            x_valid = x[mask]
+            y_valid = y[mask]
+
+            # Verificar se temos pontos suficientes para regressão
+            if len(x_valid) > MIN_PONTOS_REGRESSAO:
                 # Usar scipy.stats para maior robustez com tratamento de erro
                 try:
                     slope, intercept, r_value, p_value, std_err = stats.linregress(x_valid, y_valid)

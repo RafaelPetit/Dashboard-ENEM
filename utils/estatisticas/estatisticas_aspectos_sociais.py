@@ -1,8 +1,9 @@
+import logging
 import pandas as pd
 import numpy as np
 from typing import Dict, Any, Optional
 from scipy.stats import chi2_contingency
-from utils.helpers.cache_utils import optimized_cache, memory_intensive_function
+from utils.helpers.cache_utils import optimized_cache
 from utils.helpers.constants import LIMIARES_ESTATISTICOS, LIMIARES_PROCESSAMENTO
 
 # Constantes para classificação de variabilidade
@@ -13,6 +14,20 @@ LIMITE_VARIABILIDADE_MODERADA = LIMIARES_ESTATISTICOS.get('variabilidade_moderad
 LIMITE_CORRELACAO_FRACA = LIMIARES_ESTATISTICOS.get('correlacao_fraca', 0.3)
 LIMITE_CORRELACAO_MODERADA = LIMIARES_ESTATISTICOS.get('correlacao_moderada', 0.7)
 LIMITE_CORRELACAO_FORTE = 0.8  # Valor padrão para correlação forte
+
+
+def _calcular_gini(valores) -> float:
+    """Calcula o coeficiente de Gini para uma série de valores (formula unificada P3.6)."""
+    try:
+        arr = np.sort(np.asarray(valores, dtype=float))
+        n = len(arr)
+        if n <= 1 or np.sum(arr) == 0:
+            return 0.0
+        index = np.arange(1, n + 1)
+        return float((np.sum((2 * index - n - 1) * arr)) / (n * np.sum(arr)))
+    except Exception:
+        return 0.0
+
 
 @optimized_cache(ttl=1800)
 def calcular_estatisticas_distribuicao(
@@ -51,7 +66,7 @@ def calcular_estatisticas_distribuicao(
         }
 
     except Exception as e:
-        import logging; logging.warning(f"Erro em calcular_estatisticas_distribuicao: {e}")
+        logging.warning(f"Erro em calcular_estatisticas_distribuicao: {e}")
         return _criar_estatisticas_distribuicao_vazias()
 
 
@@ -101,18 +116,8 @@ def _calcular_metricas_concentracao(proporcoes: pd.Series, contagem: pd.DataFram
     entropia = -np.sum(proporcoes_validas * np.log2(proporcoes_validas)) if len(proporcoes_validas) > 0 else 0
     entropia_normalizada = entropia / np.log2(len(proporcoes_validas)) if len(proporcoes_validas) > 1 else 0
 
-    # Gini
-    try:
-        valores = proporcoes.values
-        n = len(valores)
-        if n <= 1:
-            indice_gini = 0.0
-        else:
-            valores_ord = np.sort(valores)
-            index = np.arange(1, n + 1)
-            indice_gini = (np.sum((2 * index - n - 1) * valores_ord)) / (n * np.sum(valores_ord))
-    except Exception:
-        indice_gini = 0.0
+    # Gini (funcao unificada P3.6)
+    indice_gini = _calcular_gini(proporcoes.values)
 
     # Classificação
     if indice_concentracao < 0.2:
@@ -160,7 +165,6 @@ def _criar_estatisticas_distribuicao_vazias() -> Dict[str, Any]:
     }
 
 
-@memory_intensive_function
 @optimized_cache(ttl=1800)
 def analisar_correlacao_categorias(
     df_correlacao: pd.DataFrame, 
@@ -212,61 +216,19 @@ def analisar_correlacao_categorias(
         if tabela_contingencia.shape[0] <= 1 or tabela_contingencia.shape[1] <= 1:
             return _criar_resultado_correlacao_vazio('Categorias insuficientes')
         
-        # Calcular qui-quadrado e coeficiente de contingência
-        chi2, p_valor, gl, _ = chi2_contingency(tabela_contingencia)
-        
-        # Tamanho da amostra
+        # Calcular metricas de associacao (extraido em P3.15)
         n = tabela_contingencia.sum().sum()
-        
-        # Calcular coeficiente de contingência
-        coef_contingencia = np.sqrt(chi2 / (chi2 + n))
-        
-        # Valor máximo do coeficiente (para normalização)
-        k = min(len(tabela_contingencia), len(tabela_contingencia.columns))
-        c_max = np.sqrt((k - 1) / k)
-        
-        # Coeficiente normalizado
-        coef_normalizado = coef_contingencia / c_max if c_max > 0 else 0
-        
-        # Calcular V de Cramer
-        v_cramer = np.sqrt(chi2 / (n * min(tabela_contingencia.shape[0] - 1, tabela_contingencia.shape[1] - 1)))
-        
-        # Verificar se os resultados são números válidos
-        if not all(np.isfinite([chi2, p_valor, coef_normalizado, v_cramer])):
-            # Tentar corrigir valores inválidos
-            chi2 = chi2 if np.isfinite(chi2) else 0
-            p_valor = p_valor if np.isfinite(p_valor) else 1
-            coef_normalizado = coef_normalizado if np.isfinite(coef_normalizado) else 0
-            v_cramer = v_cramer if np.isfinite(v_cramer) else 0
-        
-        # Interpretar a força da associação
+        chi2, p_valor, gl, coef_normalizado, v_cramer = _calcular_metricas_associacao(tabela_contingencia, n)
+
+        # Interpretar resultados
         interpretacao = _interpretar_correlacao_categorias(coef_normalizado)
-        
-        # Interpretar V de Cramer
         contexto = _interpretar_v_cramer(v_cramer)
-        
-        # Classificar significância estatística
         significativo = p_valor < 0.05
-        
-        # Calcular tamanho do efeito
         tamanho_efeito = _classificar_tamanho_efeito(v_cramer)
-        
-        # Calcular a incerteza máxima (para normalização)
-        p_x = tabela_contingencia.sum(axis=1) / n
-        p_y = tabela_contingencia.sum(axis=0) / n
-        H_x = -np.sum(p_x * np.log2(p_x + 1e-10))
-        H_y = -np.sum(p_y * np.log2(p_y + 1e-10))
-        H_max = min(H_x, H_y)
-        
-        # Calcular informação mútua normalizada
-        p_xy = tabela_contingencia.values.flatten() / n
-        p_xy = p_xy[p_xy > 0]  # Remover zeros
-        p_x_rep = np.repeat(p_x.values, len(p_y))
-        p_y_rep = np.tile(p_y.values, len(p_x))
-        indices_validos = p_xy > 0
-        mi = np.sum(p_xy[indices_validos] * np.log2(p_xy[indices_validos] / (p_x_rep[indices_validos] * p_y_rep[indices_validos])))
-        mi_normalizado = mi / H_max if H_max > 0 else 0
-        
+
+        # Calcular informação mútua (extraido em P3.15)
+        mi, mi_normalizado = _calcular_informacao_mutua(tabela_contingencia, n)
+
         # Retornar métricas com nomes padronizados
         return {
             'qui_quadrado': round(chi2, 2),
@@ -285,8 +247,43 @@ def analisar_correlacao_categorias(
         }
     
     except Exception as e:
-        import logging; logging.warning(f"Erro em analisar_correlacao_categorias: {e}")
+        logging.warning(f"Erro em analisar_correlacao_categorias: {e}")
         return _criar_resultado_correlacao_vazio(f"Erro: {str(e)}")
+
+
+def _calcular_metricas_associacao(tabela_contingencia: pd.DataFrame, n: int) -> tuple:
+    """Calcula chi-quadrado, coeficiente de contingencia normalizado e V de Cramer (fix P3.15)."""
+    chi2, p_valor, gl, _ = chi2_contingency(tabela_contingencia)
+    coef_contingencia = np.sqrt(chi2 / (chi2 + n))
+    k = min(len(tabela_contingencia), len(tabela_contingencia.columns))
+    c_max = np.sqrt((k - 1) / k)
+    coef_normalizado = coef_contingencia / c_max if c_max > 0 else 0
+    v_cramer = np.sqrt(chi2 / (n * min(tabela_contingencia.shape[0] - 1, tabela_contingencia.shape[1] - 1)))
+    # Validar resultados finitos
+    if not all(np.isfinite([chi2, p_valor, coef_normalizado, v_cramer])):
+        chi2 = chi2 if np.isfinite(chi2) else 0
+        p_valor = p_valor if np.isfinite(p_valor) else 1
+        coef_normalizado = coef_normalizado if np.isfinite(coef_normalizado) else 0
+        v_cramer = v_cramer if np.isfinite(v_cramer) else 0
+    return chi2, p_valor, gl, coef_normalizado, v_cramer
+
+
+def _calcular_informacao_mutua(tabela_contingencia: pd.DataFrame, n: int) -> tuple:
+    """Calcula informacao mutua e sua versao normalizada a partir da tabela de contingencia (fix P3.15)."""
+    p_x = tabela_contingencia.sum(axis=1) / n
+    p_y = tabela_contingencia.sum(axis=0) / n
+    H_x = -np.sum(p_x * np.log2(p_x + 1e-10))
+    H_y = -np.sum(p_y * np.log2(p_y + 1e-10))
+    H_max = min(H_x, H_y)
+
+    # Usar mascara conjunta para manter arrays alinhados (fix P1.4)
+    p_xy = tabela_contingencia.values.flatten() / n
+    p_x_rep = np.repeat(p_x.values, len(p_y))
+    p_y_rep = np.tile(p_y.values, len(p_x))
+    mask_pos = p_xy > 0
+    mi = np.sum(p_xy[mask_pos] * np.log2(p_xy[mask_pos] / (p_x_rep[mask_pos] * p_y_rep[mask_pos])))
+    mi_normalizado = mi / H_max if H_max > 0 else 0
+    return float(mi), float(mi_normalizado)
 
 
 def _interpretar_correlacao_categorias(coef: float) -> str:
@@ -483,23 +480,8 @@ def analisar_distribuicao_regional(
         else:
             variabilidade = "Alta variabilidade, mostrando importantes disparidades regionais"
         
-        # Calcular o índice de Gini para desigualdade regional
-        try:
-            # Ordenar valores para cálculo do Gini
-            valores_ordenados = sorted(df_analise['Percentual'])
-            n = len(valores_ordenados)
-            
-            # Verificar se temos valores suficientes
-            if n <= 1:
-                indice_gini = 0
-            else:
-                # Cálculo do índice de Gini
-                idx = np.arange(1, n + 1)
-                s = np.sum(idx * valores_ordenados)
-                indice_gini = 2 * s / (n * np.sum(valores_ordenados)) - (n + 1) / n
-        except Exception as e:
-            import logging; logging.warning(f"Erro em analisar_distribuicao_regional: {e}")
-            indice_gini = 0
+        # Calcular o índice de Gini para desigualdade regional (funcao unificada P3.6)
+        indice_gini = _calcular_gini(df_analise['Percentual'].values)
         
         # Retornar análise
         return {
@@ -518,7 +500,7 @@ def analisar_distribuicao_regional(
         }
     
     except Exception as e:
-        import logging; logging.warning(f"Erro em analisar_distribuicao_regional: {e}")
+        logging.warning(f"Erro em analisar_distribuicao_regional: {e}")
         return _criar_resultado_regional_vazio(f"Erro: {str(e)}")
 
 
@@ -580,171 +562,3 @@ def _criar_resultado_regional_vazio(motivo: str = "Dados insuficientes") -> Dict
         'indice_gini': 0,
         'disparidade': "indefinida"
     }
-
-
-@optimized_cache(ttl=1800)
-def calcular_estatisticas_por_categoria(
-    df_por_estado: pd.DataFrame
-) -> Dict[str, Dict[str, Any]]:
-    """
-    Calcula estatísticas agregadas para cada categoria em todos os estados.
-    
-    Parâmetros:
-    -----------
-    df_por_estado : DataFrame
-        DataFrame com dados por estado e categoria
-        
-    Retorna:
-    --------
-    Dict[str, Dict[str, Any]]
-        Dicionário com estatísticas por categoria
-    """
-    # Verificar se temos dados válidos
-    if df_por_estado is None or df_por_estado.empty:
-        return {}
-    
-    # Verificar se temos as colunas necessárias
-    colunas_necessarias = ['Estado', 'Categoria', 'Percentual']
-    if not all(col in df_por_estado.columns for col in colunas_necessarias):
-        return {}
-    
-    try:
-        # Obter lista única de categorias
-        categorias = df_por_estado['Categoria'].unique()
-        
-        # Dicionário para armazenar resultados
-        resultados = {}
-        
-        # Calcular estatísticas para cada categoria
-        for categoria in categorias:
-            df_categoria = df_por_estado[df_por_estado['Categoria'] == categoria]
-            
-            # Verificar se temos dados suficientes
-            if len(df_categoria) < 3:  # Mínimo de 3 estados
-                continue
-                
-            # Calcular estatísticas
-            percentual_medio = df_categoria['Percentual'].mean()
-            desvio_padrao = df_categoria['Percentual'].std()
-            coef_variacao = (desvio_padrao / percentual_medio * 100) if percentual_medio > 0 else 0
-            
-            # Armazenar resultados
-            resultados[categoria] = {
-                'percentual_medio': round(percentual_medio, 2),
-                'desvio_padrao': round(desvio_padrao, 2),
-                'coef_variacao': round(coef_variacao, 2),
-                'n_estados': len(df_categoria),
-                'min': round(df_categoria['Percentual'].min(), 2),
-                'max': round(df_categoria['Percentual'].max(), 2),
-                'amplitude': round(df_categoria['Percentual'].max() - df_categoria['Percentual'].min(), 2)
-            }
-        
-        return resultados
-    
-    except Exception as e:
-        import logging; logging.warning(f"Erro em calcular_estatisticas_por_categoria: {e}")
-        return {}
-
-
-@memory_intensive_function
-def analisar_tendencias_temporais(
-    df_historico: pd.DataFrame, 
-    aspecto_social: str, 
-    categoria: Optional[str] = None
-) -> Dict[str, Any]:
-    """
-    Analisa tendências temporais de um aspecto social.
-    
-    Parâmetros:
-    -----------
-    df_historico : DataFrame
-        DataFrame com dados históricos
-    aspecto_social : str
-        Nome do aspecto social analisado
-    categoria : str, opcional
-        Categoria específica para análise
-        
-    Retorna:
-    --------
-    Dict[str, Any]
-        Dicionário com análise de tendências
-    """
-    # Verificar se temos dados válidos
-    if df_historico is None or df_historico.empty:
-        return {'tendencia': 'indefinida', 'mensagem': 'Dados históricos insuficientes'}
-    
-    # Verificar se temos as colunas necessárias
-    colunas_necessarias = ['Ano', 'Categoria', 'Percentual']
-    if not all(col in df_historico.columns for col in colunas_necessarias):
-        return {'tendencia': 'indefinida', 'mensagem': 'Colunas necessárias não encontradas'}
-    
-    try:
-        # Filtrar para uma categoria específica se solicitado
-        if categoria:
-            df_analise = df_historico[df_historico['Categoria'] == categoria]
-        else:
-            # Se não houver categoria específica, usamos todo o dataframe
-            df_analise = df_historico
-        
-        # Verificar se temos pontos suficientes para análise de tendência
-        if len(df_analise) < 3:  # Mínimo de 3 pontos temporais
-            return {'tendencia': 'indefinida', 'mensagem': 'Pontos temporais insuficientes'}
-        
-        # Ordenar por ano
-        df_analise = df_analise.sort_values('Ano')
-        
-        # Calcular tendência linear
-        x = df_analise['Ano'].astype(float)
-        y = df_analise['Percentual']
-        
-        # Ajustar linha de tendência
-        from scipy import stats
-        slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
-        
-        # Determinar direção da tendência
-        if abs(slope) < 0.01:  # Limiar para considerar estabilidade
-            direcao = "estável"
-        elif slope > 0:
-            direcao = "crescente"
-        else:
-            direcao = "decrescente"
-        
-        # Determinar intensidade da tendência
-        r_squared = r_value**2
-        if r_squared < 0.3:
-            intensidade = "fraca"
-        elif r_squared < 0.7:
-            intensidade = "moderada"
-        else:
-            intensidade = "forte"
-        
-        # Calcular variação percentual entre primeiro e último período
-        primeiro = df_analise.iloc[0]['Percentual']
-        ultimo = df_analise.iloc[-1]['Percentual']
-        variacao_percentual = ((ultimo - primeiro) / primeiro * 100) if primeiro > 0 else 0
-        
-        # Construir mensagem descritiva
-        if abs(variacao_percentual) < 5:
-            descricao = f"Manteve-se relativamente estável ao longo do período analisado"
-        elif variacao_percentual > 0:
-            descricao = f"Aumentou {abs(variacao_percentual):.1f}% ao longo do período analisado"
-        else:
-            descricao = f"Diminuiu {abs(variacao_percentual):.1f}% ao longo do período analisado"
-        
-        # Retornar análise de tendência
-        return {
-            'tendencia': f"{direcao} {intensidade}",
-            'slope': round(slope, 4),
-            'r_squared': round(r_squared, 3),
-            'p_value': round(p_value, 4),
-            'significativa': p_value < 0.05,
-            'variacao_percentual': round(variacao_percentual, 2),
-            'primeiro_valor': round(primeiro, 2),
-            'ultimo_valor': round(ultimo, 2),
-            'descricao': descricao,
-            'mensagem': f"Tendência {direcao} {intensidade} (R² = {r_squared:.2f})"
-        }
-    
-    except Exception as e:
-        import logging; logging.warning(f"Erro em analisar_tendencias_temporais: {e}")
-        return {'tendencia': 'erro', 'mensagem': f'Erro na análise: {str(e)}'}

@@ -32,31 +32,28 @@ def init_page_session_state() -> None:
         st.session_state.locais_selecionados = []
 
 
-def get_cached_data(tab_name: str, estados_selecionados: List[str]) -> pd.DataFrame:
+def get_cached_data(tab_name: str) -> pd.DataFrame:
     """
-    Carrega dados otimizados para uma página específica com cache.
+    Carrega dados para uma página específica.
+    Delega diretamente para load_data_for_tab que já tem @st.cache_data(ttl=3600).
 
     Parâmetros:
     -----------
     tab_name : str
         Nome da aba/tab ('geral', 'desempenho', 'aspectos_sociais')
-    estados_selecionados : List[str]
-        Lista de estados selecionados (não usada para cache — dados são filtrados depois)
 
     Retorna:
     --------
     DataFrame: Dados carregados
     """
-    @st.cache_data(ttl=600, max_entries=3, show_spinner=False)
-    def _load_data(tab: str):
-        return load_data_for_tab(tab)
-
-    return _load_data(tab_name)
+    return load_data_for_tab(tab_name)
 
 
 def get_all_cached_data(tab_name: str) -> pd.DataFrame:
     """
-    Carrega TODOS os dados (não filtrados) para uma página com cache.
+    Carrega todos os dados para uma página.
+    Delega diretamente para load_data_for_tab que já tem @st.cache_data(ttl=3600).
+    Eliminada a camada extra de cache que duplicava dados em memória (fix P2.1).
 
     Parâmetros:
     -----------
@@ -67,8 +64,4 @@ def get_all_cached_data(tab_name: str) -> pd.DataFrame:
     --------
     DataFrame: Todos os dados carregados
     """
-    @st.cache_data(ttl=600, max_entries=1, show_spinner=False)
-    def _load_all_data(tab: str):
-        return load_data_for_tab(tab)
-
-    return _load_all_data(tab_name)
+    return load_data_for_tab(tab_name)

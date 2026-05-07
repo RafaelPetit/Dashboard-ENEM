@@ -67,30 +67,30 @@ def criar_filtros_comparativo(
         tipo_grafico = st.radio(
             "Tipo de gráfico:",
             ["Gráfico de Linhas", "Gráfico de Barras"],
-            key=f"tipo_grafico_{variavel_selecionada}"
+            key="filtro_tipo_grafico_comparativo"
         )
-    
+
     with col2:
         mostrar_apenas_competencia = st.checkbox(
-            "Mostrar apenas uma competência", 
+            "Mostrar apenas uma competência",
             value=False,
-            key=f"mostrar_competencia_{variavel_selecionada}"
+            key="filtro_mostrar_competencia"
         )
-    
+
     with col3:
         ordenar_decrescente = st.checkbox(
-            "Ordenar por valor decrescente", 
+            "Ordenar por valor decrescente",
             value=False,
-            key=f"ordenar_{variavel_selecionada}"
+            key="filtro_ordenar_decrescente"
         )
-    
+
     # Exibir seletor de competência apenas se checkbox estiver marcado
     competencia_filtro = None
     if mostrar_apenas_competencia and competencias:
         competencia_filtro = st.selectbox(
             "Selecione a competência:",
             options=competencias,
-            key=f"competencia_filtro_{variavel_selecionada}"
+            key="filtro_competencia_selecionada"
         )
     
     # Retornar configurações dos filtros

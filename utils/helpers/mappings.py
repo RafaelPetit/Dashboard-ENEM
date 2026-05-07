@@ -188,56 +188,25 @@ def get_mappings():
         }
     }
 
-    # Variáveis sociais para a aba de Aspectos Sociais
-    variaveis_sociais = {
-        "TP_COR_RACA": {
-            "nome": "Raça/Cor", 
-            "mapeamento": race_mapping
-            },
-        "TP_SEXO": {
-            "nome": "Sexo", 
-            "mapeamento": sexo_mapping
-            },
-        "TP_DEPENDENCIA_ADM_ESC": {
-            "nome": "Tipo de Escola", 
-            "mapeamento": dependencia_escola_mapping
-            },
-        "TP_FAIXA_ETARIA": {
-            "nome": "Faixa Etária", 
-            "mapeamento": faixa_etaria_mapping
-            },
-        "Q001": {
-            "nome": "Escolaridade do Pai", 
-            "mapeamento": escolaridade_pai_mae_mapping
-            },
-        "Q002": {
-            "nome": "Escolaridade da Mãe", 
-            "mapeamento": escolaridade_pai_mae_mapping
-            },
-        "TP_FAIXA_SALARIAL": {
-            "nome": "Renda Familiar", 
-            "mapeamento":  faixa_salarial
-        },
-        "Q005": {"nome": "Pessoas na Residência", "mapeamento": {
-            i: str(i) for i in range(1, 22)
-        }},
-        "TP_ST_CONCLUSAO": {
-            "nome": "Situação do Ensino Médio", 
-            "mapeamento": conclusao_ensino_medio_mapping
-            },
-        "NU_INFRAESTRUTURA": {
-            "nome": "Nível de Infraestrutura", 
-            "mapeamento": infraestrutura_mapping
-            },
-        "Q025": {
-            "nome": "Acesso à Internet", 
-            "mapeamento": acesso_internet_mapping
-            },
-
-        "TP_NACIONALIDADE": {
-            "nome": "Nacionalidade",
-            "mapeamento": nacionalidade_mapping
-            }
+    # Variáveis sociais derivadas de variaveis_categoricas com overrides (fix P3.2)
+    # Remove campo 'ordem' (nao usado em Aspectos Sociais) e aplica nomes contextuais
+    _excluir_sociais = {"TP_ESCOLA"}  # Nao relevante para aspectos sociais
+    _overrides_sociais = {
+        "TP_DEPENDENCIA_ADM_ESC": {"nome": "Tipo de Escola"},
+        "TP_FAIXA_SALARIAL": {"nome": "Renda Familiar"},
+    }
+    variaveis_sociais = {}
+    for chave, config in variaveis_categoricas.items():
+        if chave in _excluir_sociais:
+            continue
+        entrada = {"nome": config["nome"], "mapeamento": config["mapeamento"]}
+        if chave in _overrides_sociais:
+            entrada.update(_overrides_sociais[chave])
+        variaveis_sociais[chave] = entrada
+    # Adicionar variavel exclusiva de aspectos sociais
+    variaveis_sociais["Q005"] = {
+        "nome": "Pessoas na Residência",
+        "mapeamento": {i: str(i) for i in range(1, 22)}
     }
 
     regioes_mapping = {

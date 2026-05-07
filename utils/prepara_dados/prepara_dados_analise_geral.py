@@ -1,7 +1,7 @@
 import pandas as pd
 from typing import Dict, List, Tuple, Optional, Any
 from data.data_loader import calcular_seguro
-from utils.helpers.cache_utils import optimized_cache, memory_intensive_function, release_memory
+from utils.helpers.cache_utils import optimized_cache
 from utils.helpers.regiao_utils import obter_regiao_do_estado
 from utils.helpers.constants import (
     COMPETENCIA_MAPPING as competencia_mapping,
@@ -110,7 +110,6 @@ def preparar_dados_grafico_faltas(
         return pd.DataFrame(columns=['Estado', 'Tipo de Falta', 'Percentual de Faltas', 'Área'])
 
 
-@memory_intensive_function
 def _calcular_faltas_por_localidade(
     df: pd.DataFrame, 
     localidades: List[str],
@@ -174,8 +173,6 @@ def _calcular_faltas_por_localidade(
                 'Contagem': contagem,
                 'Total': total_candidatos
             })
-        if (i+1) % CONFIG_PROCESSAMENTO['tamanho_lote_estados'] == 0:
-            release_memory(dados_local)
     df_resultado = pd.DataFrame(dados_grafico)
     if not df_resultado.empty:
         df_resultado['Estado'] = pd.Categorical(df_resultado['Estado'], categories=localidades)
@@ -184,159 +181,6 @@ def _calcular_faltas_por_localidade(
             categories=['Faltou nos dois dias', 'Faltou somente no primeiro dia', 'Faltou somente no segundo dia']
         )
     return df_resultado
-
-
-@optimized_cache(ttl=3600)  # Cache válido por 1 hora
-def preparar_dados_metricas_principais(
-    microdados_estados: pd.DataFrame, 
-    estados_selecionados: List[str], 
-    colunas_notas: List[str]
-) -> Dict[str, Any]:
-    """
-    Prepara dados para as métricas principais exibidas no início da aba.
-    
-    Parâmetros:
-    -----------
-    microdados_estados : DataFrame
-        DataFrame com os microdados filtrados por estado
-    estados_selecionados : List[str]
-        Lista de estados selecionados para análise
-    colunas_notas : List[str]
-        Lista de colunas com notas a serem analisadas
-        
-    Retorna:
-    --------
-    Dict[str, Any]: Dicionário com métricas calculadas
-    """
-    # Verificar se temos dados válidos
-    if microdados_estados is None or microdados_estados.empty:
-        return _gerar_metricas_vazias(colunas_notas)
-    
-    try:
-        # Calculando métricas básicas
-        total_candidatos = len(microdados_estados)
-        
-        # Calcular percentual de faltas (candidatos que faltaram nos dois dias)
-        if 'TP_PRESENCA_GERAL' in microdados_estados.columns:
-            faltas_totais = len(microdados_estados[microdados_estados['TP_PRESENCA_GERAL'] == 0])
-            percentual_faltas = (faltas_totais / total_candidatos * 100) if total_candidatos > 0 else 0
-        else:
-            faltas_totais = 0
-            percentual_faltas = 0
-        
-        # Calcular médias por área de conhecimento
-        medias = {}
-        for coluna in colunas_notas:
-            if coluna in microdados_estados.columns:
-                notas_validas = microdados_estados[microdados_estados[coluna] > 0][coluna]
-                media = calcular_seguro(notas_validas, 'media')
-                medias[coluna] = round(media, 2)
-            else:
-                medias[coluna] = None
-        
-        # Calcular média geral
-        medias_validas = [v for v in medias.values() if v is not None]
-        media_geral = round(sum(medias_validas) / len(medias_validas), 2) if medias_validas else 0
-        
-        # Calcular desempenho por regiões
-        desempenho_regioes = _calcular_desempenho_regioes(
-            microdados_estados, 
-            estados_selecionados, 
-            colunas_notas
-        )
-        
-        # Montar resultado final
-        return {
-            'total_candidatos': total_candidatos,
-            'faltas_totais': faltas_totais,
-            'percentual_faltas': percentual_faltas,
-            'medias_por_area': medias,
-            'media_geral': media_geral,
-            'desempenho_regioes': desempenho_regioes
-        }
-    except Exception as e:
-        import logging; logging.warning(f"Erro em preparar_dados_metricas_principais: {e}")
-        return _gerar_metricas_vazias(colunas_notas)
-
-
-def _gerar_metricas_vazias(colunas_notas: List[str]) -> Dict[str, Any]:
-    """
-    Gera estrutura de métricas vazia quando não há dados disponíveis.
-    
-    Parâmetros:
-    -----------
-    colunas_notas : List[str]
-        Lista de colunas de notas para inicializar estrutura vazia
-        
-    Retorna:
-    --------
-    Dict[str, Any]: Estrutura de métricas vazia
-    """
-    return {
-        'total_candidatos': 0,
-        'faltas_totais': 0,
-        'percentual_faltas': 0,
-        'medias_por_area': {coluna: 0 for coluna in colunas_notas},
-        'media_geral': 0,
-        'desempenho_regioes': {}
-    }
-
-
-@memory_intensive_function
-def _calcular_desempenho_regioes(
-    df: pd.DataFrame, 
-    estados: List[str], 
-    colunas_notas: List[str]
-) -> Dict[str, Dict[str, float]]:
-    """
-    Calcula desempenho médio por região para todas as áreas de conhecimento.
-    
-    Parâmetros:
-    -----------
-    df : DataFrame
-        DataFrame com os dados
-    estados : List[str]
-        Lista de estados selecionados
-    colunas_notas : List[str]
-        Lista de colunas com notas
-        
-    Retorna:
-    --------
-    Dict[str, Dict[str, float]]: Médias por região e área de conhecimento
-    """
-    # Verificar se temos dados válidos
-    if df is None or df.empty or 'SG_UF_PROVA' not in df.columns:
-        return {}
-        
-    # Adicionar coluna de região
-    df_temp = df.copy()
-    df_temp['REGIAO'] = df_temp['SG_UF_PROVA'].apply(obter_regiao_do_estado)
-    
-    # Calcular médias por região e área
-    resultado = {}
-    regioes = df_temp['REGIAO'].unique()
-    
-    for regiao in regioes:
-        if not regiao:  # Ignorar valores vazios
-            continue
-            
-        dados_regiao = df_temp[df_temp['REGIAO'] == regiao]
-        
-        medias_regiao = {}
-        for coluna in colunas_notas:
-            if coluna in dados_regiao.columns:
-                notas_validas = dados_regiao[dados_regiao[coluna] > 0][coluna]
-                media = calcular_seguro(notas_validas, 'media')
-                medias_regiao[coluna] = round(media, 2)
-            else:
-                medias_regiao[coluna] = None
-                
-        resultado[regiao] = medias_regiao
-    
-    # Liberar memória
-    release_memory(df_temp)
-    
-    return resultado
 
 
 @optimized_cache(ttl=3600)
@@ -417,36 +261,22 @@ def preparar_dados_media_geral_estados(
 def _agrupar_estados_por_regiao(df: pd.DataFrame) -> pd.DataFrame:
     """
     Agrupa estados por região, calculando a média dos valores numéricos.
-    
-    Parâmetros:
-    -----------
-    df : DataFrame
-        DataFrame com dados por estado, com coluna 'Local' contendo os estados
-        
-    Retorna:
-    --------
-    DataFrame: DataFrame com dados agrupados por região
+    Coluna de entrada: 'Local' (estados). Saida: 'Local' (regioes).
     """
-    # Verificar se temos dados para processar
     if df is None or df.empty or 'Local' not in df.columns:
         return df
     try:
-        # Criar coluna de região
+        from utils.helpers.regiao_utils import ESTADO_PARA_REGIAO
         df_temp = df.copy()
-        df_temp['Região'] = df_temp['Local'].apply(obter_regiao_do_estado)
-        # Remover estados sem região associada
-        df_temp = df_temp[df_temp['Região'] != ""]
-        # Agrupar por região
+        df_temp['Região'] = df_temp['Local'].map(ESTADO_PARA_REGIAO)
+        df_temp = df_temp[df_temp['Região'].notna() & (df_temp['Região'] != "")]
         colunas_numericas = df_temp.select_dtypes(include='number').columns.tolist()
         df_agrupado = df_temp.groupby('Região')[colunas_numericas].mean().reset_index()
-        # Renomear coluna para manter compatibilidade
         df_agrupado = df_agrupado.rename(columns={'Região': 'Local'})
-        # Arredondar valores numéricos
         for col in colunas_numericas:
             df_agrupado[col] = df_agrupado[col].round(2)
         return df_agrupado
     except Exception as e:
-        import logging; logging.warning(f"Erro em _agrupar_estados_por_regiao: {e}")
         return df
 
 
